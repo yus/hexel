@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Triangular Grid - 60° & -60° from North</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #1a1a1a;
+            font-family: monospace;
+        }
+        canvas {
+            display: block;
+            background: #0a0a0a;
+        }
+        #controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            color: #888;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            pointer-events: none;
+        }
+        #coords {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            color: #888;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gridCanvas"></canvas>
+    <div id="controls">
+        ⬆️⬇️⬅️➡️ Pan | +/- Zoom | R Reset<br>
+        60° & -60° from North + Horizontal lines
+    </div>
+    <div id="coords">Center: (0, 0) | Scale: 40px/unit</div>
+
+    <script>
+        const canvas = document.getElementById('gridCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Grid parameters
+        let scale = 40; // pixels per unit
+        let offsetX = 0;
+        let offsetY = 0;
+        
+        // Mouse interaction
+        let isDragging = false;
+        let lastMouseX, lastMouseY;
+        
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            drawGrid();
+        }
+        
+        function drawGrid() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const centerX = canvas.width / 2 + offsetX;
+            const centerY = canvas.height / 2 + offsetY;
+            
+            // Calculate visible range
+            const startX = -Math.ceil(canvas.width / (2 * scale)) - 2;
+            const endX = Math.ceil(canvas.width / (2 * scale)) + 2;
+            const startY = -Math.ceil(canvas.height / (2 * scale)) - 2;
+            const endY = Math.ceil(canvas.height / (2 * scale)) + 2;
+            
+            ctx.lineWidth = 1;
+            
+            // Draw horizontal lines (through intersections)
+            ctx.strokeStyle = '#ff6b6b'; // Coral red for horizontals
+            ctx.beginPath();
+            for (let y = startY; y <= endY; y++) {
+                for (let x = startX; x <= endX; x++) {
+                    // Draw horizontal line through intersection points
+                    const screenY = centerY + y * scale * Math.sqrt(3)/2;
+                    const screenX1 = centerX + (x - 2) * scale;
+                    const screenX2 = centerX + (x + 2) * scale;
+                    
+                    ctx.moveTo(screenX1, screenY);
+                    ctx.lineTo(screenX2, screenY);
+                }
+            }
+            ctx.strokeStyle = '#ff6b6b';
+            ctx.stroke();
+            
+            // Draw +60° diagonals (from North)
+            ctx.strokeStyle = '#4ecdc4'; // Turquoise for +60°
+            ctx.beginPath();
+            for (let y = startY; y <= endY; y++) {
+                for (let x = startX; x <= endX; x++) {
+                    const baseX = centerX + x * scale;
+                    const baseY = centerY + y * scale * Math.sqrt(3)/2;
+                    
+                    // Draw line at +60° (slope = √3)
+                    const dx = scale * 2;
+                    const dy = dx * Math.sqrt(3);
+                    
+                    ctx.moveTo(baseX - dx, baseY - dy);
+                    ctx.lineTo(baseX + dx, baseY + dy);
+                }
+            }
+            ctx.strokeStyle = '#4ecdc4';
+            ctx.stroke();
+            
+            // Draw -60° diagonals (from North)
+            ctx.strokeStyle = '#ffe66d'; // Yellow for -60°
+            ctx.beginPath();
+            for (let y = startY; y <= endY; y++) {
+                for (let x = startX; x <= endX; x++) {
+                    const baseX = centerX + x * scale;
+                    const baseY = centerY + y * scale * Math.sqrt(3)/2;
+                    
+                    // Draw line at -60° (slope = -√3)
+                    const dx = scale * 2;
+                    const dy = dx * Math.sqrt(3);
+                    
+                    ctx.moveTo(baseX - dx, baseY + dy);
+                    ctx.lineTo(baseX + dx, baseY - dy);
+                }
+            }
+            ctx.strokeStyle = '#ffe66d';
+            ctx.stroke();
+            
+            // Draw intersection points
+            ctx.fillStyle = '#ffffff';
+            for (let y = startY; y <= endY; y++) {
+                for (let x = startX; x <= endX; x++) {
+                    const screenX = centerX + x * scale;
+                    const screenY = centerY + y * scale * Math.sqrt(3)/2;
+                    
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            
+            // Draw origin marker
+            ctx.fillStyle = '#ff0000';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 4, 0, Math.PI * 2);
+            ctx.fill();
+            
+            // Update coordinates display
+            document.getElementById('coords').innerHTML = 
+                `Center: (${(-offsetX/scale).toFixed(1)}, ${(-offsetY/scale).toFixed(1)}) | Scale: ${scale.toFixed(1)}px/unit`;
+        }
+        
+        // Mouse event handlers
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                offsetX += e.clientX - lastMouseX;
+                offsetY += e.clientY - lastMouseY;
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                drawGrid();
+            }
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+        
+        canvas.addEventListener('mouseleave', () => {
+            isDragging = false;
+        });
+        
+        // Zoom with wheel
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+            scale *= zoomFactor;
+            scale = Math.max(10, Math.min(200, scale)); // Limit zoom
+            drawGrid();
+        });
+        
+        // Keyboard controls
+        window.addEventListener('keydown', (e) => {
+            const panSpeed = 20;
+            switch(e.key) {
+                case 'ArrowUp': offsetY += panSpeed; break;
+                case 'ArrowDown': offsetY -= panSpeed; break;
+                case 'ArrowLeft': offsetX += panSpeed; break;
+                case 'ArrowRight': offsetX -= panSpeed; break;
+                case 'r':
+                case 'R':
+                    offsetX = 0;
+                    offsetY = 0;
+                    scale = 40;
+                    break;
+            }
+            drawGrid();
+        });
+        
+        // Initial setup
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        
+        // Prevent page scrolling with arrow keys
+        window.addEventListener('keydown', (e) => {
+            if (e.key.startsWith('Arrow')) {
+                e.preventDefault();
+            }
+        }, {passive: false});
+    </script>
+</body>
+</html>
