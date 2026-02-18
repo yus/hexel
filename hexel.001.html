@@ -1,0 +1,823 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HEXEL STUDIO · 60° Grid</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #0a0a0c;
+            --grid: #b388ff;
+            --grid-alpha: 0.25;
+            --ui-bg: #14141a;
+            --ui-border: #2a2a35;
+            --text: #e2e2e6;
+            --text-dim: #88889a;
+            --accent: #b388ff;
+            --accent-dim: #6b4f9f;
+            --tool-bg: #1e1e28;
+        }
+
+        body {
+            font-family: 'Inter', 'SF Mono', 'JetBrains Mono', monospace;
+            background: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+            touch-action: none;
+            line-height: 1.3;
+        }
+
+        /* CANVAS LAYER */
+        #grid-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: var(--bg);
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        #draw-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 2;
+            pointer-events: auto;
+            background: transparent;
+        }
+
+        /* UI PANEL - SHARP, NO ROUNDING */
+        #ui-panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            z-index: 10;
+            background: var(--ui-bg);
+            border: 1px solid var(--ui-border);
+            padding: 16px;
+            min-width: 280px;
+            box-shadow: 8px 8px 0 rgba(0,0,0,0.5);
+            font-size: 13px;
+            letter-spacing: 0.3px;
+        }
+
+        /* TOOLBOX - SHARP EDGES */
+        #toolbox {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 10;
+            background: var(--ui-bg);
+            border: 1px solid var(--ui-border);
+            padding: 16px;
+            width: 240px;
+            box-shadow: -8px 8px 0 rgba(0,0,0,0.5);
+        }
+
+        /* STATUS BAR - NO ROUNDING */
+        #status-bar {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            right: 20px;
+            z-index: 10;
+            background: var(--ui-bg);
+            border: 1px solid var(--ui-border);
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 13px;
+            box-shadow: 0 -4px 0 rgba(0,0,0,0.3);
+        }
+
+        /* SECTION HEADERS */
+        .section-title {
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            font-size: 11px;
+            color: var(--accent);
+            margin-bottom: 12px;
+            border-bottom: 1px solid var(--ui-border);
+            padding-bottom: 6px;
+        }
+
+        /* COORDINATE DISPLAY - SHARP */
+        .coord-block {
+            background: #00000030;
+            border: 1px solid var(--ui-border);
+            padding: 8px 12px;
+            margin-bottom: 8px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 14px;
+        }
+
+        .coord-block span {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        /* TOOL BUTTONS - NO ROUNDING */
+        .tool-btn {
+            background: transparent;
+            border: 1px solid var(--ui-border);
+            color: var(--text-dim);
+            padding: 8px 12px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+            margin-bottom: 4px;
+            transition: all 0.1s;
+        }
+
+        .tool-btn:hover {
+            background: var(--accent-dim);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .tool-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: black;
+            font-weight: 600;
+        }
+
+        .tool-btn:last-child {
+            margin-bottom: 0;
+        }
+
+        /* HEXEL GRID INFO */
+        .hexel-info {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            margin-top: 12px;
+        }
+
+        .hexel-info-item {
+            background: #00000030;
+            border: 1px solid var(--ui-border);
+            padding: 6px 8px;
+            font-size: 11px;
+        }
+
+        .hexel-info-item .label {
+            color: var(--text-dim);
+            text-transform: uppercase;
+            font-size: 9px;
+        }
+
+        .hexel-info-item .value {
+            color: var(--accent);
+            font-size: 14px;
+            font-weight: 600;
+        }
+
+        /* MESSAGE AREA - NO OVERLAP, STACKED */
+        #message-area {
+            position: fixed;
+            bottom: 90px;
+            right: 20px;
+            z-index: 20;
+            width: 300px;
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            pointer-events: none;
+        }
+
+        .message {
+            background: var(--ui-bg);
+            border: 1px solid var(--accent);
+            padding: 10px 14px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--text);
+            box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+            animation: slideIn 0.2s;
+            border-left: 4px solid var(--accent);
+        }
+
+        .message.warning {
+            border-left-color: #ffaa66;
+            border-color: #ffaa66;
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* HEXEL COORDINATE HIGHLIGHT */
+        .hexel-tag {
+            background: var(--accent);
+            color: black;
+            padding: 2px 6px;
+            font-size: 10px;
+            font-weight: 600;
+            margin-left: 8px;
+        }
+
+        hr {
+            border: none;
+            border-top: 1px solid var(--ui-border);
+            margin: 12px 0;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="grid-canvas"></canvas>
+    <canvas id="draw-canvas"></canvas>
+
+    <!-- SHARP UI PANELS -->
+    <div id="ui-panel">
+        <div class="section-title">⬟ HEXEL STUDIO v1</div>
+        
+        <div class="coord-block">
+            <div style="display: flex; justify-content: space-between;">
+                <span>WORLD</span>
+                <span id="world-coord">0.00, 0.00</span>
+            </div>
+            <div style="display: flex; justify-content: space-between; margin-top: 6px;">
+                <span>HEXEL</span>
+                <span id="hexel-coord">(0, 0)</span>
+            </div>
+        </div>
+
+        <div class="hexel-info">
+            <div class="hexel-info-item">
+                <div class="label">ZOOM</div>
+                <div class="value" id="zoom-value">1.00x</div>
+            </div>
+            <div class="hexel-info-item">
+                <div class="label">HEXEL SIZE</div>
+                <div class="value" id="hexel-size">48px</div>
+            </div>
+            <div class="hexel-info-item">
+                <div class="label">GRID</div>
+                <div class="value" id="grid-status">ON</div>
+            </div>
+            <div class="hexel-info-item">
+                <div class="label">POINTS</div>
+                <div class="value" id="point-count">0</div>
+            </div>
+        </div>
+
+        <hr>
+
+        <div style="display: flex; gap: 4px;">
+            <button id="toggle-grid" class="tool-btn" style="flex: 1;">⏻ GRID</button>
+            <button id="clear-points" class="tool-btn" style="flex: 1;">⌫ CLEAR</button>
+        </div>
+    </div>
+
+    <div id="toolbox">
+        <div class="section-title">⚡ HEXEL TOOLS</div>
+        
+        <button id="tool-point" class="tool-btn active">● POINT · snap to hexel</button>
+        <button id="tool-line" class="tool-btn">⎯ LINE · hexel to hexel</button>
+        <button id="tool-triangle" class="tool-btn">⬟ TRIANGLE · 60° aligned</button>
+        <button id="tool-hexagon" class="tool-btn">⬡ HEXAGON · 7 hexel ring</button>
+
+        <hr>
+
+        <div style="font-size: 11px; color: var(--text-dim); line-height: 1.6;">
+            <div>📐 60° · 120° geometry</div>
+            <div>🎯 snap to hexel vertices</div>
+            <div>🔍 zoom preserves hexels</div>
+        </div>
+
+        <div style="margin-top: 12px; background: #00000030; padding: 8px; border: 1px solid var(--ui-border);">
+            <span style="color: var(--accent);">⏎ R</span> to reset view
+        </div>
+    </div>
+
+    <div id="status-bar">
+        <div>⬟ <span id="status-mode">POINT tool · click to place hexel</span></div>
+        <div>⚡ <span id="status-pos">0,0 (hexel)</span></div>
+        <div>🎯 <span id="status-snap">snap: vertex</span></div>
+    </div>
+
+    <div id="message-area"></div>
+
+    <script>
+        (function() {
+            // === CANVAS SETUP ===
+            const gridCanvas = document.getElementById('grid-canvas');
+            const drawCanvas = document.getElementById('draw-canvas');
+            const gridCtx = gridCanvas.getContext('2d');
+            const drawCtx = drawCanvas.getContext('2d');
+
+            // === HEXEL GEOMETRY ===
+            const HEXEL_SIZE = 24; // base hexel unit (triangle side)
+            const H_STEP = HEXEL_SIZE * 2;        // 48px horizontal
+            const V_STEP = HEXEL_SIZE * Math.sqrt(3); // ~41.57px vertical
+
+            // === VIEW STATE ===
+            let scale = 1.0;
+            let offsetX = 0;
+            let offsetY = 0;
+            let gridEnabled = true;
+
+            // === DRAWING STATE ===
+            let points = []; // stored hexel points {hexQ, hexR, screenX, screenY, color}
+            let currentTool = 'point';
+            
+            // === INTERACTION ===
+            let isDragging = false;
+            let dragThreshold = 3;
+            let lastX, lastY;
+            let lastDistance = 0;
+            let clickStartTime = 0;
+            let clickStartPos = { x: 0, y: 0 };
+
+            // === MESSAGE QUEUE ===
+            let messageQueue = [];
+            let messageTimeout = null;
+
+            // === RESIZE ===
+            function resizeCanvases() {
+                gridCanvas.width = window.innerWidth;
+                gridCanvas.height = window.innerHeight;
+                drawCanvas.width = window.innerWidth;
+                drawCanvas.height = window.innerHeight;
+                drawGrid();
+                drawPoints();
+            }
+
+            // === MESSAGE SYSTEM (NO OVERLAP) ===
+            function addMessage(text, type = 'info', duration = 3000) {
+                const msgArea = document.getElementById('message-area');
+                const msgId = 'msg-' + Date.now() + '-' + Math.random();
+                
+                const msgEl = document.createElement('div');
+                msgEl.id = msgId;
+                msgEl.className = 'message' + (type === 'warning' ? ' warning' : '');
+                msgEl.textContent = text;
+                
+                msgArea.appendChild(msgEl);
+                
+                // Auto remove after duration
+                setTimeout(() => {
+                    const el = document.getElementById(msgId);
+                    if (el) el.remove();
+                }, duration);
+            }
+
+            // === HEXEL COORDINATE CONVERSION ===
+            function screenToHexel(screenX, screenY) {
+                const centerX = gridCanvas.width / 2 + offsetX;
+                const centerY = gridCanvas.height / 2 + offsetY;
+                
+                const scaledH = H_STEP * scale;
+                const scaledV = V_STEP * scale;
+                
+                // Convert to grid space
+                const gridX = (screenX - centerX) / scaledH;
+                const gridY = (screenY - centerY) / scaledV;
+                
+                // Find nearest hexel (axial coordinates)
+                const row = Math.round(gridY);
+                let col;
+                
+                if (row % 2 !== 0) {
+                    col = Math.round(gridX - 0.5);
+                } else {
+                    col = Math.round(gridX);
+                }
+                
+                return {
+                    q: col,
+                    r: row,
+                    screenX: centerX + (row % 2 !== 0 ? (col + 0.5) * scaledH : col * scaledH),
+                    screenY: centerY + row * scaledV
+                };
+            }
+
+            function hexelToScreen(q, r) {
+                const centerX = gridCanvas.width / 2 + offsetX;
+                const centerY = gridCanvas.height / 2 + offsetY;
+                
+                const scaledH = H_STEP * scale;
+                const scaledV = V_STEP * scale;
+                
+                return {
+                    x: centerX + (r % 2 !== 0 ? (q + 0.5) * scaledH : q * scaledH),
+                    y: centerY + r * scaledV
+                };
+            }
+
+            // === DRAW GRID ===
+            function drawGrid() {
+                gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+                
+                if (!gridEnabled) return;
+                
+                const centerX = gridCanvas.width / 2 + offsetX;
+                const centerY = gridCanvas.height / 2 + offsetY;
+                
+                const scaledH = H_STEP * scale;
+                const scaledV = V_STEP * scale;
+                
+                // Visible range
+                const cols = Math.ceil(gridCanvas.width / scaledH) + 10;
+                const rows = Math.ceil(gridCanvas.height / scaledV) + 10;
+                
+                const startCol = -Math.floor(cols / 2) - 2;
+                const startRow = -Math.floor(rows / 2) - 2;
+                const endCol = startCol + cols + 4;
+                const endRow = startRow + rows + 4;
+                
+                // Update UI
+                const worldX = -offsetX / (H_STEP * scale) * H_STEP;
+                const worldY = -offsetY / (V_STEP * scale) * V_STEP;
+                
+                const centerHexel = screenToHexel(gridCanvas.width/2, gridCanvas.height/2);
+                
+                document.getElementById('world-coord').textContent = worldX.toFixed(2) + ', ' + worldY.toFixed(2);
+                document.getElementById('hexel-coord').textContent = `(${centerHexel.q}, ${centerHexel.r})`;
+                document.getElementById('zoom-value').textContent = scale.toFixed(2) + 'x';
+                document.getElementById('hexel-size').textContent = Math.round(HEXEL_SIZE * scale) + 'px';
+                document.getElementById('point-count').textContent = points.length;
+                
+                // HAIRLINE THIN
+                gridCtx.lineWidth = Math.max(0.5, 0.9 / Math.sqrt(scale));
+                gridCtx.strokeStyle = '#b388ff';
+                
+                // Horizontal lines
+                gridCtx.globalAlpha = 0.2;
+                gridCtx.beginPath();
+                for (let row = startRow; row <= endRow; row++) {
+                    const y = centerY + row * scaledV;
+                    gridCtx.moveTo(0, y);
+                    gridCtx.lineTo(gridCanvas.width, y);
+                }
+                gridCtx.stroke();
+                
+                // +60° diagonals
+                gridCtx.beginPath();
+                for (let row = startRow - 3; row <= endRow + 3; row++) {
+                    for (let col = startCol - 3; col <= endCol + 3; col++) {
+                        const x = centerX + col * scaledH;
+                        const y = centerY + row * scaledV;
+                        const xOffset = (row % 2 === 0) ? 0 : scaledH / 2;
+                        
+                        const extend = Math.max(gridCanvas.width, gridCanvas.height);
+                        gridCtx.moveTo(x + xOffset - extend, y - extend * Math.tan(60 * Math.PI / 180));
+                        gridCtx.lineTo(x + xOffset + extend, y + extend * Math.tan(60 * Math.PI / 180));
+                    }
+                }
+                gridCtx.stroke();
+                
+                // -60° diagonals
+                gridCtx.beginPath();
+                for (let row = startRow - 3; row <= endRow + 3; row++) {
+                    for (let col = startCol - 3; col <= endCol + 3; col++) {
+                        const x = centerX + col * scaledH;
+                        const y = centerY + row * scaledV;
+                        const xOffset = (row % 2 === 0) ? 0 : scaledH / 2;
+                        
+                        const extend = Math.max(gridCanvas.width, gridCanvas.height);
+                        gridCtx.moveTo(x + xOffset - extend, y + extend * Math.tan(60 * Math.PI / 180));
+                        gridCtx.lineTo(x + xOffset + extend, y - extend * Math.tan(60 * Math.PI / 180));
+                    }
+                }
+                gridCtx.stroke();
+                
+                // Hexel vertices (subtle)
+                gridCtx.fillStyle = '#b388ff';
+                gridCtx.globalAlpha = 0.15;
+                for (let row = startRow; row <= endRow; row++) {
+                    for (let col = startCol; col <= endCol; col++) {
+                        const x = centerX + col * scaledH;
+                        const y = centerY + row * scaledV;
+                        
+                        if (row % 2 !== 0) {
+                            gridCtx.beginPath();
+                            gridCtx.arc(x + scaledH/2, y, 1.0, 0, Math.PI*2);
+                            gridCtx.fill();
+                        } else {
+                            gridCtx.beginPath();
+                            gridCtx.arc(x, y, 1.0, 0, Math.PI*2);
+                            gridCtx.fill();
+                        }
+                    }
+                }
+                
+                // Origin marker
+                gridCtx.fillStyle = '#ffffff';
+                gridCtx.globalAlpha = 0.4;
+                gridCtx.beginPath();
+                gridCtx.arc(centerX, centerY, 3, 0, Math.PI*2);
+                gridCtx.fill();
+                
+                gridCtx.globalAlpha = 1.0;
+            }
+
+            // === DRAW POINTS (HEXEL SNAPPED) ===
+            function drawPoints() {
+                drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+                
+                points.forEach(point => {
+                    // Recalculate screen position from hexel coords (zoomable)
+                    const screen = hexelToScreen(point.q, point.r);
+                    
+                    drawCtx.fillStyle = point.color;
+                    drawCtx.globalAlpha = 0.9;
+                    drawCtx.beginPath();
+                    drawCtx.arc(screen.x, screen.y, point.size * Math.sqrt(scale), 0, Math.PI*2);
+                    drawCtx.fill();
+                    
+                    // Outline
+                    drawCtx.strokeStyle = '#ffffff';
+                    drawCtx.lineWidth = 1.5;
+                    drawCtx.stroke();
+                    
+                    // Optional hexel label for some points
+                    if (point.showLabel) {
+                        drawCtx.font = '10px "JetBrains Mono", monospace';
+                        drawCtx.fillStyle = '#ffffff';
+                        drawCtx.shadowColor = 'black';
+                        drawCtx.shadowBlur = 4;
+                        drawCtx.fillText(`(${point.q},${point.r})`, screen.x + 10, screen.y - 10);
+                        drawCtx.shadowBlur = 0;
+                    }
+                });
+            }
+
+            // === ADD HEXEL POINT ===
+            function addHexelPoint(q, r, color = '#ffaa66', size = 6, showLabel = false) {
+                // Check if hexel already has a point
+                const existing = points.find(p => p.q === q && p.r === r);
+                if (existing) {
+                    addMessage(`⚠️ hexel (${q},${r}) already has a point`, 'warning');
+                    return false;
+                }
+                
+                points.push({ q, r, color, size, showLabel });
+                drawPoints();
+                
+                const screen = hexelToScreen(q, r);
+                addMessage(`✨ placed point at hexel (${q},${r})`);
+                
+                document.getElementById('point-count').textContent = points.length;
+                return true;
+            }
+
+            // === HANDLE CLICK FOR CURRENT TOOL ===
+            function handleToolClick(screenX, screenY) {
+                const hexel = screenToHexel(screenX, screenY);
+                
+                switch(currentTool) {
+                    case 'point':
+                        addHexelPoint(hexel.q, hexel.r, '#ffaa66', 6, true);
+                        break;
+                    case 'line':
+                        addMessage(`📏 line tool: first point at (${hexel.q},${hexel.r})`, 'info');
+                        // Store first point for line (simplified)
+                        break;
+                    case 'triangle':
+                        addMessage(`⬟ triangle tool: would draw 60° triangle at (${hexel.q},${hexel.r})`, 'info');
+                        break;
+                    case 'hexagon':
+                        // Draw a small hexagon ring
+                        for (let dq = -1; dq <= 1; dq++) {
+                            for (let dr = -1; dr <= 1; dr++) {
+                                if (Math.abs(dq + dr) <= 1) {
+                                    addHexelPoint(hexel.q + dq, hexel.r + dr, '#b388ff', 4, false);
+                                }
+                            }
+                        }
+                        addMessage(`⬡ hexagon placed at (${hexel.q},${hexel.r})`);
+                        break;
+                }
+                
+                // Update status
+                document.getElementById('status-pos').textContent = `${hexel.q},${hexel.r}`;
+            }
+
+            // === INTERACTION HANDLERS ===
+            function handlePointerStart(e) {
+                e.preventDefault();
+                
+                const clientX = e.clientX ?? e.touches?.[0]?.clientX;
+                const clientY = e.clientY ?? e.touches?.[0]?.clientY;
+                
+                if (!clientX) return;
+                
+                const rect = drawCanvas.getBoundingClientRect();
+                const x = clientX - rect.left;
+                const y = clientY - rect.top;
+                
+                lastX = clientX;
+                lastY = clientY;
+                clickStartPos = { x, y };
+                clickStartTime = Date.now();
+                isDragging = false;
+            }
+
+            function handlePointerMove(e) {
+                e.preventDefault();
+                
+                const clientX = e.clientX ?? e.touches?.[0]?.clientX;
+                const clientY = e.clientY ?? e.touches?.[0]?.clientY;
+                
+                if (!clientX || !clientY || lastX === undefined) return;
+                
+                const dx = clientX - lastX;
+                const dy = clientY - lastY;
+                
+                if (Math.abs(dx) > dragThreshold || Math.abs(dy) > dragThreshold) {
+                    isDragging = true;
+                    
+                    offsetX += dx;
+                    offsetY += dy;
+                    
+                    lastX = clientX;
+                    lastY = clientY;
+                    
+                    drawGrid();
+                    drawPoints();
+                }
+            }
+
+            function handlePointerEnd(e) {
+                e.preventDefault();
+                
+                if (!isDragging && lastX !== undefined) {
+                    // It was a click, not a drag
+                    const clientX = e.clientX ?? e.changedTouches?.[0]?.clientX;
+                    const clientY = e.clientY ?? e.changedTouches?.[0]?.clientY;
+                    
+                    if (clientX) {
+                        const rect = drawCanvas.getBoundingClientRect();
+                        const x = clientX - rect.left;
+                        const y = clientY - rect.top;
+                        
+                        handleToolClick(x, y);
+                    }
+                }
+                
+                lastX = undefined;
+                lastY = undefined;
+                isDragging = false;
+            }
+
+            // === ZOOM HANDLER ===
+            function handleZoom(e) {
+                e.preventDefault();
+                
+                const rect = drawCanvas.getBoundingClientRect();
+                let clientX, clientY;
+                
+                if (e.touches && e.touches.length === 2) {
+                    // Pinch zoom
+                    const distance = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                    
+                    if (lastDistance > 0) {
+                        const zoomFactor = distance / lastDistance;
+                        const prevScale = scale;
+                        
+                        const midX = (e.touches[0].clientX + e.touches[1].clientX) / 2 - rect.left;
+                        const midY = (e.touches[0].clientY + e.touches[1].clientY) / 2 - rect.top;
+                        
+                        const centerX = gridCanvas.width / 2 + offsetX;
+                        const centerY = gridCanvas.height / 2 + offsetY;
+                        
+                        const worldX = (midX - centerX) / (H_STEP * prevScale);
+                        const worldY = (midY - centerY) / (V_STEP * prevScale);
+                        
+                        scale *= zoomFactor;
+                        scale = Math.max(0.2, Math.min(8, scale));
+                        
+                        offsetX = midX - gridCanvas.width/2 - worldX * H_STEP * scale;
+                        offsetY = midY - gridCanvas.height/2 - worldY * V_STEP * scale;
+                        
+                        drawGrid();
+                        drawPoints();
+                    }
+                    lastDistance = distance;
+                } else if (e.deltaY) {
+                    // Mouse wheel
+                    clientX = e.clientX - rect.left;
+                    clientY = e.clientY - rect.top;
+                    
+                    const centerX = gridCanvas.width / 2 + offsetX;
+                    const centerY = gridCanvas.height / 2 + offsetY;
+                    
+                    const worldX = (clientX - centerX) / (H_STEP * scale);
+                    const worldY = (clientY - centerY) / (V_STEP * scale);
+                    
+                    const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+                    scale *= zoomFactor;
+                    scale = Math.max(0.2, Math.min(8, scale));
+                    
+                    offsetX = clientX - gridCanvas.width/2 - worldX * H_STEP * scale;
+                    offsetY = clientY - gridCanvas.height/2 - worldY * V_STEP * scale;
+                    
+                    drawGrid();
+                    drawPoints();
+                }
+            }
+
+            // === INIT ===
+            function init() {
+                resizeCanvases();
+                
+                // Event listeners
+                drawCanvas.addEventListener('mousedown', handlePointerStart);
+                drawCanvas.addEventListener('mousemove', handlePointerMove);
+                drawCanvas.addEventListener('mouseup', handlePointerEnd);
+                drawCanvas.addEventListener('mouseleave', handlePointerEnd);
+                
+                drawCanvas.addEventListener('touchstart', handlePointerStart);
+                drawCanvas.addEventListener('touchmove', handlePointerMove);
+                drawCanvas.addEventListener('touchend', handlePointerEnd);
+                drawCanvas.addEventListener('touchcancel', handlePointerEnd);
+                
+                drawCanvas.addEventListener('wheel', handleZoom, { passive: false });
+                
+                // Tool buttons
+                document.getElementById('tool-point').addEventListener('click', () => {
+                    document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+                    document.getElementById('tool-point').classList.add('active');
+                    currentTool = 'point';
+                    document.getElementById('status-mode').textContent = 'POINT tool · click to place hexel';
+                });
+                
+                document.getElementById('tool-line').addEventListener('click', () => {
+                    document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+                    document.getElementById('tool-line').classList.add('active');
+                    currentTool = 'line';
+                    document.getElementById('status-mode').textContent = 'LINE tool · click two hexels';
+                });
+                
+                document.getElementById('tool-triangle').addEventListener('click', () => {
+                    document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+                    document.getElementById('tool-triangle').classList.add('active');
+                    currentTool = 'triangle';
+                    document.getElementById('status-mode').textContent = 'TRIANGLE tool · 60° aligned';
+                });
+                
+                document.getElementById('tool-hexagon').addEventListener('click', () => {
+                    document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+                    document.getElementById('tool-hexagon').classList.add('active');
+                    currentTool = 'hexagon';
+                    document.getElementById('status-mode').textContent = 'HEXAGON tool · 7 hexel ring';
+                });
+                
+                document.getElementById('toggle-grid').addEventListener('click', () => {
+                    gridEnabled = !gridEnabled;
+                    document.getElementById('grid-status').textContent = gridEnabled ? 'ON' : 'OFF';
+                    document.getElementById('toggle-grid').style.background = gridEnabled ? 'var(--accent)' : 'transparent';
+                    document.getElementById('toggle-grid').style.color = gridEnabled ? 'black' : 'var(--text-dim)';
+                    drawGrid();
+                });
+                
+                document.getElementById('clear-points').addEventListener('click', () => {
+                    points = [];
+                    drawPoints();
+                    addMessage('🗑️ all points cleared');
+                });
+                
+                // Reset with R
+                window.addEventListener('keydown', (e) => {
+                    if (e.key === 'r' || e.key === 'R') {
+                        scale = 1.0;
+                        offsetX = 0;
+                        offsetY = 0;
+                        drawGrid();
+                        drawPoints();
+                        addMessage('↺ view reset');
+                    }
+                });
+                
+                window.addEventListener('resize', resizeCanvases);
+                
+                // Welcome message
+                addMessage('⬟ HEXEL STUDIO · snap to 60° grid', 'info', 4000);
+            }
+
+            init();
+        })();
+    </script>
+</body>
+</html>
