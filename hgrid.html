@@ -1,0 +1,321 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purple Triangular Grid - Infinite & Perfect</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #111;
+            font-family: 'Courier New', monospace;
+        }
+        canvas {
+            display: block;
+            background: #111;
+        }
+        #info {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            color: #b388ff;
+            background: rgba(17, 17, 17, 0.8);
+            padding: 12px 20px;
+            border-radius: 30px;
+            font-size: 14px;
+            border: 1px solid #b388ff33;
+            backdrop-filter: blur(4px);
+            pointer-events: none;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+        #coords {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            color: #b388ff;
+            background: rgba(17, 17, 17, 0.8);
+            padding: 12px 20px;
+            border-radius: 30px;
+            font-size: 14px;
+            border: 1px solid #b388ff33;
+            backdrop-filter: blur(4px);
+            pointer-events: none;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+        #controls {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: #b388ff;
+            background: rgba(17, 17, 17, 0.8);
+            padding: 12px 20px;
+            border-radius: 30px;
+            font-size: 14px;
+            border: 1px solid #b388ff33;
+            backdrop-filter: blur(4px);
+            pointer-events: none;
+            z-index: 100;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+        .instruction {
+            color: #b388ff99;
+            font-size: 12px;
+            margin-top: 4px;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="canvas"></canvas>
+    <div id="controls">
+        <span style="color: #b388ff; font-weight: bold;">⚡ TRIANGULAR GRID</span>
+        <div class="instruction">🖱️ Drag to pan | 🔄 Scroll to zoom | R to reset</div>
+    </div>
+    <div id="coords">
+        <span id="coord-value">📍 0.00, 0.00</span>
+        <span style="margin-left: 12px;" id="zoom-value">🔍 1.00x</span>
+    </div>
+    <div id="info">
+        <span style="color: #b388ff;">⬟</span> 60° PERFECT TRIANGLES 
+        <span style="margin-left: 12px; color: #b388ff66;">|</span> 
+        <span style="margin-left: 12px;">STEP <span id="step-value">40</span>px</span>
+    </div>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Grid parameters - SMALLER STEP for infinite look
+        const BASE_SIZE = 24; // Smaller base size = denser grid
+        const H_STEP = BASE_SIZE * 2;  // Double horizontal step
+        const V_STEP = BASE_SIZE * Math.sqrt(3); // Vertical step for equilateral
+        
+        let scale = 1.0;
+        let offsetX = 0;
+        let offsetY = 0;
+        let isDragging = false;
+        let lastX, lastY;
+        
+        function resize() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            draw();
+        }
+        
+        function formatCoord(value) {
+            return value.toFixed(2);
+        }
+        
+        function draw() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const centerX = canvas.width / 2 + offsetX;
+            const centerY = canvas.height / 2 + offsetY;
+            
+            const scaledH = H_STEP * scale;
+            const scaledV = V_STEP * scale;
+            
+            // Calculate visible range with extra margin
+            const cols = Math.ceil(canvas.width / scaledH) + 6;
+            const rows = Math.ceil(canvas.height / scaledV) + 6;
+            
+            const startCol = -Math.floor(cols / 2);
+            const startRow = -Math.floor(rows / 2);
+            const endCol = startCol + cols;
+            const endRow = startRow + rows;
+            
+            // Calculate world coordinates at mouse position (for display)
+            const worldX = -offsetX / (H_STEP * scale) * H_STEP;
+            const worldY = -offsetY / (V_STEP * scale) * V_STEP;
+            
+            // Update coordinate display
+            document.getElementById('coord-value').innerHTML = `📍 ${formatCoord(worldX)}, ${formatCoord(worldY)}`;
+            document.getElementById('zoom-value').innerHTML = `🔍 ${scale.toFixed(2)}x`;
+            document.getElementById('step-value').innerHTML = Math.round(BASE_SIZE * scale);
+            
+            // HAIRLINE THIN lines with purple theme
+            ctx.lineWidth = 0.8;
+            
+            // HORIZONTAL LINES (DOUBLE STEP) - Purple with opacity
+            ctx.strokeStyle = '#b388ff';
+            ctx.globalAlpha = 0.35;
+            ctx.beginPath();
+            for (let row = startRow; row <= endRow; row++) {
+                const y = centerY + row * scaledV;
+                ctx.moveTo(0, y);
+                ctx.lineTo(canvas.width, y);
+            }
+            ctx.stroke();
+            
+            // +60° DIAGONALS - Lighter purple
+            ctx.strokeStyle = '#b388ff';
+            ctx.globalAlpha = 0.35;
+            ctx.beginPath();
+            for (let row = startRow - 2; row <= endRow + 2; row++) {
+                for (let col = startCol - 2; col <= endCol + 2; col++) {
+                    const x = centerX + col * scaledH;
+                    const y = centerY + row * scaledV;
+                    
+                    // Offset every other row for perfect triangle pattern
+                    const xOffset = (row % 2 === 0) ? 0 : scaledH / 2;
+                    
+                    const extend = Math.max(canvas.width, canvas.height) * 1.5;
+                    ctx.moveTo(x + xOffset - extend, y - extend * Math.tan(60 * Math.PI / 180));
+                    ctx.lineTo(x + xOffset + extend, y + extend * Math.tan(60 * Math.PI / 180));
+                }
+            }
+            ctx.stroke();
+            
+            // -60° DIAGONALS - Slightly different purple
+            ctx.strokeStyle = '#b388ff';
+            ctx.globalAlpha = 0.35;
+            ctx.beginPath();
+            for (let row = startRow - 2; row <= endRow + 2; row++) {
+                for (let col = startCol - 2; col <= endCol + 2; col++) {
+                    const x = centerX + col * scaledH;
+                    const y = centerY + row * scaledV;
+                    
+                    const xOffset = (row % 2 === 0) ? 0 : scaledH / 2;
+                    
+                    const extend = Math.max(canvas.width, canvas.height) * 1.5;
+                    ctx.moveTo(x + xOffset - extend, y + extend * Math.tan(60 * Math.PI / 180));
+                    ctx.lineTo(x + xOffset + extend, y - extend * Math.tan(60 * Math.PI / 180));
+                }
+            }
+            ctx.stroke();
+            
+            // VERTICES - Subtle dots
+            ctx.fillStyle = '#b388ff';
+            ctx.globalAlpha = 0.5;
+            for (let row = startRow; row <= endRow; row++) {
+                for (let col = startCol; col <= endCol; col++) {
+                    const x = centerX + col * scaledH;
+                    const y = centerY + row * scaledV;
+                    
+                    // Every other row is offset
+                    if (row % 2 !== 0) {
+                        ctx.beginPath();
+                        ctx.arc(x + scaledH/2, y, 1.2, 0, Math.PI*2);
+                        ctx.fill();
+                    } else {
+                        ctx.beginPath();
+                        ctx.arc(x, y, 1.2, 0, Math.PI*2);
+                        ctx.fill();
+                    }
+                }
+            }
+            
+            // ORIGIN MARKER - Brighter purple
+            ctx.fillStyle = '#ffffff';
+            ctx.globalAlpha = 0.9;
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 3, 0, Math.PI*2);
+            ctx.fill();
+            
+            // Reset alpha
+            ctx.globalAlpha = 1.0;
+        }
+        
+        // Mouse events for panning
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            lastX = e.clientX;
+            lastY = e.clientY;
+            canvas.style.cursor = 'grabbing';
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                offsetX += e.clientX - lastX;
+                offsetY += e.clientY - lastY;
+                lastX = e.clientX;
+                lastY = e.clientY;
+                draw();
+            }
+        });
+        
+        canvas.addEventListener('mouseup', () => { 
+            isDragging = false;
+            canvas.style.cursor = 'default';
+        });
+        
+        canvas.addEventListener('mouseleave', () => { 
+            isDragging = false;
+            canvas.style.cursor = 'default';
+        });
+        
+        // Zoom with wheel (coherent zooming)
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            
+            // Get mouse position relative to canvas
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            
+            // Calculate world position before zoom
+            const worldX = (mouseX - canvas.width/2 - offsetX) / (H_STEP * scale) * H_STEP;
+            const worldY = (mouseY - canvas.height/2 - offsetY) / (V_STEP * scale) * V_STEP;
+            
+            // Apply zoom
+            const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+            scale *= zoomFactor;
+            scale = Math.max(0.2, Math.min(8, scale));
+            
+            // Adjust offset to zoom toward mouse position
+            offsetX = mouseX - canvas.width/2 - (worldX * H_STEP * scale) / H_STEP;
+            offsetY = mouseY - canvas.height/2 - (worldY * V_STEP * scale) / V_STEP;
+            
+            draw();
+        }, { passive: false });
+        
+        // Reset with R key
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'r' || e.key === 'R') {
+                scale = 1.0;
+                offsetX = 0;
+                offsetY = 0;
+                draw();
+            }
+        });
+        
+        // Prevent page scrolling with arrow keys
+        window.addEventListener('keydown', (e) => {
+            if (e.key.startsWith('Arrow')) {
+                e.preventDefault();
+            }
+        }, { passive: false });
+        
+        // Initialize
+        window.addEventListener('resize', resize);
+        resize();
+        
+        // Add touch support for mobile
+        canvas.addEventListener('touchstart', (e) => {
+            e.preventDefault();
+            if (e.touches.length === 1) {
+                isDragging = true;
+                lastX = e.touches[0].clientX;
+                lastY = e.touches[0].clientY;
+            }
+        });
+        
+        canvas.addEventListener('touchmove', (e) => {
+            e.preventDefault();
+            if (isDragging && e.touches.length === 1) {
+                offsetX += e.touches[0].clientX - lastX;
+                offsetY += e.touches[0].clientY - lastY;
+                lastX = e.touches[0].clientX;
+                lastY = e.touches[0].clientY;
+                draw();
+            }
+        });
+        
+        canvas.addEventListener('touchend', () => {
+            isDragging = false;
+        });
+    </script>
+</body>
+</html>
