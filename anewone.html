@@ -1,0 +1,409 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinite 60° triangular grid · hexagon foundation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+        body {
+            background: #0b1a2f;
+            min-height: 100vh;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-family: 'Segoe UI', Roboto, system-ui, sans-serif;
+        }
+        .card {
+            background: #1c2e44;
+            border-radius: 2rem;
+            padding: 1.5rem 2rem 2rem 2rem;
+            box-shadow: 0 20px 30px -10px rgba(0,0,0,0.7);
+            border: 1px solid #3f556b;
+        }
+        h2 {
+            color: #c0d9f0;
+            font-weight: 350;
+            letter-spacing: 1px;
+            text-align: center;
+            margin-bottom: 0.75rem;
+            font-size: 1.6rem;
+        }
+        .sub {
+            text-align: center;
+            color: #91aac7;
+            margin-bottom: 1.25rem;
+            font-size: 1rem;
+            border-bottom: 1px dashed #3f556b;
+            padding-bottom: 0.5rem;
+        }
+        .sub span {
+            background: #2b4058;
+            padding: 0.2rem 0.8rem;
+            border-radius: 30px;
+            font-weight: 500;
+            color: #b4d6ff;
+        }
+        canvas {
+            display: block;
+            width: 800px;
+            height: 550px;
+            background: #132232;
+            border-radius: 28px;
+            box-shadow: inset 0 0 0 1px rgba(210, 230, 255, 0.15), 0 10px 20px rgba(0,0,0,0.5);
+            cursor: grab;
+            touch-action: none;  /* prevent scroll/pinch on canvas */
+        }
+        canvas:active {
+            cursor: grabbing;
+        }
+        .info-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-top: 0.9rem;
+            color: #9bb7d6;
+            font-size: 0.9rem;
+        }
+        .badge {
+            background: #1e3245;
+            padding: 0.3rem 1rem;
+            border-radius: 40px;
+            border: 1px solid #3d6182;
+        }
+        .badge i {
+            font-style: normal;
+            color: #e1edff;
+            font-weight: 600;
+        }
+        button {
+            background: #2c405a;
+            border: none;
+            color: #d4e6ff;
+            padding: 0.3rem 1.2rem;
+            border-radius: 30px;
+            font-size: 0.9rem;
+            font-weight: 500;
+            border: 1px solid #57708f;
+            cursor: pointer;
+            transition: 0.1s ease;
+        }
+        button:hover {
+            background: #37587a;
+            border-color: #7ea6cc;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+<div class="card">
+    <h2>⚡ sixty‑degree triangular grid ⚡</h2>
+    <div class="sub"><span>∞ pan & zoom · hexagons are two triangles away</span></div>
+    <canvas id="gridCanvas" width="800" height="550"></canvas>
+    <div class="info-row">
+        <div class="badge">🔺 <i> 60° basis · edge length 32</i></div>
+        <div class="badge" id="coordDisplay">📌 0 , 0</div>
+        <button id="recenterBtn">⟲ recenter</button>
+    </div>
+</div>
+
+<script>
+    (function() {
+        const canvas = document.getElementById('gridCanvas');
+        const ctx = canvas.getContext('2d');
+        const coordSpan = document.getElementById('coordDisplay');
+
+        // ---------- constant grid parameters ----------
+        const BASE_SIZE = 32;            // triangle edge length (px)
+        const SQRT3 = 1.7320508075688772;
+        const TRI_HEIGHT = BASE_SIZE * SQRT3 / 2;  // height of equilateral triangle ≈ 27.712
+
+        // ---------- view state (infinite pan & zoom) ----------
+        let offsetX = 0.0;                // world → canvas translation (in canvas pixels)
+        let offsetY = 0.0;
+        let scale = 1.0;                  // zoom factor (1 = base size)
+        const MIN_SCALE = 0.25;
+        const MAX_SCALE = 6.0;
+
+        // ---------- drag tracking ----------
+        let isDragging = false;
+        let lastDragX = 0;
+        let lastDragY = 0;
+
+        // ---------- recenter to origin ----------
+        function recenterView() {
+            offsetX = canvas.width / 2;
+            offsetY = canvas.height / 2;
+            scale = 1.0;
+            drawGrid();                 // immediate redraw
+        }
+
+        // ---------- convert world coordinates (grid units, where triangle side = BASE_SIZE) to canvas pixels ----------
+        function worldToCanvas(worldX, worldY) {
+            return {
+                x: worldX * scale + offsetX,
+                y: worldY * scale + offsetY
+            };
+        }
+
+        // ---------- convert canvas pixel to world coordinate (inverse) ----------
+        function canvasToWorld(canvasX, canvasY) {
+            return {
+                x: (canvasX - offsetX) / scale,
+                y: (canvasY - offsetY) / scale
+            };
+        }
+
+        // ---------- draw the infinite triangular grid (60° basis, two families of parallel lines) ----------
+        function drawGrid() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            // world bounding box visible (corners)
+            const topLeft = canvasToWorld(0, 0);
+            const bottomRight = canvasToWorld(canvas.width, canvas.height);
+
+            // expand a little to avoid missing edges at boundaries
+            const margin = BASE_SIZE * 2;
+            const worldMinX = topLeft.x - margin;
+            const worldMaxX = bottomRight.x + margin;
+            const worldMinY = topLeft.y - margin;
+            const worldMaxY = bottomRight.y + margin;
+
+            // ---------- helpers : draw lines between two world points ----------
+            function drawWorldLine(worldAx, worldAy, worldBx, worldBy, color = '#90b8dc', dash = false) {
+                const p1 = worldToCanvas(worldAx, worldAy);
+                const p2 = worldToCanvas(worldBx, worldBy);
+                ctx.beginPath();
+                ctx.moveTo(p1.x, p1.y);
+                ctx.lineTo(p2.x, p2.y);
+                ctx.strokeStyle = color;
+                ctx.lineWidth = dash ? 1.2 : 1.0;
+                if (dash) ctx.setLineDash([6, 4]);
+                else ctx.setLineDash([]);
+                ctx.stroke();
+            }
+
+            // ----- two primary directions (0° and 60°) -----
+            // Direction vectors (world length = BASE_SIZE)
+            // u = (BASE_SIZE, 0)   → horizontal right
+            // v = (BASE_SIZE/2, TRI_HEIGHT)  → 60° up
+            const ux = BASE_SIZE;
+            const uy = 0;
+            const vx = BASE_SIZE / 2;
+            const vy = TRI_HEIGHT;   // positive downward in canvas, but math works (vy positive = downward)
+            // note: in our world Y increases downwards (canvas convention). That's fine.
+
+            // We will generate lines along u direction (varying v-index) and v direction (varying u-index)
+
+            // --- 1. lines parallel to u (horizontal-ish) : constant v-index ---
+            // index range: we iterate over possible v-index that could produce visible lines.
+            // approximate range: worldMinY to worldMaxY, but line spacing is TRI_HEIGHT vertically.
+            // but lines parallel to u are not purely horizontal: they follow vector u. However, constant v-index lines
+            // are lines through points i*u + j*v. For fixed j, points are (i*ux + j*vx , i*uy + j*vy) = (i*ux + j*vx, j*vy)
+            // so they are horizontal lines offset by j*vy (since uy = 0). YES! because uy=0 => they are horizontal lines!
+            // perfect: lines where j = constant are horizontal lines at y = j * vy (with vy = TRI_HEIGHT).
+            const jMin = Math.floor(worldMinY / vy) - 1;
+            const jMax = Math.ceil(worldMaxY / vy) + 1;
+            for (let j = jMin; j <= jMax; j++) {
+                const yFixed = j * vy;          // world y coordinate of that horizontal line
+                // we need to draw a segment covering from worldMinX to worldMaxX along that horizontal line
+                // but also ensure the line extends across the view; any x coordinate works because line extends infinitely.
+                const worldLeft = worldMinX;
+                const worldRight = worldMaxX;
+                // emphasize every 6th line for hexagon rhythm (j multiples of 2 give larger spacing? we want triangular feel)
+                const emphasize = (j % 2 === 0);   // every second horizontal line (j even) -> darker
+                drawWorldLine(worldLeft, yFixed, worldRight, yFixed, emphasize ? '#c2daf5' : '#5779a0', false);
+            }
+
+            // --- 2. lines parallel to v (60° direction) : constant u-index ---
+            // these lines are along direction v: (vx, vy). They correspond to constant i.
+            // points with i constant: (i*ux + j*vx , i*uy + j*vy) = (i*ux + j*vx, j*vy)
+            // so it's a line with direction (vx, vy) (60°). we need to find where these lines cross the viewport.
+            // we iterate i index roughly based on world x coverage.
+            // The x coordinate of line for given i and j is i*ux + j*vx. We need for a fixed i, the set of j such that the line intersects visible y.
+            // but simpler: we take two far apart j candidates to draw an infinite line through two points.
+            const iMin = Math.floor((worldMinX - jMax*vx) / ux) - 2;
+            const iMax = Math.ceil((worldMaxX - jMin*vx) / ux) + 2;
+            for (let i = iMin; i <= iMax; i++) {
+                // pick two j values that are far apart in world (ensuring line extends across canvas)
+                const jA = -10000;   // arbitrary large negative
+                const jB = 10000;    // large positive
+                const worldAx = i * ux + jA * vx;
+                const worldAy = jA * vy;
+                const worldBx = i * ux + jB * vx;
+                const worldBy = jB * vy;
+                // color alternation to highlight triangular cells: every second i (or just subtle)
+                const emphasize = (i % 2 === 0);
+                drawWorldLine(worldAx, worldAy, worldBx, worldBy, emphasize ? '#b4d2f0' : '#50759b', false);
+            }
+
+            // --- 3. optional third direction (120° lines) to complete triangle mesh? but with two sets we already get equilateral triangles.
+            // For a full triangular grid we also need lines with direction ( -vx, vy ) (i.e. 120°). but with only the two families
+            // we actually already have a parallelogram grid. To get perfect equilateral triangles we need the third set.
+            // Let's add the third direction: lines of constant (i + j) perhaps? 
+            // Third direction vector w = (-BASE_SIZE/2, TRI_HEIGHT) (120° from horizontal). Lines: points where i - j = constant (or i + j constant depending on orientation).
+            // We can use constant k = i - j (or i + j) to generate w-direction lines.
+            // Let's derive: position P = i*u + j*v. Express using w = v - u = (-BASE_SIZE/2, TRI_HEIGHT). Then i*u + j*v = (i+j)*u? That's messy.
+            // Better: set k = i + 2j? We'll use a simple double loop for drawing segments? But we need clean lines. 
+            // Simpler: lines of constant (i - j). Because u and v are not orthogonal, but i - j constant gives lines along u+v? Let's check:
+            // vector d = u + v = (1.5*BASE_SIZE, TRI_HEIGHT). Not the third direction.
+            // But we know from triangular tiling that lines with slope vy/(-vx) =  TRI_HEIGHT / (-BASE_SIZE/2) = -1.732/0.5? Actually -TRI_HEIGHT/(BASE_SIZE/2) = -1.73205? That's -60° direction (mirror).
+            // let's just compute using index m = i + j? For equilateral triangles, the third set are lines with constant j (we already have horizontal) constant i (60° lines) and constant (i - j) (120° lines).
+            // Correct: i = constant (60° lines), j = constant (0° lines), and i - j = constant (120° lines). That covers all three.
+            const kMin = Math.floor((worldMinX / vx) - iMax) - 5;  // rough
+            const kMax = Math.ceil((worldMaxX / vx) - iMin) + 5;
+            for (let k = kMin; k <= kMax; k++) {
+                // i - j = k  → i = j + k. For a fixed k, pick two j values
+                const j1 = -5000;
+                const j2 = 5000;
+                const i1 = j1 + k;
+                const i2 = j2 + k;
+                const x1 = i1 * ux + j1 * vx;
+                const y1 = j1 * vy;
+                const x2 = i2 * ux + j2 * vx;
+                const y2 = j2 * vy;
+                // style: dotted / lighter to avoid too much density? but we want nice triangles.
+                const emphasize = (k % 2 === 0);
+                drawWorldLine(x1, y1, x2, y2, emphasize ? '#aac2e2' : '#3f6280', false);
+            }
+
+            // reset dash
+            ctx.setLineDash([]);
+
+            // --- draw small origin highlight + dot (0,0) world ---
+            const originPix = worldToCanvas(0, 0);
+            ctx.beginPath();
+            ctx.arc(originPix.x, originPix.y, 5, 0, 2 * Math.PI);
+            ctx.fillStyle = '#ffde9e';
+            ctx.shadowColor = '#ffb86b';
+            ctx.shadowBlur = 10;
+            ctx.fill();
+            ctx.shadowBlur = 0;
+            ctx.strokeStyle = '#b1761a';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+
+            // --- tiny axis hint ---
+            ctx.font = '12px "Segoe UI", monospace';
+            ctx.fillStyle = '#adccf0';
+            ctx.shadowBlur = 4;
+            ctx.shadowColor = '#0e1e2b';
+            ctx.fillText('(0,0)', originPix.x + 15, originPix.y - 10);
+            ctx.shadowBlur = 0;
+        }
+
+        // ---------- update coordinate display under mouse (canvas mouse move) ----------
+        function handleMouseMove(e) {
+            const rect = canvas.getBoundingClientRect();
+            const canvasX = (e.clientX - rect.left) * (canvas.width / rect.width);   // account for css scaling
+            const canvasY = (e.clientY - rect.top) * (canvas.height / rect.height);
+            const world = canvasToWorld(canvasX, canvasY);
+            coordSpan.innerText = `📍 ${world.x.toFixed(2)} , ${world.y.toFixed(2)}`;
+        }
+
+        // ---------- drag & pan ----------
+        function onDragStart(e) {
+            e.preventDefault();
+            isDragging = true;
+            lastDragX = e.clientX;
+            lastDragY = e.clientY;
+            canvas.style.cursor = 'grabbing';
+        }
+
+        function onDragMove(e) {
+            if (!isDragging) return;
+            e.preventDefault();
+            const dx = e.clientX - lastDragX;
+            const dy = e.clientY - lastDragY;
+            // move offset (pan) in canvas pixel units
+            offsetX += dx;
+            offsetY += dy;
+            lastDragX = e.clientX;
+            lastDragY = e.clientY;
+            drawGrid();
+            // also update coord display based on current mouse position (optional)
+            const rect = canvas.getBoundingClientRect();
+            const canvasX = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const canvasY = (e.clientY - rect.top) * (canvas.height / rect.height);
+            const world = canvasToWorld(canvasX, canvasY);
+            coordSpan.innerText = `📍 ${world.x.toFixed(2)} , ${world.y.toFixed(2)}`;
+        }
+
+        function onDragEnd(e) {
+            if (isDragging) {
+                isDragging = false;
+                canvas.style.cursor = 'grab';
+            }
+        }
+
+        // ---------- mouse wheel zoom (relative to mouse position) ----------
+        function onWheel(e) {
+            e.preventDefault();
+            const rect = canvas.getBoundingClientRect();
+            const mouseCanvasX = (e.clientX - rect.left) * (canvas.width / rect.width);
+            const mouseCanvasY = (e.clientY - rect.top) * (canvas.height / rect.height);
+
+            // world point under mouse before zoom
+            const worldBefore = canvasToWorld(mouseCanvasX, mouseCanvasY);
+
+            // adjust scale
+            const delta = -Math.sign(e.deltaY) * 0.1;   // zoom in on wheel down (negative deltaY)
+            let newScale = scale * (1 + delta);
+            newScale = Math.min(MAX_SCALE, Math.max(MIN_SCALE, newScale));
+            if (newScale === scale) return;
+            scale = newScale;
+
+            // after scale, we want the same world point to stay under mouse
+            // so we compute new offset
+            const worldAfter = worldBefore;   // should be same point
+            // worldBefore = (mouseCanvasX - offsetX_old)/scale_old  → offsetX_old = mouseCanvasX - worldBefore.x * scale_old
+            // after: offsetX_new = mouseCanvasX - worldBefore.x * scale_new
+            offsetX = mouseCanvasX - worldBefore.x * scale;
+            offsetY = mouseCanvasY - worldBefore.y * scale;
+
+            drawGrid();
+
+            // update display using stored mouse
+            if (e.clientX && e.clientY) {
+                const newWorld = canvasToWorld(mouseCanvasX, mouseCanvasY);
+                coordSpan.innerText = `📍 ${newWorld.x.toFixed(2)} , ${newWorld.y.toFixed(2)}`;
+            }
+        }
+
+        // ---------- attach event listeners ----------
+        function initEvents() {
+            canvas.addEventListener('mousedown', onDragStart);
+            window.addEventListener('mousemove', onDragMove);
+            window.addEventListener('mouseup', onDragEnd);
+            canvas.addEventListener('mousemove', handleMouseMove);
+            canvas.addEventListener('wheel', onWheel, { passive: false });
+            canvas.addEventListener('contextmenu', (e) => e.preventDefault());  // prevent right-click
+            canvas.style.cursor = 'grab';
+
+            // reset button
+            document.getElementById('recenterBtn').addEventListener('click', () => {
+                recenterView();
+                // reset coord display to approx origin
+                coordSpan.innerText = `📍 0.00 , 0.00`;
+            });
+        }
+
+        // initial positioning: center (0,0) in canvas
+        offsetX = canvas.width / 2;
+        offsetY = canvas.height / 2;
+        scale = 1.0;
+
+        drawGrid();
+        initEvents();
+
+        // optional resize handling if canvas display size changes (but we fixed width/height)
+        window.addEventListener('resize', () => {});  // none needed
+    })();
+</script>
+</body>
+</html>
