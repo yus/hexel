@@ -1,0 +1,1355 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>HEXEL STUDIO · 60° Grid</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --bg: #0a0a0f;
+            --grid: #b388ff;
+            --grid-alpha: 0.2;
+            --ui-bg: #14141c;
+            --ui-bg-hover: #1e1e2a;
+            --ui-border: #2a2a38;
+            --text: #e2e2ea;
+            --text-dim: #8a8a9a;
+            --accent: #b388ff;
+            --accent-dim: #7a5ac0;
+            --accent-bg: #2a1f3a;
+            --success: #4cafaf;
+            --warning: #ffaa66;
+            
+            --header-height: 60px;
+            --toolbar-width: 280px;
+            --mobile-breakpoint: 768px;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', monospace;
+            background: var(--bg);
+            color: var(--text);
+            overflow: hidden;
+            touch-action: none;
+            line-height: 1.4;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        /* CANVAS LAYER */
+        #grid-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: var(--bg);
+            z-index: 1;
+            pointer-events: none;
+        }
+
+        #draw-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 2;
+            pointer-events: auto;
+            background: transparent;
+        }
+
+        /* MAIN HEADER - ALWAYS VISIBLE */
+        #main-header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: var(--header-height);
+            background: var(--ui-bg);
+            border-bottom: 1px solid var(--ui-border);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            background: rgba(20, 20, 28, 0.85);
+        }
+
+        .logo {
+            font-weight: 700;
+            font-size: 18px;
+            letter-spacing: 2px;
+            color: var(--accent);
+            text-transform: uppercase;
+        }
+
+        .logo span {
+            color: var(--text);
+            font-weight: 400;
+        }
+
+        .header-controls {
+            margin-left: auto;
+            display: flex;
+            gap: 12px;
+            align-items: center;
+        }
+
+        .header-btn {
+            background: transparent;
+            border: 1px solid var(--ui-border);
+            color: var(--text);
+            padding: 8px 16px;
+            font-family: 'Inter', monospace;
+            font-size: 13px;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .header-btn:hover {
+            background: var(--accent-dim);
+            border-color: var(--accent);
+            color: white;
+        }
+
+        .header-btn.active {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: black;
+            font-weight: 600;
+        }
+
+        /* TOOLBAR - DESKTOP */
+        #toolbar {
+            position: fixed;
+            top: var(--header-height);
+            left: 0;
+            width: var(--toolbar-width);
+            bottom: 0;
+            background: rgba(20, 20, 28, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-right: 1px solid var(--ui-border);
+            z-index: 90;
+            padding: 20px;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+        }
+
+        /* PROPERTIES PANEL - DESKTOP */
+        #properties-panel {
+            position: fixed;
+            top: var(--header-height);
+            right: 0;
+            width: var(--toolbar-width);
+            bottom: 0;
+            background: rgba(20, 20, 28, 0.85);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-left: 1px solid var(--ui-border);
+            z-index: 90;
+            padding: 20px;
+            overflow-y: auto;
+            transition: transform 0.3s ease;
+        }
+
+        /* MOBILE MENU BUTTON */
+        #menu-toggle {
+            display: none;
+            background: transparent;
+            border: 1px solid var(--ui-border);
+            color: var(--text);
+            width: 44px;
+            height: 44px;
+            font-size: 24px;
+            cursor: pointer;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* MOBILE OVERLAY */
+        #mobile-overlay {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0,0,0,0.7);
+            z-index: 95;
+            backdrop-filter: blur(4px);
+            -webkit-backdrop-filter: blur(4px);
+        }
+
+        /* MOBILE MENU */
+        #mobile-menu {
+            position: fixed;
+            top: 0;
+            left: -100%;
+            width: 85%;
+            max-width: 320px;
+            height: 100vh;
+            background: var(--ui-bg);
+            border-right: 1px solid var(--ui-border);
+            z-index: 99;
+            transition: left 0.3s ease;
+            padding: 20px;
+            overflow-y: auto;
+        }
+
+        #mobile-menu.open {
+            left: 0;
+        }
+
+        .mobile-menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 24px;
+            padding-bottom: 16px;
+            border-bottom: 1px solid var(--ui-border);
+        }
+
+        .close-menu {
+            font-size: 28px;
+            cursor: pointer;
+            width: 44px;
+            height: 44px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* SECTION STYLES */
+        .section-title {
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1.5px;
+            font-size: 11px;
+            color: var(--accent);
+            margin-bottom: 16px;
+            border-bottom: 1px solid var(--ui-border);
+            padding-bottom: 8px;
+        }
+
+        .coord-display {
+            background: #00000030;
+            border: 1px solid var(--ui-border);
+            padding: 12px;
+            margin-bottom: 16px;
+            font-family: 'JetBrains Mono', monospace;
+        }
+
+        .coord-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+        }
+
+        .coord-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .coord-label {
+            color: var(--text-dim);
+        }
+
+        .coord-value {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        /* TOOL BUTTONS */
+        .tool-group {
+            margin-bottom: 24px;
+        }
+
+        .tool-btn {
+            background: transparent;
+            border: 1px solid var(--ui-border);
+            color: var(--text);
+            padding: 12px 16px;
+            font-family: 'Inter', monospace;
+            font-size: 14px;
+            cursor: pointer;
+            width: 100%;
+            text-align: left;
+            margin-bottom: 4px;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .tool-btn:hover {
+            background: var(--ui-bg-hover);
+            border-color: var(--accent-dim);
+        }
+
+        .tool-btn.active {
+            background: var(--accent-bg);
+            border-color: var(--accent);
+            color: var(--accent);
+        }
+
+        .tool-icon {
+            font-size: 20px;
+            width: 24px;
+            text-align: center;
+        }
+
+        /* COLOR PICKER */
+        .color-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+
+        .color-swatch {
+            aspect-ratio: 1;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .color-swatch:hover {
+            transform: scale(1.1);
+        }
+
+        .color-swatch.active {
+            border-color: white;
+            box-shadow: 0 0 0 2px var(--accent);
+        }
+
+        /* SIZE SLIDER */
+        .size-slider {
+            width: 100%;
+            margin: 12px 0;
+            background: var(--ui-border);
+            height: 2px;
+            -webkit-appearance: none;
+        }
+
+        .size-slider::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: var(--accent);
+            cursor: pointer;
+            border: 2px solid white;
+        }
+
+        /* HEXEL INFO */
+        .hexel-stats {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 12px;
+            margin: 16px 0;
+        }
+
+        .stat-card {
+            background: #00000030;
+            border: 1px solid var(--ui-border);
+            padding: 12px;
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 10px;
+            color: var(--text-dim);
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-size: 18px;
+            font-weight: 600;
+            color: var(--accent);
+        }
+
+        /* STATUS BAR */
+        #status-bar {
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            height: 40px;
+            background: rgba(20, 20, 28, 0.9);
+            backdrop-filter: blur(8px);
+            -webkit-backdrop-filter: blur(8px);
+            border-top: 1px solid var(--ui-border);
+            z-index: 80;
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            font-size: 12px;
+            color: var(--text-dim);
+            gap: 24px;
+        }
+
+        .status-item {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .status-value {
+            color: var(--accent);
+            font-weight: 600;
+        }
+
+        /* MESSAGE AREA */
+        #message-area {
+            position: fixed;
+            bottom: 50px;
+            right: 24px;
+            z-index: 200;
+            width: 320px;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            pointer-events: none;
+        }
+
+        .message {
+            background: var(--ui-bg);
+            border: 1px solid var(--accent);
+            padding: 12px 16px;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 12px;
+            color: var(--text);
+            box-shadow: 4px 4px 0 rgba(0,0,0,0.5);
+            animation: slideIn 0.2s;
+            border-left: 4px solid var(--accent);
+        }
+
+        @keyframes slideIn {
+            from { transform: translateX(20px); opacity: 0; }
+            to { transform: translateX(0); opacity: 1; }
+        }
+
+        /* ZOOM INDICATOR */
+        #zoom-indicator {
+            position: fixed;
+            top: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0,0,0,0.7);
+            border: 1px solid var(--accent);
+            padding: 6px 16px;
+            font-size: 13px;
+            z-index: 150;
+            pointer-events: none;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+
+        #zoom-indicator.visible {
+            opacity: 1;
+        }
+
+        /* MOBILE RESPONSIVE */
+        @media (max-width: 768px) {
+            #toolbar, #properties-panel {
+                display: none;
+            }
+
+            #menu-toggle {
+                display: flex;
+            }
+
+            .header-controls {
+                gap: 8px;
+            }
+
+            .header-btn span {
+                display: none;
+            }
+
+            .header-btn {
+                padding: 8px 12px;
+            }
+
+            #status-bar {
+                padding: 0 12px;
+                font-size: 11px;
+                gap: 12px;
+                flex-wrap: wrap;
+                height: auto;
+                min-height: 40px;
+                padding: 8px 12px;
+            }
+
+            #message-area {
+                width: calc(100% - 32px);
+                right: 16px;
+                bottom: 70px;
+            }
+        }
+
+        /* UTILITY */
+        hr {
+            border: none;
+            border-top: 1px solid var(--ui-border);
+            margin: 20px 0;
+        }
+
+        .shortcut {
+            color: var(--text-dim);
+            font-size: 11px;
+            margin-left: auto;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="grid-canvas"></canvas>
+    <canvas id="draw-canvas"></canvas>
+
+    <!-- MAIN HEADER -->
+    <div id="main-header">
+        <div class="logo">HEXEL<span>STUDIO</span></div>
+        
+        <button id="menu-toggle">☰</button>
+
+        <div class="header-controls">
+            <button id="header-grid-toggle" class="header-btn active">
+                <span>⬟</span> <span>GRID</span>
+            </button>
+            <button id="header-zoom-fit" class="header-btn">
+                <span>⤢</span> <span>FIT</span>
+            </button>
+            <button id="header-clear" class="header-btn">
+                <span>⌫</span> <span>CLEAR</span>
+            </button>
+        </div>
+    </div>
+
+    <!-- DESKTOP TOOLBAR -->
+    <div id="toolbar">
+        <div class="section-title">📐 TOOLS</div>
+        
+        <div class="tool-group">
+            <button id="tool-point" class="tool-btn active">
+                <span class="tool-icon">●</span>
+                <span>POINT</span>
+                <span class="shortcut">P</span>
+            </button>
+            <button id="tool-line" class="tool-btn">
+                <span class="tool-icon">⎯</span>
+                <span>LINE</span>
+                <span class="shortcut">L</span>
+            </button>
+            <button id="tool-triangle" class="tool-btn">
+                <span class="tool-icon">⬟</span>
+                <span>TRIANGLE</span>
+                <span class="shortcut">T</span>
+            </button>
+            <button id="tool-hexagon" class="tool-btn">
+                <span class="tool-icon">⬡</span>
+                <span>HEXAGON</span>
+                <span class="shortcut">H</span>
+            </button>
+        </div>
+
+        <div class="section-title">🎨 COLOR</div>
+        
+        <div class="color-grid">
+            <div class="color-swatch" style="background: #ffaa66;" data-color="#ffaa66"></div>
+            <div class="color-swatch" style="background: #66ccff;" data-color="#66ccff"></div>
+            <div class="color-swatch" style="background: #99ff99;" data-color="#99ff99"></div>
+            <div class="color-swatch" style="background: #ff99cc;" data-color="#ff99cc"></div>
+            <div class="color-swatch" style="background: #b388ff;" data-color="#b388ff"></div>
+            <div class="color-swatch" style="background: #ff6666;" data-color="#ff6666"></div>
+            <div class="color-swatch" style="background: #ffdb8a;" data-color="#ffdb8a"></div>
+            <div class="color-swatch" style="background: #c0a0ff;" data-color="#c0a0ff"></div>
+        </div>
+
+        <div class="section-title">⚡ SIZE</div>
+        
+        <input type="range" id="point-size" class="size-slider" min="2" max="20" value="8">
+        <div style="display: flex; justify-content: space-between; margin: 8px 0 16px;">
+            <span style="color: var(--text-dim);">small</span>
+            <span style="color: var(--accent);" id="size-value">8px</span>
+            <span style="color: var(--text-dim);">large</span>
+        </div>
+
+        <hr>
+
+        <div class="coord-display">
+            <div class="coord-row">
+                <span class="coord-label">WORLD</span>
+                <span class="coord-value" id="world-coord">0.00, 0.00</span>
+            </div>
+            <div class="coord-row">
+                <span class="coord-label">HEXEL</span>
+                <span class="coord-value" id="hexel-coord">(0, 0)</span>
+            </div>
+            <div class="coord-row">
+                <span class="coord-label">ZOOM</span>
+                <span class="coord-value" id="zoom-value">1.00x</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- DESKTOP PROPERTIES PANEL -->
+    <div id="properties-panel">
+        <div class="section-title">📊 HEXEL INFO</div>
+        
+        <div class="hexel-stats">
+            <div class="stat-card">
+                <div class="stat-label">POINTS</div>
+                <div class="stat-value" id="stat-points">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">LINES</div>
+                <div class="stat-value" id="stat-lines">0</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">GRID</div>
+                <div class="stat-value" id="stat-grid">48px</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">HEXEL</div>
+                <div class="stat-value" id="stat-hexel">24</div>
+            </div>
+        </div>
+
+        <div class="section-title">📌 SELECTED</div>
+        
+        <div id="selected-info" style="background: #00000030; border: 1px solid var(--ui-border); padding: 16px; text-align: center; color: var(--text-dim);">
+            No hexel selected
+        </div>
+
+        <hr>
+
+        <div class="section-title">⌨️ SHORTCUTS</div>
+        
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 8px; font-size: 12px;">
+            <div>R · reset view</div>
+            <div>Space · grid toggle</div>
+            <div>P · point tool</div>
+            <div>L · line tool</div>
+            <div>T · triangle tool</div>
+            <div>H · hexagon tool</div>
+            <div>⌘Z · undo</div>
+            <div>⌘⇧Z · redo</div>
+        </div>
+    </div>
+
+    <!-- MOBILE OVERLAY -->
+    <div id="mobile-overlay"></div>
+
+    <!-- MOBILE MENU -->
+    <div id="mobile-menu">
+        <div class="mobile-menu-header">
+            <span class="logo">HEXEL<span>STUDIO</span></span>
+            <span class="close-menu">✕</span>
+        </div>
+
+        <!-- Mobile menu content (copy of tools) -->
+        <div class="section-title">📐 TOOLS</div>
+        
+        <div class="tool-group">
+            <button id="mobile-tool-point" class="tool-btn active">
+                <span class="tool-icon">●</span>
+                <span>POINT</span>
+            </button>
+            <button id="mobile-tool-line" class="tool-btn">
+                <span class="tool-icon">⎯</span>
+                <span>LINE</span>
+            </button>
+            <button id="mobile-tool-triangle" class="tool-btn">
+                <span class="tool-icon">⬟</span>
+                <span>TRIANGLE</span>
+            </button>
+            <button id="mobile-tool-hexagon" class="tool-btn">
+                <span class="tool-icon">⬡</span>
+                <span>HEXAGON</span>
+            </button>
+        </div>
+
+        <div class="section-title">🎨 COLOR</div>
+        
+        <div class="color-grid" id="mobile-color-grid">
+            <!-- Same colors -->
+        </div>
+
+        <div class="section-title">⚡ SIZE</div>
+        
+        <input type="range" id="mobile-point-size" class="size-slider" min="2" max="20" value="8">
+
+        <hr>
+
+        <div class="coord-display">
+            <div class="coord-row">
+                <span class="coord-label">HEXEL</span>
+                <span class="coord-value" id="mobile-hexel">(0, 0)</span>
+            </div>
+            <div class="coord-row">
+                <span class="coord-label">ZOOM</span>
+                <span class="coord-value" id="mobile-zoom">1.00x</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- STATUS BAR -->
+    <div id="status-bar">
+        <div class="status-item">
+            <span>⚡</span>
+            <span id="status-tool">POINT</span>
+        </div>
+        <div class="status-item">
+            <span>📍</span>
+            <span id="status-hexel">0,0</span>
+        </div>
+        <div class="status-item">
+            <span>🔍</span>
+            <span id="status-zoom">1.00x</span>
+        </div>
+        <div class="status-item">
+            <span>⬟</span>
+            <span id="status-grid">ON</span>
+        </div>
+        <div class="status-item">
+            <span>●</span>
+            <span id="status-points">0</span>
+        </div>
+    </div>
+
+    <!-- ZOOM INDICATOR -->
+    <div id="zoom-indicator"></div>
+
+    <!-- MESSAGE AREA -->
+    <div id="message-area"></div>
+
+    <script>
+        (function() {
+            // === CANVAS SETUP ===
+            const gridCanvas = document.getElementById('grid-canvas');
+            const drawCanvas = document.getElementById('draw-canvas');
+            const gridCtx = gridCanvas.getContext('2d');
+            const drawCtx = drawCanvas.getContext('2d');
+
+            // === HEXEL GEOMETRY ===
+            const HEXEL_SIZE = 24; // base hexel unit
+            const H_STEP = HEXEL_SIZE * 2;
+            const V_STEP = HEXEL_SIZE * Math.sqrt(3);
+
+            // === VIEW STATE ===
+            let scale = 1.0;
+            let offsetX = 0;
+            let offsetY = 0;
+            let gridEnabled = true;
+            let currentTool = 'point';
+            let currentColor = '#ffaa66';
+            let currentSize = 8;
+
+            // === DRAWING STATE ===
+            let points = [];
+            let lines = [];
+            let undoStack = [];
+            let redoStack = [];
+
+            // === INTERACTION ===
+            let isDragging = false;
+            let dragThreshold = 3;
+            let lastX, lastY;
+            let lastDistance = 0;
+            let clickStartTime = 0;
+            let clickStartPos = { x: 0, y: 0 };
+            let zoomTimeout;
+
+            // === MOBILE MENU ===
+            let mobileMenuOpen = false;
+
+            // === RESIZE ===
+            function resizeCanvases() {
+                gridCanvas.width = window.innerWidth;
+                gridCanvas.height = window.innerHeight;
+                drawCanvas.width = window.innerWidth;
+                drawCanvas.height = window.innerHeight;
+                drawGrid();
+                drawAll();
+            }
+
+            // === MESSAGE SYSTEM ===
+            function addMessage(text, type = 'info', duration = 3000) {
+                const msgArea = document.getElementById('message-area');
+                const msgId = 'msg-' + Date.now() + '-' + Math.random();
+                
+                const msgEl = document.createElement('div');
+                msgEl.id = msgId;
+                msgEl.className = 'message';
+                msgEl.textContent = text;
+                
+                msgArea.appendChild(msgEl);
+                
+                setTimeout(() => {
+                    const el = document.getElementById(msgId);
+                    if (el) el.remove();
+                }, duration);
+            }
+
+            // === ZOOM INDICATOR ===
+            function showZoomIndicator() {
+                const indicator = document.getElementById('zoom-indicator');
+                indicator.textContent = `${(scale * 100).toFixed(0)}%`;
+                indicator.classList.add('visible');
+                
+                clearTimeout(zoomTimeout);
+                zoomTimeout = setTimeout(() => {
+                    indicator.classList.remove('visible');
+                }, 1000);
+            }
+
+            // === HEXEL CONVERSIONS ===
+            function screenToHexel(screenX, screenY) {
+                const centerX = gridCanvas.width / 2 + offsetX;
+                const centerY = gridCanvas.height / 2 + offsetY;
+                
+                const scaledH = H_STEP * scale;
+                const scaledV = V_STEP * scale;
+                
+                const gridX = (screenX - centerX) / scaledH;
+                const gridY = (screenY - centerY) / scaledV;
+                
+                const row = Math.round(gridY);
+                let col;
+                
+                if (row % 2 !== 0) {
+                    col = Math.round(gridX - 0.5);
+                } else {
+                    col = Math.round(gridX);
+                }
+                
+                return { q: col, r: row };
+            }
+
+            function hexelToScreen(q, r) {
+                const centerX = gridCanvas.width / 2 + offsetX;
+                const centerY = gridCanvas.height / 2 + offsetY;
+                
+                const scaledH = H_STEP * scale;
+                const scaledV = V_STEP * scale;
+                
+                return {
+                    x: centerX + (r % 2 !== 0 ? (q + 0.5) * scaledH : q * scaledH),
+                    y: centerY + r * scaledV
+                };
+            }
+
+            // === DRAW GRID ===
+            function drawGrid() {
+                gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+                
+                if (!gridEnabled) return;
+                
+                const centerX = gridCanvas.width / 2 + offsetX;
+                const centerY = gridCanvas.height / 2 + offsetY;
+                
+                const scaledH = H_STEP * scale;
+                const scaledV = V_STEP * scale;
+                
+                const cols = Math.ceil(gridCanvas.width / scaledH) + 10;
+                const rows = Math.ceil(gridCanvas.height / scaledV) + 10;
+                
+                const startCol = -Math.floor(cols / 2) - 2;
+                const startRow = -Math.floor(rows / 2) - 2;
+                const endCol = startCol + cols + 4;
+                const endRow = startRow + rows + 4;
+                
+                // Update UI
+                const worldX = -offsetX / (H_STEP * scale) * H_STEP;
+                const worldY = -offsetY / (V_STEP * scale) * V_STEP;
+                const centerHexel = screenToHexel(gridCanvas.width/2, gridCanvas.height/2);
+                
+                document.getElementById('world-coord').textContent = worldX.toFixed(2) + ', ' + worldY.toFixed(2);
+                document.getElementById('hexel-coord').textContent = `(${centerHexel.q}, ${centerHexel.r})`;
+                document.getElementById('zoom-value').textContent = scale.toFixed(2) + 'x';
+                document.getElementById('status-zoom').textContent = scale.toFixed(2) + 'x';
+                document.getElementById('status-hexel').textContent = `${centerHexel.q},${centerHexel.r}`;
+                document.getElementById('status-points').textContent = points.length;
+                document.getElementById('stat-points').textContent = points.length;
+                
+                if (document.getElementById('mobile-hexel')) {
+                    document.getElementById('mobile-hexel').textContent = `(${centerHexel.q}, ${centerHexel.r})`;
+                }
+                if (document.getElementById('mobile-zoom')) {
+                    document.getElementById('mobile-zoom').textContent = scale.toFixed(2) + 'x';
+                }
+                
+                // Hairline grid
+                gridCtx.lineWidth = Math.max(0.5, 0.8 / Math.sqrt(scale));
+                gridCtx.strokeStyle = '#b388ff';
+                
+                // Horizontal lines
+                gridCtx.globalAlpha = 0.15;
+                gridCtx.beginPath();
+                for (let row = startRow; row <= endRow; row++) {
+                    const y = centerY + row * scaledV;
+                    gridCtx.moveTo(0, y);
+                    gridCtx.lineTo(gridCanvas.width, y);
+                }
+                gridCtx.stroke();
+                
+                // +60° diagonals
+                gridCtx.beginPath();
+                for (let row = startRow - 3; row <= endRow + 3; row++) {
+                    for (let col = startCol - 3; col <= endCol + 3; col++) {
+                        const x = centerX + col * scaledH;
+                        const y = centerY + row * scaledV;
+                        const xOffset = (row % 2 === 0) ? 0 : scaledH / 2;
+                        
+                        const extend = Math.max(gridCanvas.width, gridCanvas.height);
+                        gridCtx.moveTo(x + xOffset - extend, y - extend * Math.tan(60 * Math.PI / 180));
+                        gridCtx.lineTo(x + xOffset + extend, y + extend * Math.tan(60 * Math.PI / 180));
+                    }
+                }
+                gridCtx.stroke();
+                
+                // -60° diagonals
+                gridCtx.beginPath();
+                for (let row = startRow - 3; row <= endRow + 3; row++) {
+                    for (let col = startCol - 3; col <= endCol + 3; col++) {
+                        const x = centerX + col * scaledH;
+                        const y = centerY + row * scaledV;
+                        const xOffset = (row % 2 === 0) ? 0 : scaledH / 2;
+                        
+                        const extend = Math.max(gridCanvas.width, gridCanvas.height);
+                        gridCtx.moveTo(x + xOffset - extend, y + extend * Math.tan(60 * Math.PI / 180));
+                        gridCtx.lineTo(x + xOffset + extend, y - extend * Math.tan(60 * Math.PI / 180));
+                    }
+                }
+                gridCtx.stroke();
+                
+                // Vertices
+                gridCtx.fillStyle = '#b388ff';
+                gridCtx.globalAlpha = 0.1;
+                for (let row = startRow; row <= endRow; row++) {
+                    for (let col = startCol; col <= endCol; col++) {
+                        const x = centerX + col * scaledH;
+                        const y = centerY + row * scaledV;
+                        
+                        if (row % 2 !== 0) {
+                            gridCtx.beginPath();
+                            gridCtx.arc(x + scaledH/2, y, 1.0, 0, Math.PI*2);
+                            gridCtx.fill();
+                        } else {
+                            gridCtx.beginPath();
+                            gridCtx.arc(x, y, 1.0, 0, Math.PI*2);
+                            gridCtx.fill();
+                        }
+                    }
+                }
+                
+                // Origin
+                gridCtx.fillStyle = '#ffffff';
+                gridCtx.globalAlpha = 0.3;
+                gridCtx.beginPath();
+                gridCtx.arc(centerX, centerY, 3, 0, Math.PI*2);
+                gridCtx.fill();
+                
+                gridCtx.globalAlpha = 1.0;
+            }
+
+            // === DRAW ALL ELEMENTS ===
+            function drawAll() {
+                drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+                
+                // Draw points
+                points.forEach(point => {
+                    const screen = hexelToScreen(point.q, point.r);
+                    
+                    drawCtx.fillStyle = point.color;
+                    drawCtx.globalAlpha = 0.9;
+                    drawCtx.beginPath();
+                    drawCtx.arc(screen.x, screen.y, point.size * Math.sqrt(scale), 0, Math.PI*2);
+                    drawCtx.fill();
+                    
+                    drawCtx.strokeStyle = '#ffffff';
+                    drawCtx.lineWidth = 1.5;
+                    drawCtx.stroke();
+                });
+                
+                // Draw lines (placeholder)
+                lines.forEach(line => {
+                    // Line drawing implementation
+                });
+            }
+
+            // === ADD HEXEL POINT ===
+            function addHexelPoint(q, r) {
+                const exists = points.some(p => p.q === q && p.r === r);
+                if (exists) {
+                    addMessage(`⚠️ hexel (${q},${r}) already has a point`, 'warning');
+                    return false;
+                }
+                
+                points.push({ q, r, color: currentColor, size: currentSize });
+                drawAll();
+                addMessage(`✨ placed point at hexel (${q},${r})`);
+                updateStats();
+                return true;
+            }
+
+            function updateStats() {
+                document.getElementById('status-points').textContent = points.length;
+                document.getElementById('stat-points').textContent = points.length;
+            }
+
+            // === ZOOM FUNCTION ===
+            function zoom(factor, centerX, centerY) {
+                const prevScale = scale;
+                
+                // Get world position before zoom
+                const worldX = (centerX - (gridCanvas.width/2 + offsetX)) / (H_STEP * prevScale);
+                const worldY = (centerY - (gridCanvas.height/2 + offsetY)) / (V_STEP * prevScale);
+                
+                // Apply zoom
+                scale *= factor;
+                scale = Math.max(0.2, Math.min(10, scale));
+                
+                // Adjust offset to zoom toward center
+                offsetX = centerX - gridCanvas.width/2 - worldX * H_STEP * scale;
+                offsetY = centerY - gridCanvas.height/2 - worldY * V_STEP * scale;
+                
+                drawGrid();
+                drawAll();
+                showZoomIndicator();
+            }
+
+            // === PINCH ZOOM ===
+            function handlePinchZoom(e) {
+                if (e.touches.length !== 2) return;
+                
+                e.preventDefault();
+                
+                const rect = drawCanvas.getBoundingClientRect();
+                const touch1 = e.touches[0];
+                const touch2 = e.touches[1];
+                
+                const distance = Math.hypot(
+                    touch1.clientX - touch2.clientX,
+                    touch1.clientY - touch2.clientY
+                );
+                
+                if (lastDistance > 0) {
+                    const zoomFactor = distance / lastDistance;
+                    
+                    // Get pinch center
+                    const centerX = (touch1.clientX + touch2.clientX) / 2 - rect.left;
+                    const centerY = (touch1.clientY + touch2.clientY) / 2 - rect.top;
+                    
+                    zoom(zoomFactor, centerX, centerY);
+                }
+                
+                lastDistance = distance;
+            }
+
+            // === MOUSE/WHEEL ZOOM ===
+            function handleWheelZoom(e) {
+                e.preventDefault();
+                
+                const rect = drawCanvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+                zoom(zoomFactor, mouseX, mouseY);
+            }
+
+            // === INTERACTION HANDLERS ===
+            function handlePointerStart(e) {
+                e.preventDefault();
+                
+                const clientX = e.clientX ?? e.touches?.[0]?.clientX;
+                const clientY = e.clientY ?? e.touches?.[0]?.clientY;
+                
+                if (!clientX) return;
+                
+                const rect = drawCanvas.getBoundingClientRect();
+                const x = clientX - rect.left;
+                const y = clientY - rect.top;
+                
+                lastX = clientX;
+                lastY = clientY;
+                clickStartPos = { x, y };
+                clickStartTime = Date.now();
+                isDragging = false;
+                
+                // Reset pinch distance
+                if (e.touches?.length === 2) {
+                    lastDistance = Math.hypot(
+                        e.touches[0].clientX - e.touches[1].clientX,
+                        e.touches[0].clientY - e.touches[1].clientY
+                    );
+                }
+            }
+
+            function handlePointerMove(e) {
+                e.preventDefault();
+                
+                // Handle pinch zoom
+                if (e.touches?.length === 2) {
+                    handlePinchZoom(e);
+                    return;
+                }
+                
+                const clientX = e.clientX ?? e.touches?.[0]?.clientX;
+                const clientY = e.clientY ?? e.touches?.[0]?.clientY;
+                
+                if (!clientX || !clientY || lastX === undefined) return;
+                
+                const dx = clientX - lastX;
+                const dy = clientY - lastY;
+                
+                if (Math.abs(dx) > dragThreshold || Math.abs(dy) > dragThreshold) {
+                    isDragging = true;
+                    
+                    offsetX += dx;
+                    offsetY += dy;
+                    
+                    lastX = clientX;
+                    lastY = clientY;
+                    
+                    drawGrid();
+                    drawAll();
+                }
+            }
+
+            function handlePointerEnd(e) {
+                e.preventDefault();
+                
+                if (e.touches?.length === 0) {
+                    lastDistance = 0;
+                }
+                
+                if (!isDragging && lastX !== undefined) {
+                    // Handle click/tap
+                    const clientX = e.clientX ?? e.changedTouches?.[0]?.clientX;
+                    const clientY = e.clientY ?? e.changedTouches?.[0]?.clientY;
+                    
+                    if (clientX) {
+                        const rect = drawCanvas.getBoundingClientRect();
+                        const x = clientX - rect.left;
+                        const y = clientY - rect.top;
+                        
+                        const hexel = screenToHexel(x, y);
+                        
+                        switch(currentTool) {
+                            case 'point':
+                                addHexelPoint(hexel.q, hexel.r);
+                                break;
+                            case 'hexagon':
+                                // Draw hexagon ring
+                                for (let dq = -1; dq <= 1; dq++) {
+                                    for (let dr = -1; dr <= 1; dr++) {
+                                        if (Math.abs(dq + dr) <= 1) {
+                                            points.push({
+                                                q: hexel.q + dq,
+                                                r: hexel.r + dr,
+                                                color: currentColor,
+                                                size: currentSize * 0.7
+                                            });
+                                        }
+                                    }
+                                }
+                                drawAll();
+                                addMessage(`⬡ hexagon at (${hexel.q},${hexel.r})`);
+                                break;
+                        }
+                        
+                        document.getElementById('status-hexel').textContent = `${hexel.q},${hexel.r}`;
+                    }
+                }
+                
+                lastX = undefined;
+                lastY = undefined;
+                isDragging = false;
+            }
+
+            // === MOBILE MENU ===
+            function toggleMobileMenu(open) {
+                const menu = document.getElementById('mobile-menu');
+                const overlay = document.getElementById('mobile-overlay');
+                
+                if (open) {
+                    menu.classList.add('open');
+                    overlay.style.display = 'block';
+                    mobileMenuOpen = true;
+                } else {
+                    menu.classList.remove('open');
+                    overlay.style.display = 'none';
+                    mobileMenuOpen = false;
+                }
+            }
+
+            // === INIT ===
+            function init() {
+                resizeCanvases();
+                
+                // Event listeners
+                drawCanvas.addEventListener('mousedown', handlePointerStart);
+                drawCanvas.addEventListener('mousemove', handlePointerMove);
+                drawCanvas.addEventListener('mouseup', handlePointerEnd);
+                drawCanvas.addEventListener('mouseleave', handlePointerEnd);
+                
+                drawCanvas.addEventListener('touchstart', handlePointerStart);
+                drawCanvas.addEventListener('touchmove', handlePointerMove);
+                drawCanvas.addEventListener('touchend', handlePointerEnd);
+                drawCanvas.addEventListener('touchcancel', handlePointerEnd);
+                
+                drawCanvas.addEventListener('wheel', handleWheelZoom, { passive: false });
+                
+                // Menu toggle
+                document.getElementById('menu-toggle').addEventListener('click', () => toggleMobileMenu(true));
+                document.querySelector('.close-menu').addEventListener('click', () => toggleMobileMenu(false));
+                document.getElementById('mobile-overlay').addEventListener('click', () => toggleMobileMenu(false));
+                
+                // Tool buttons
+                const toolButtons = ['point', 'line', 'triangle', 'hexagon'];
+                toolButtons.forEach(tool => {
+                    const btn = document.getElementById(`tool-${tool}`);
+                    const mobileBtn = document.getElementById(`mobile-tool-${tool}`);
+                    
+                    if (btn) {
+                        btn.addEventListener('click', () => {
+                            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                            btn.classList.add('active');
+                            if (mobileBtn) mobileBtn.classList.add('active');
+                            currentTool = tool;
+                            document.getElementById('status-tool').textContent = tool.toUpperCase();
+                            addMessage(`🔧 switched to ${tool} tool`);
+                        });
+                    }
+                    
+                    if (mobileBtn) {
+                        mobileBtn.addEventListener('click', () => {
+                            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                            mobileBtn.classList.add('active');
+                            if (btn) btn.classList.add('active');
+                            currentTool = tool;
+                            document.getElementById('status-tool').textContent = tool.toUpperCase();
+                            toggleMobileMenu(false);
+                            addMessage(`🔧 switched to ${tool} tool`);
+                        });
+                    }
+                });
+                
+                // Color swatches
+                document.querySelectorAll('.color-swatch').forEach(swatch => {
+                    swatch.addEventListener('click', () => {
+                        document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+                        swatch.classList.add('active');
+                        currentColor = swatch.dataset.color;
+                    });
+                });
+                
+                // Size slider
+                const sizeSlider = document.getElementById('point-size');
+                const mobileSizeSlider = document.getElementById('mobile-point-size');
+                const sizeValue = document.getElementById('size-value');
+                
+                function updateSize(val) {
+                    currentSize = parseInt(val);
+                    sizeValue.textContent = currentSize + 'px';
+                    if (mobileSizeSlider) mobileSizeSlider.value = val;
+                }
+                
+                sizeSlider.addEventListener('input', (e) => updateSize(e.target.value));
+                if (mobileSizeSlider) {
+                    mobileSizeSlider.addEventListener('input', (e) => updateSize(e.target.value));
+                }
+                
+                // Grid toggle
+                function toggleGrid() {
+                    gridEnabled = !gridEnabled;
+                    const btn = document.getElementById('header-grid-toggle');
+                    const status = document.getElementById('status-grid');
+                    
+                    btn.classList.toggle('active');
+                    status.textContent = gridEnabled ? 'ON' : 'OFF';
+                    drawGrid();
+                    addMessage(gridEnabled ? '⬟ grid enabled' : '⬚ grid disabled');
+                }
+                
+                document.getElementById('header-grid-toggle').addEventListener('click', toggleGrid);
+                
+                // Clear button
+                document.getElementById('header-clear').addEventListener('click', () => {
+                    points = [];
+                    lines = [];
+                    drawAll();
+                    addMessage('🗑️ cleared all drawings');
+                    updateStats();
+                });
+                
+                // Reset view
+                document.getElementById('header-zoom-fit').addEventListener('click', () => {
+                    scale = 1.0;
+                    offsetX = 0;
+                    offsetY = 0;
+                    drawGrid();
+                    drawAll();
+                    addMessage('↺ view reset');
+                });
+                
+                // Keyboard shortcuts
+                window.addEventListener('keydown', (e) => {
+                    if (e.key === 'r' || e.key === 'R') {
+                        scale = 1.0;
+                        offsetX = 0;
+                        offsetY = 0;
+                        drawGrid();
+                        drawAll();
+                        addMessage('↺ view reset');
+                    }
+                    
+                    if (e.key === ' ') {
+                        e.preventDefault();
+                        toggleGrid();
+                    }
+                    
+                    // Tool shortcuts
+                    if (e.key === 'p' || e.key === 'P') {
+                        document.getElementById('tool-point').click();
+                    }
+                    if (e.key === 'l' || e.key === 'L') {
+                        document.getElementById('tool-line').click();
+                    }
+                    if (e.key === 't' || e.key === 'T') {
+                        document.getElementById('tool-triangle').click();
+                    }
+                    if (e.key === 'h' || e.key === 'H') {
+                        document.getElementById('tool-hexagon').click();
+                    }
+                });
+                
+                window.addEventListener('resize', resizeCanvases);
+                
+                // Initial active color
+                document.querySelector('.color-swatch').classList.add('active');
+                
+                // Welcome
+                addMessage('⬟ HEXEL STUDIO · 60° grid', 'info', 4000);
+                
+                // Initial draw
+                drawGrid();
+                drawAll();
+            }
+
+            init();
+        })();
+    </script>
+</body>
+</html>
