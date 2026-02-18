@@ -1,0 +1,284 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Perfect Triangular Grid - Equilateral Triangles</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            overflow: hidden;
+            background: #1a1a1a;
+            font-family: monospace;
+        }
+        canvas {
+            display: block;
+            background: #0a0a0a;
+        }
+        #controls {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            color: #888;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            pointer-events: none;
+            z-index: 100;
+        }
+        #coords {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            color: #888;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 100;
+        }
+        #info {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            color: #4ecdc4;
+            background: rgba(0,0,0,0.7);
+            padding: 10px;
+            border-radius: 5px;
+            font-size: 12px;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gridCanvas"></canvas>
+    <div id="controls">
+        ⬆️⬇️⬅️➡️ Pan | +/- Zoom | R Reset | Space Toggle fill
+    </div>
+    <div id="coords">Center: (0, 0) | Scale: 40px/unit</div>
+    <div id="info">🔺 Perfect Equilateral Triangles | 60° & -60° diagonals + horizontals</div>
+
+    <script>
+        const canvas = document.getElementById('gridCanvas');
+        const ctx = canvas.getContext('2d');
+        
+        // Grid parameters
+        let scale = 40; // base unit size
+        let offsetX = 0;
+        let offsetY = 0;
+        let showFilled = false;
+        
+        // Mouse interaction
+        let isDragging = false;
+        let lastMouseX, lastMouseY;
+        
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            drawGrid();
+        }
+        
+        function drawGrid() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            const centerX = canvas.width / 2 + offsetX;
+            const centerY = canvas.height / 2 + offsetY;
+            
+            // Calculate visible range with extra margin for diagonals
+            const cols = Math.ceil(canvas.width / scale) + 4;
+            const rows = Math.ceil(canvas.height / (scale * Math.sqrt(3)/2)) + 4;
+            
+            const startCol = -Math.floor(cols / 2) - 2;
+            const endCol = Math.floor(cols / 2) + 2;
+            const startRow = -Math.floor(rows / 2) - 2;
+            const endRow = Math.floor(rows / 2) + 2;
+            
+            // Set line styles
+            ctx.lineWidth = 1.5;
+            
+            // Draw filled triangles if enabled
+            if (showFilled) {
+                for (let row = startRow; row < endRow; row++) {
+                    for (let col = startCol; col < endCol; col++) {
+                        const x = centerX + col * scale;
+                        const y = centerY + row * scale * Math.sqrt(3)/2;
+                        
+                        // Upward pointing triangle
+                        ctx.beginPath();
+                        ctx.moveTo(x - scale/2, y + scale * Math.sqrt(3)/6);
+                        ctx.lineTo(x + scale/2, y + scale * Math.sqrt(3)/6);
+                        ctx.lineTo(x, y - scale * Math.sqrt(3)/3);
+                        ctx.closePath();
+                        ctx.fillStyle = 'rgba(78, 205, 196, 0.15)';
+                        ctx.fill();
+                        
+                        // Downward pointing triangle
+                        ctx.beginPath();
+                        ctx.moveTo(x - scale/2, y - scale * Math.sqrt(3)/6);
+                        ctx.lineTo(x + scale/2, y - scale * Math.sqrt(3)/6);
+                        ctx.lineTo(x, y + scale * Math.sqrt(3)/3);
+                        ctx.closePath();
+                        ctx.fillStyle = 'rgba(255, 230, 109, 0.15)';
+                        ctx.fill();
+                    }
+                }
+            }
+            
+            // Draw horizontal lines (through intersections)
+            ctx.strokeStyle = '#ff6b6b';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            
+            for (let row = startRow; row <= endRow; row++) {
+                for (let col = startCol; col <= endCol; col++) {
+                    const baseY = centerY + row * scale * Math.sqrt(3)/2;
+                    
+                    // Draw longer horizontal lines to ensure connection
+                    const x1 = centerX + (col - 2) * scale;
+                    const x2 = centerX + (col + 2) * scale;
+                    
+                    ctx.moveTo(x1, baseY);
+                    ctx.lineTo(x2, baseY);
+                }
+            }
+            ctx.stroke();
+            
+            // Draw +60° diagonals (from North)
+            ctx.strokeStyle = '#4ecdc4';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            
+            for (let row = startRow; row <= endRow; row++) {
+                for (let col = startCol; col <= endCol; col++) {
+                    const baseX = centerX + col * scale;
+                    const baseY = centerY + row * scale * Math.sqrt(3)/2;
+                    
+                    // Draw diagonal at +60° (slope = √3)
+                    const dx = scale * 1.5;
+                    const dy = dx * Math.sqrt(3);
+                    
+                    ctx.moveTo(baseX - dx, baseY - dy);
+                    ctx.lineTo(baseX + dx, baseY + dy);
+                }
+            }
+            ctx.stroke();
+            
+            // Draw -60° diagonals (from North)
+            ctx.strokeStyle = '#ffe66d';
+            ctx.lineWidth = 1.5;
+            ctx.beginPath();
+            
+            for (let row = startRow; row <= endRow; row++) {
+                for (let col = startCol; col <= endCol; col++) {
+                    const baseX = centerX + col * scale;
+                    const baseY = centerY + row * scale * Math.sqrt(3)/2;
+                    
+                    // Draw diagonal at -60° (slope = -√3)
+                    const dx = scale * 1.5;
+                    const dy = dx * Math.sqrt(3);
+                    
+                    ctx.moveTo(baseX - dx, baseY + dy);
+                    ctx.lineTo(baseX + dx, baseY - dy);
+                }
+            }
+            ctx.stroke();
+            
+            // Draw intersection points (vertices)
+            ctx.fillStyle = '#ffffff';
+            for (let row = startRow; row <= endRow; row++) {
+                for (let col = startCol; col <= endCol; col++) {
+                    const screenX = centerX + col * scale;
+                    const screenY = centerY + row * scale * Math.sqrt(3)/2;
+                    
+                    ctx.beginPath();
+                    ctx.arc(screenX, screenY, 2, 0, Math.PI * 2);
+                    ctx.fill();
+                }
+            }
+            
+            // Draw origin marker
+            ctx.fillStyle = '#ff0000';
+            ctx.beginPath();
+            ctx.arc(centerX, centerY, 5, 0, Math.PI * 2);
+            ctx.fill();
+            ctx.strokeStyle = '#ffffff';
+            ctx.lineWidth = 2;
+            ctx.stroke();
+            
+            // Update coordinates display
+            document.getElementById('coords').innerHTML = 
+                `Center: (${(-offsetX/scale).toFixed(1)}, ${(-offsetY/scale).toFixed(1)}) | Scale: ${scale.toFixed(1)}px/unit`;
+        }
+        
+        // Mouse event handlers
+        canvas.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            lastMouseX = e.clientX;
+            lastMouseY = e.clientY;
+        });
+        
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                offsetX += e.clientX - lastMouseX;
+                offsetY += e.clientY - lastMouseY;
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                drawGrid();
+            }
+        });
+        
+        canvas.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+        
+        canvas.addEventListener('mouseleave', () => {
+            isDragging = false;
+        });
+        
+        // Zoom with wheel
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+            scale *= zoomFactor;
+            scale = Math.max(15, Math.min(150, scale)); // Limit zoom
+            drawGrid();
+        });
+        
+        // Keyboard controls
+        window.addEventListener('keydown', (e) => {
+            const panSpeed = 20;
+            switch(e.key) {
+                case 'ArrowUp': offsetY += panSpeed; drawGrid(); break;
+                case 'ArrowDown': offsetY -= panSpeed; drawGrid(); break;
+                case 'ArrowLeft': offsetX += panSpeed; drawGrid(); break;
+                case 'ArrowRight': offsetX -= panSpeed; drawGrid(); break;
+                case 'r':
+                case 'R':
+                    offsetX = 0;
+                    offsetY = 0;
+                    scale = 40;
+                    drawGrid();
+                    break;
+                case ' ':
+                    e.preventDefault();
+                    showFilled = !showFilled;
+                    drawGrid();
+                    break;
+            }
+        });
+        
+        // Initial setup
+        window.addEventListener('resize', resizeCanvas);
+        resizeCanvas();
+        
+        // Prevent page scrolling with arrow keys and space
+        window.addEventListener('keydown', (e) => {
+            if (e.key.startsWith('Arrow') || e.key === ' ') {
+                e.preventDefault();
+            }
+        }, {passive: false});
+    </script>
+</body>
+</html>
