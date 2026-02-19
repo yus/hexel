@@ -1,0 +1,127 @@
+/* Theme system - Dark theme (default) */
+:root {
+    --bg: #0a0a0f;
+    --grid: #b388ff;
+    --grid-alpha: 0.2;
+    --ui-bg: #14141c;
+    --ui-bg-hover: #1e1e2a;
+    --ui-border: #2a2a38;
+    --text: #e2e2ea;
+    --text-dim: #8a8a9a;
+    --accent: #b388ff;
+    --accent-dim: #7a5ac0;
+    --accent-bg: #2a1f3a;
+    --success: #4cafaf;
+    --warning: #ffaa66;
+    --error: #ff6b6b;
+}
+
+/* Light theme */
+[data-theme="light"] {
+    --bg: #f5f5f7;
+    --grid: #7a5ac0;
+    --grid-alpha: 0.15;
+    --ui-bg: #ffffff;
+    --ui-bg-hover: #f0f0f5;
+    --ui-border: #d0d0da;
+    --text: #1a1a24;
+    --text-dim: #6a6a7a;
+    --accent: #7a5ac0;
+    --accent-dim: #9b7ad9;
+    --accent-bg: #f0eaff;
+    --success: #2a8a8a;
+    --warning: #d97e2e;
+    --error: #d94e4e;
+}
+
+/* High contrast theme */
+[data-theme="high-contrast"] {
+    --bg: #000000;
+    --grid: #ffff00;
+    --grid-alpha: 0.3;
+    --ui-bg: #000000;
+    --ui-bg-hover: #222222;
+    --ui-border: #ffff00;
+    --text: #ffffff;
+    --text-dim: #cccccc;
+    --accent: #ffff00;
+    --accent-dim: #cccc00;
+    --accent-bg: #333300;
+    --success: #00ffff;
+    --warning: #ffaa00;
+    --error: #ff0000;
+}
+
+/* Sepia theme */
+[data-theme="sepia"] {
+    --bg: #f4ecd8;
+    --grid: #8b7355;
+    --grid-alpha: 0.2;
+    --ui-bg: #e8dccc;
+    --ui-bg-hover: #d8c8b4;
+    --ui-border: #b8a48c;
+    --text: #4a3c2c;
+    --text-dim: #7a6a5a;
+    --accent: #8b5a2b;
+    --accent-dim: #a87848;
+    --accent-bg: #f0e0d0;
+    --success: #2a8a8a;
+    --warning: #c06020;
+    --error: #b84c4c;
+}
+
+/* Theme transition */
+body, body * {
+    transition: background-color 0.3s ease,
+                border-color 0.2s ease,
+                color 0.2s ease;
+}
+
+/* Theme switcher */
+.theme-switcher {
+    position: fixed;
+    bottom: 50px;
+    left: 20px;
+    z-index: 200;
+    background: var(--ui-bg);
+    border: 1px solid var(--ui-border);
+    border-radius: 8px;
+    padding: 8px;
+    display: flex;
+    gap: 4px;
+}
+
+.theme-btn {
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    border: 2px solid transparent;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.theme-btn:hover {
+    transform: scale(1.1);
+}
+
+.theme-btn.active {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 2px var(--bg);
+}
+
+.theme-btn[data-theme="dark"] {
+    background: #0a0a0f;
+}
+
+.theme-btn[data-theme="light"] {
+    background: #f5f5f7;
+}
+
+.theme-btn[data-theme="high-contrast"] {
+    background: #000000;
+    border-color: #ffff00;
+}
+
+.theme-btn[data-theme="sepia"] {
+    background: #8b7355;
+}
