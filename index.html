@@ -2,23 +2,205 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>HEXEL STUDIO · 60° Grid</title>
     <link rel="stylesheet" href="/static/css/style.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=JetBrains+Mono&display=swap" rel="stylesheet">
 </head>
 <body>
+    <!-- Canvas Layer -->
     <canvas id="grid-canvas"></canvas>
     <canvas id="draw-canvas"></canvas>
     
-    <!-- Your existing HTML structure, but with data attributes for tools -->
-    <div id="main-header"><!-- ... --></div>
-    <div id="toolbar"><!-- ... with data-tool attributes --></div>
-    <div id="properties-panel"><!-- ... --></div>
+    <!-- Hidden SVG (kept for compatibility) -->
+    <svg id="grid-svg" style="display: none;"></svg>
+
+    <!-- Main Header -->
+    <header id="main-header">
+        <div class="logo">HEXEL<span>STUDIO</span></div>
+        
+        <button id="menu-toggle" aria-label="Toggle menu">☰</button>
+
+        <div class="header-controls">
+            <button id="header-grid-toggle" class="header-btn active" data-grid-toggle>
+                <span>⬟</span> <span>GRID</span>
+            </button>
+            <button id="header-zoom-fit" class="header-btn" data-zoom-fit>
+                <span>⤢</span> <span>FIT</span>
+            </button>
+            <button id="header-clear" class="header-btn" data-clear>
+                <span>⌫</span> <span>CLEAR</span>
+            </button>
+        </div>
+    </header>
+
+    <!-- Desktop Toolbar -->
+    <aside id="toolbar">
+        <section class="tool-group">
+            <h3 class="section-title">📐 TOOLS</h3>
+            
+            <button class="tool-btn active" data-tool="point">
+                <span class="tool-icon">●</span> Point
+                <span class="shortcut">P</span>
+            </button>
+            
+            <button class="tool-btn" data-tool="line">
+                <span class="tool-icon">📏</span> Line
+                <span class="shortcut">L</span>
+            </button>
+            
+            <button class="tool-btn" data-tool="triangle">
+                <span class="tool-icon">△</span> Triangle
+                <span class="shortcut">T</span>
+            </button>
+            
+            <button class="tool-btn" data-tool="hexagon">
+                <span class="tool-icon">⬟</span> Hexagon
+                <span class="shortcut">H</span>
+            </button>
+            
+            <button class="tool-btn" data-tool="select">
+                <span class="tool-icon">🔍</span> Select
+                <span class="shortcut">S</span>
+            </button>
+        </section>
+
+        <section class="tool-group">
+            <h3 class="section-title">🎨 COLOR</h3>
+            <div class="color-grid">
+                <div class="color-swatch active" style="background: #ffaa66" data-color="#ffaa66"></div>
+                <div class="color-swatch" style="background: #b388ff" data-color="#b388ff"></div>
+                <div class="color-swatch" style="background: #4cafaf" data-color="#4cafaf"></div>
+                <div class="color-swatch" style="background: #ff6b6b" data-color="#ff6b6b"></div>
+                <div class="color-swatch" style="background: #a0e7a0" data-color="#a0e7a0"></div>
+                <div class="color-swatch" style="background: #ffb3ba" data-color="#ffb3ba"></div>
+                <div class="color-swatch" style="background: #c8a2eb" data-color="#c8a2eb"></div>
+                <div class="color-swatch" style="background: #ffffff" data-color="#ffffff"></div>
+            </div>
+        </section>
+
+        <section class="tool-group">
+            <h3 class="section-title">⚡ SIZE</h3>
+            <input type="range" id="size-slider" class="size-slider" min="4" max="24" value="8">
+            <div class="size-labels">
+                <span>small 4px</span>
+                <span>large 24px</span>
+            </div>
+        </section>
+
+        <section class="tool-group">
+            <h3 class="section-title">📊 HEXEL INFO</h3>
+            <div class="hexel-stats">
+                <div class="stat-card">
+                    <div class="stat-label">POINTS</div>
+                    <div class="stat-value" id="stat-points">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">LINES</div>
+                    <div class="stat-value" id="stat-lines">0</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">GRID</div>
+                    <div class="stat-value" id="stat-grid">48px</div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-label">HEXEL</div>
+                    <div class="stat-value" id="stat-hexel">24</div>
+                </div>
+            </div>
+        </section>
+
+        <section class="tool-group">
+            <h3 class="section-title">📌 SELECTED</h3>
+            <div class="coord-display" id="selected-display">
+                <div class="coord-row">
+                    <span class="coord-label">Hexel</span>
+                    <span class="coord-value" id="selected-hexel">(0, 0)</span>
+                </div>
+                <div class="coord-row">
+                    <span class="coord-label">World</span>
+                    <span class="coord-value" id="selected-world">0.00, 0.00</span>
+                </div>
+            </div>
+        </section>
+
+        <hr>
+
+        <section class="tool-group">
+            <h3 class="section-title">⌨️ SHORTCUTS</h3>
+            <div class="shortcut-list">
+                <div class="shortcut-item"><span class="key">R</span> reset view</div>
+                <div class="shortcut-item"><span class="key">Space</span> grid toggle</div>
+                <div class="shortcut-item"><span class="key">P</span> point tool</div>
+                <div class="shortcut-item"><span class="key">L</span> line tool</div>
+                <div class="shortcut-item"><span class="key">T</span> triangle tool</div>
+                <div class="shortcut-item"><span class="key">H</span> hexagon tool</div>
+                <div class="shortcut-item"><span class="key">S</span> select tool</div>
+                <div class="shortcut-item"><span class="key">⌘Z</span> undo</div>
+                <div class="shortcut-item"><span class="key">⌘⇧Z</span> redo</div>
+            </div>
+        </section>
+    </aside>
+
+    <!-- Properties Panel (Right Side) -->
+    <aside id="properties-panel">
+        <h3 class="section-title">✨ PROPERTIES</h3>
+        <!-- Dynamic properties based on selected tool -->
+        <div id="tool-properties"></div>
+        
+        <h3 class="section-title">🌍 WORLD</h3>
+        <div class="coord-display">
+            <div class="coord-row">
+                <span class="coord-label">Position</span>
+                <span class="coord-value" id="world-coord">0.00, 0.00</span>
+            </div>
+            <div class="coord-row">
+                <span class="coord-label">Hexel</span>
+                <span class="coord-value" id="hexel-coord">(0, 0)</span>
+            </div>
+            <div class="coord-row">
+                <span class="coord-label">Zoom</span>
+                <span class="coord-value" id="zoom-value">1.00x</span>
+            </div>
+        </div>
+
+        <h3 class="section-title">⚙️ SETTINGS</h3>
+        <div class="settings-group">
+            <label class="setting-item">
+                <span>Grid Opacity</span>
+                <input type="range" id="grid-opacity" min="0" max="0.3" step="0.05" value="0.15">
+            </label>
+            <label class="setting-item">
+                <span>Snap to Grid</span>
+                <input type="checkbox" id="snap-toggle" checked>
+            </label>
+        </div>
+    </aside>
+
+    <!-- Mobile Menu -->
+    <div id="mobile-overlay"></div>
+    <nav id="mobile-menu">
+        <div class="mobile-menu-header">
+            <span class="logo">HEXEL<span>STUDIO</span></span>
+            <span class="close-menu">✕</span>
+        </div>
+        <!-- Mobile menu content will be populated by JS -->
+    </nav>
+
+    <!-- Status Bar -->
+    <footer id="status-bar">
+        <div class="status-item">📍 <span id="status-hexel">0,0</span></div>
+        <div class="status-item">🔍 <span id="status-zoom">1.00x</span></div>
+        <div class="status-item">⬟ <span id="status-grid">ON</span></div>
+        <div class="status-item">● <span id="status-points">0</span></div>
+    </footer>
+
+    <!-- Message Area -->
     <div id="message-area"></div>
-    <div id="zoom-indicator"></div>
-    
-    <!-- Mobile menu etc -->
-    
+
+    <!-- Zoom Indicator -->
+    <div id="zoom-indicator">100%</div>
+
     <script type="module" src="/static/js/main.js"></script>
 </body>
 </html>
