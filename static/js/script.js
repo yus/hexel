@@ -127,8 +127,15 @@
                 gridCtx.scale(scale, scale);
                 
                 // Grid styling
+                // Grid styling - intelligent line width
                 gridCtx.strokeStyle = '#b388ff';
-                gridCtx.lineWidth = 0.5 / scale; // Adjust line width to stay hairline
+                if (scale < 0.5) {
+                    gridCtx.lineWidth = 0.3; // Fixed thin at very low zoom
+                } else if (scale < 1.0) {
+                    gridCtx.lineWidth = 0.4; // Slightly thicker but still hairline
+                } else {
+                    gridCtx.lineWidth = 0.5 / scale; // Normal calculation for >= 1.0
+                }
                 
                 // Calculate visible range in grid coordinates
                 const left = -gridCanvas.width / 2 / scale;
