@@ -1,7 +1,7 @@
 /* Fontfaces */
 @font-face {
     font-family: 'Inter';
-    src: url('/static/assets/fonts/Inter/Inter_18pt-Regular.woff') format('woff');
+    src: url('static/assets/fonts/Inter/Inter_18pt-Regular.woff') format('woff');
     font-weight: 400;
     font-style: normal;
     font-display: swap;
@@ -9,7 +9,7 @@
 
 @font-face {
     font-family: 'JetBrains Mono';
-    src: url('/static/assets/fonts/JetBrainsMono/JetBrainsMono-Regular.woff') format('woff');
+    src: url('static/assets/fonts/JetBrainsMono/JetBrainsMono-Regular.woff') format('woff');
     font-weight: 400;
     font-style: normal;
     font-display: swap;
