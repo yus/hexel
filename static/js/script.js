@@ -113,36 +113,38 @@
                 };
             }
 
-            // === DRAW GRID (SVG Version) ===
+            // === DRAW GRID (Canvas with transforms) ===
             function drawGrid() {
-                const svg = document.getElementById('grid-svg');
-                if (!svg) return;
+                gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
                 
-                if (!gridEnabled) {
-                    svg.innerHTML = '';
-                    return;
-                }
+                if (!gridEnabled) return;
                 
-                const centerX = window.innerWidth / 2 + offsetX;
-                const centerY = window.innerHeight / 2 + offsetY;
+                // Save context state
+                gridCtx.save();
                 
-                const scaledH = H_STEP * scale;
-                const scaledV = V_STEP * scale;
+                // Apply transforms instead of manual coordinate calculations
+                gridCtx.translate(gridCanvas.width / 2 + offsetX, gridCanvas.height / 2 + offsetY);
+                gridCtx.scale(scale, scale);
                 
-                const cols = Math.ceil(window.innerWidth / scaledH) + 10;
-                const rows = Math.ceil(window.innerHeight / scaledV) + 10;
+                // Grid styling
+                gridCtx.strokeStyle = '#b388ff';
+                gridCtx.lineWidth = 0.5 / scale; // Adjust line width to stay hairline
                 
-                const startCol = -Math.floor(cols / 2) - 2;
-                const startRow = -Math.floor(rows / 2) - 2;
-                const endCol = startCol + cols + 4;
-                const endRow = startRow + rows + 4;
+                // Calculate visible range in grid coordinates
+                const left = -gridCanvas.width / 2 / scale;
+                const right = gridCanvas.width / 2 / scale;
+                const top = -gridCanvas.height / 2 / scale;
+                const bottom = gridCanvas.height / 2 / scale;
                 
-                // Update UI (keep this part the same)
-                const worldX = -offsetX / (H_STEP * scale) * H_STEP;
-                const worldY = -offsetY / (V_STEP * scale) * V_STEP;
-                const centerHexel = screenToHexel(window.innerWidth/2, window.innerHeight/2);
+                const startCol = Math.floor(left / H_STEP) - 2;
+                const endCol = Math.ceil(right / H_STEP) + 2;
+                const startRow = Math.floor(top / V_STEP) - 2;
+                const endRow = Math.ceil(bottom / V_STEP) + 2;
                 
-                document.getElementById('world-coord').textContent = worldX.toFixed(2) + ', ' + worldY.toFixed(2);
+                // Update UI (keep this part)
+                const centerHexel = screenToHexel(gridCanvas.width/2, gridCanvas.height/2);
+                document.getElementById('world-coord').textContent = 
+                    `${(-offsetX / H_STEP).toFixed(2)}, ${(-offsetY / V_STEP).toFixed(2)}`;
                 document.getElementById('hexel-coord').textContent = `(${centerHexel.q}, ${centerHexel.r})`;
                 document.getElementById('zoom-value').textContent = scale.toFixed(2) + 'x';
                 document.getElementById('status-zoom').textContent = scale.toFixed(2) + 'x';
@@ -150,124 +152,102 @@
                 document.getElementById('status-points').textContent = points.length;
                 document.getElementById('stat-points').textContent = points.length;
                 
-                if (document.getElementById('mobile-hexel')) {
-                    document.getElementById('mobile-hexel').textContent = `(${centerHexel.q}, ${centerHexel.r})`;
+                // === DRAW HORIZONTAL LINES ===
+                gridCtx.beginPath();
+                gridCtx.globalAlpha = 0.15;
+                
+                for (let row = startRow; row <= endRow; row++) {
+                    const y = row * V_STEP;
+                    gridCtx.moveTo(left * scale, y);
+                    gridCtx.lineTo(right * scale, y);
                 }
-                if (document.getElementById('mobile-zoom')) {
-                    document.getElementById('mobile-zoom').textContent = scale.toFixed(2) + 'x';
-                }
+                gridCtx.stroke();
                 
-                // === BUILD SVG GRID ===
-                const paths = [];
-                const dots = [];
-                
-                // Grid color and opacity
-                const gridColor = '#b388ff';
-                const gridOpacity = 0.15;
-                
-                // Pre-calculate tan60
+                // === DRAW DIAGONALS (+60°) ===
+                gridCtx.beginPath();
                 const tan60 = Math.tan(60 * Math.PI / 180);
-                const extend = Math.max(window.innerWidth, window.innerHeight) * 1.5;
                 
-                // Generate horizontal lines
-                for (let row = startRow; row <= endRow; row++) {
-                    const y = centerY + row * scaledV;
-                    paths.push(`<line x1="0" y1="${y.toFixed(2)}" x2="${window.innerWidth}" y2="${y.toFixed(2)}" 
-                                      stroke="${gridColor}" stroke-opacity="${gridOpacity}" 
-                                      stroke-width="1" vector-effect="non-scaling-stroke"/>`);
-                }
-                
-                // Generate +60° diagonals
                 for (let row = startRow - 3; row <= endRow + 3; row++) {
-                    const rowOffset = (row % 2 === 0) ? 0 : scaledH / 2;
-                    const baseY = centerY + row * scaledV;
+                    const rowOffset = (row % 2 === 0) ? 0 : H_STEP / 2;
+                    const baseY = row * V_STEP;
                     
                     for (let col = startCol - 3; col <= endCol + 3; col++) {
-                        const x = centerX + col * scaledH + rowOffset;
+                        const x = col * H_STEP + rowOffset;
                         
-                        // Round coordinates to 2 decimal places for consistency
-                        const x1 = (x - extend).toFixed(2);
-                        const y1 = (baseY - extend * tan60).toFixed(2);
-                        const x2 = (x + extend).toFixed(2);
-                        const y2 = (baseY + extend * tan60).toFixed(2);
-                        
-                        paths.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" 
-                                          stroke="${gridColor}" stroke-opacity="${gridOpacity}" 
-                                          stroke-width="1" vector-effect="non-scaling-stroke"/>`);
+                        // Draw infinite line through this point at +60°
+                        gridCtx.moveTo(x - 1000, baseY - 1000 * tan60);
+                        gridCtx.lineTo(x + 1000, baseY + 1000 * tan60);
                     }
                 }
+                gridCtx.stroke();
                 
-                // Generate -60° diagonals
+                // === DRAW DIAGONALS (-60°) ===
+                gridCtx.beginPath();
+                
                 for (let row = startRow - 3; row <= endRow + 3; row++) {
-                    const rowOffset = (row % 2 === 0) ? 0 : scaledH / 2;
-                    const baseY = centerY + row * scaledV;
+                    const rowOffset = (row % 2 === 0) ? 0 : H_STEP / 2;
+                    const baseY = row * V_STEP;
                     
                     for (let col = startCol - 3; col <= endCol + 3; col++) {
-                        const x = centerX + col * scaledH + rowOffset;
+                        const x = col * H_STEP + rowOffset;
                         
-                        // Round coordinates to 2 decimal places for consistency
-                        const x1 = (x - extend).toFixed(2);
-                        const y1 = (baseY + extend * tan60).toFixed(2);
-                        const x2 = (x + extend).toFixed(2);
-                        const y2 = (baseY - extend * tan60).toFixed(2);
-                        
-                        paths.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" 
-                                          stroke="${gridColor}" stroke-opacity="${gridOpacity}" 
-                                          stroke-width="1" vector-effect="non-scaling-stroke"/>`);
+                        // Draw infinite line through this point at -60°
+                        gridCtx.moveTo(x - 1000, baseY + 1000 * tan60);
+                        gridCtx.lineTo(x + 1000, baseY - 1000 * tan60);
                     }
                 }
+                gridCtx.stroke();
                 
-                // Generate vertices (as circles)
+                // === DRAW VERTICES ===
+                gridCtx.fillStyle = '#b388ff';
+                gridCtx.globalAlpha = 0.1;
+                
                 for (let row = startRow; row <= endRow; row++) {
-                    const baseY = centerY + row * scaledV;
-                    const rowOffset = (row % 2 !== 0) ? scaledH / 2 : 0;
+                    const baseY = row * V_STEP;
+                    const rowOffset = (row % 2 !== 0) ? H_STEP / 2 : 0;
                     
                     for (let col = startCol; col <= endCol; col++) {
-                        const x = centerX + col * scaledH + rowOffset;
-                        dots.push(`<circle cx="${x}" cy="${baseY}" r="1" fill="${gridColor}" fill-opacity="0.1"/>`);
+                        const x = col * H_STEP + rowOffset;
+                        
+                        gridCtx.beginPath();
+                        gridCtx.arc(x, baseY, 1.0, 0, Math.PI * 2);
+                        gridCtx.fill();
                     }
                 }
                 
-                // Add origin marker
-                dots.push(`<circle cx="${centerX}" cy="${centerY}" r="3" fill="#ffffff" fill-opacity="0.3"/>`);
+                // === DRAW ORIGIN ===
+                gridCtx.fillStyle = '#ffffff';
+                gridCtx.globalAlpha = 0.3;
+                gridCtx.beginPath();
+                gridCtx.arc(0, 0, 3, 0, Math.PI * 2);
+                gridCtx.fill();
                 
-                // Update SVG
-                svg.innerHTML = paths.join('') + dots.join('');
+                // Restore context
+                gridCtx.restore();
             }
             
-            // Update resize handler to also resize SVG
+            // Update resize handler
             window.addEventListener('resize', () => {
-                const svg = document.getElementById('grid-svg');
-                if (svg) {
-                    svg.setAttribute('width', window.innerWidth);
-                    svg.setAttribute('height', window.innerHeight);
-                }
-                drawGrid();
-                drawAll(); // Fixed: was drawCanvas(), should be drawAll()
+                resizeCanvases(); // This already calls drawGrid() and drawAll()
             });
             
-            // Wait for DOM to be fully loaded before initial manipulation
+            // Wait for DOM to be fully loaded
             document.addEventListener('DOMContentLoaded', function() {
-                // Initialize SVG size
+                // Hide SVG grid permanently (if it exists)
                 const svg = document.getElementById('grid-svg');
                 if (svg) {
-                    svg.setAttribute('width', window.innerWidth);
-                    svg.setAttribute('height', window.innerHeight);
-                }
-            
-                // Hide canvas grid permanently
-                const gridCanvas = document.getElementById('grid-canvas');
-                if (gridCanvas) {
-                    gridCanvas.style.display = 'none';
+                    svg.style.display = 'none';
                 }
                 
-                // Ensure SVG visibility matches gridEnabled state
-                if (svg) {
-                    svg.style.display = gridEnabled ? 'block' : 'none';
-                    if (gridEnabled) {
-                        drawGrid(); // Draw initial grid
-                    }
+                // Make sure canvas grid is visible
+                const gridCanvas = document.getElementById('grid-canvas');
+                if (gridCanvas) {
+                    gridCanvas.style.display = 'block'; // Ensure canvas is visible
                 }
+                
+                // Initial grid draw
+                drawGrid();
+                drawAll();
                 
                 // Make sure toggle button reflects initial state
                 const gridToggle = document.getElementById('header-grid-toggle');
