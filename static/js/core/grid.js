@@ -129,3 +129,19 @@ function updateGridUI(scale, offsetX, offsetY) {
     document.getElementById('status-points').textContent = points.length;
     document.getElementById('stat-points').textContent = points.length;
 }
+
+// Export Grid State
+let gridEnabled = true; // Your existing variable
+
+export function getGridState() {
+    return gridEnabled;
+}
+
+export function setGridState(enabled) {
+    gridEnabled = enabled;
+}
+
+export function toggleGridState() {
+    gridEnabled = !gridEnabled;
+    return gridEnabled;
+}
