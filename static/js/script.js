@@ -113,31 +113,34 @@
                 };
             }
 
-            // === DRAW GRID ===
-            // === DRAW GRID ===
+            // === DRAW GRID (SVG Version) ===
             function drawGrid() {
-                gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+                const svg = document.getElementById('grid-svg');
+                if (!svg) return;
                 
-                if (!gridEnabled) return;
+                if (!gridEnabled) {
+                    svg.innerHTML = '';
+                    return;
+                }
                 
-                const centerX = gridCanvas.width / 2 + offsetX;
-                const centerY = gridCanvas.height / 2 + offsetY;
+                const centerX = window.innerWidth / 2 + offsetX;
+                const centerY = window.innerHeight / 2 + offsetY;
                 
                 const scaledH = H_STEP * scale;
                 const scaledV = V_STEP * scale;
                 
-                const cols = Math.ceil(gridCanvas.width / scaledH) + 10;
-                const rows = Math.ceil(gridCanvas.height / scaledV) + 10;
+                const cols = Math.ceil(window.innerWidth / scaledH) + 10;
+                const rows = Math.ceil(window.innerHeight / scaledV) + 10;
                 
                 const startCol = -Math.floor(cols / 2) - 2;
                 const startRow = -Math.floor(rows / 2) - 2;
                 const endCol = startCol + cols + 4;
                 const endRow = startRow + rows + 4;
                 
-                // Update UI
+                // Update UI (keep this part the same)
                 const worldX = -offsetX / (H_STEP * scale) * H_STEP;
                 const worldY = -offsetY / (V_STEP * scale) * V_STEP;
-                const centerHexel = screenToHexel(gridCanvas.width/2, gridCanvas.height/2);
+                const centerHexel = screenToHexel(window.innerWidth/2, window.innerHeight/2);
                 
                 document.getElementById('world-coord').textContent = worldX.toFixed(2) + ', ' + worldY.toFixed(2);
                 document.getElementById('hexel-coord').textContent = `(${centerHexel.q}, ${centerHexel.r})`;
@@ -154,132 +157,80 @@
                     document.getElementById('mobile-zoom').textContent = scale.toFixed(2) + 'x';
                 }
                 
-                // === HAIRLINE GRID WITH PIXEL SNAPPING ===
+                // === BUILD SVG GRID ===
+                const paths = [];
+                const dots = [];
                 
-                // Save context state
-                gridCtx.save();
+                // Grid color and opacity
+                const gridColor = '#b388ff';
+                const gridOpacity = 0.15;
                 
-                // Set base styles
-                gridCtx.strokeStyle = '#b388ff';
-                gridCtx.fillStyle = '#b388ff';
+                // Pre-calculate tan60
+                const tan60 = Math.tan(60 * Math.PI / 180);
+                const extend = Math.max(window.innerWidth, window.innerHeight) * 1.5;
                 
-                // Line width based on zoom - keep it thin but visible
-                gridCtx.lineWidth = Math.max(0.5, 1.0 / Math.sqrt(scale));
-                
-                // For 1:1 zoom and around that range, we need a different approach
-                // Instead of translating and rounding, we'll use a fractional pixel approach
-                
-                // Check if we're in the problematic zoom range (0.9 to 1.4)
-                const isProblematicZoom = scale >= 0.9 && scale <= 1.4;
-                
-                // === HORIZONTAL LINES ===
-                gridCtx.globalAlpha = 0.15;
-                gridCtx.beginPath();
-                
+                // Generate horizontal lines
                 for (let row = startRow; row <= endRow; row++) {
                     const y = centerY + row * scaledV;
-                    
-                    if (isProblematicZoom) {
-                        // For problematic zoom, use exact coordinates - let the browser handle subpixel rendering
-                        gridCtx.moveTo(0, y);
-                        gridCtx.lineTo(gridCanvas.width, y);
-                    } else {
-                        // For other zooms, snap to nearest half-pixel for cleaner lines
-                        const snappedY = Math.round(y * 2) / 2;
-                        gridCtx.moveTo(0, snappedY);
-                        gridCtx.lineTo(gridCanvas.width, snappedY);
-                    }
+                    paths.push(`<line x1="0" y1="${y}" x2="${window.innerWidth}" y2="${y}" stroke="${gridColor}" stroke-opacity="${gridOpacity}" stroke-width="1" vector-effect="non-scaling-stroke"/>`);
                 }
-                gridCtx.stroke();
                 
-                // === +60° DIAGONALS ===
-                gridCtx.beginPath();
-                
-                const tan60 = Math.tan(60 * Math.PI / 180);
-                const extend = Math.max(gridCanvas.width, gridCanvas.height) * 1.5;
-                
+                // Generate +60° diagonals
                 for (let row = startRow - 3; row <= endRow + 3; row++) {
                     const rowOffset = (row % 2 === 0) ? 0 : scaledH / 2;
                     const baseY = centerY + row * scaledV;
                     
                     for (let col = startCol - 3; col <= endCol + 3; col++) {
                         const x = centerX + col * scaledH + rowOffset;
-                        
-                        if (isProblematicZoom) {
-                            // Use exact coordinates for problematic zoom
-                            gridCtx.moveTo(x - extend, baseY - extend * tan60);
-                            gridCtx.lineTo(x + extend, baseY + extend * tan60);
-                        } else {
-                            // Snap to half-pixel for other zooms
-                            const snappedX = Math.round(x * 2) / 2;
-                            const snappedY = Math.round(baseY * 2) / 2;
-                            gridCtx.moveTo(snappedX - extend, snappedY - extend * tan60);
-                            gridCtx.lineTo(snappedX + extend, snappedY + extend * tan60);
-                        }
+                        paths.push(`<line x1="${x - extend}" y1="${baseY - extend * tan60}" x2="${x + extend}" y2="${baseY + extend * tan60}" stroke="${gridColor}" stroke-opacity="${gridOpacity}" stroke-width="1" vector-effect="non-scaling-stroke"/>`);
                     }
                 }
-                gridCtx.stroke();
                 
-                // === -60° DIAGONALS ===
-                gridCtx.beginPath();
-                
+                // Generate -60° diagonals
                 for (let row = startRow - 3; row <= endRow + 3; row++) {
                     const rowOffset = (row % 2 === 0) ? 0 : scaledH / 2;
                     const baseY = centerY + row * scaledV;
                     
                     for (let col = startCol - 3; col <= endCol + 3; col++) {
                         const x = centerX + col * scaledH + rowOffset;
-                        
-                        if (isProblematicZoom) {
-                            // Use exact coordinates for problematic zoom
-                            gridCtx.moveTo(x - extend, baseY + extend * tan60);
-                            gridCtx.lineTo(x + extend, baseY - extend * tan60);
-                        } else {
-                            // Snap to half-pixel for other zooms
-                            const snappedX = Math.round(x * 2) / 2;
-                            const snappedY = Math.round(baseY * 2) / 2;
-                            gridCtx.moveTo(snappedX - extend, snappedY + extend * tan60);
-                            gridCtx.lineTo(snappedX + extend, snappedY - extend * tan60);
-                        }
+                        paths.push(`<line x1="${x - extend}" y1="${baseY + extend * tan60}" x2="${x + extend}" y2="${baseY - extend * tan60}" stroke="${gridColor}" stroke-opacity="${gridOpacity}" stroke-width="1" vector-effect="non-scaling-stroke"/>`);
                     }
                 }
-                gridCtx.stroke();
                 
-                // === VERTICES ===
-                gridCtx.globalAlpha = 0.1;
-                
+                // Generate vertices (as circles)
                 for (let row = startRow; row <= endRow; row++) {
                     const baseY = centerY + row * scaledV;
                     const rowOffset = (row % 2 !== 0) ? scaledH / 2 : 0;
                     
                     for (let col = startCol; col <= endCol; col++) {
                         const x = centerX + col * scaledH + rowOffset;
-                        
-                        // Always round vertices to whole pixels for clean dots
-                        const snappedX = Math.round(x);
-                        const snappedY = Math.round(baseY);
-                        
-                        gridCtx.beginPath();
-                        gridCtx.arc(snappedX, snappedY, 1.0, 0, Math.PI * 2);
-                        gridCtx.fill();
+                        dots.push(`<circle cx="${x}" cy="${baseY}" r="1" fill="${gridColor}" fill-opacity="0.1"/>`);
                     }
                 }
                 
-                // === ORIGIN ===
-                gridCtx.fillStyle = '#ffffff';
-                gridCtx.globalAlpha = 0.3;
-                gridCtx.beginPath();
+                // Add origin marker
+                dots.push(`<circle cx="${centerX}" cy="${centerY}" r="3" fill="#ffffff" fill-opacity="0.3"/>`);
                 
-                // Always round origin to whole pixel
-                const originX = Math.round(centerX);
-                const originY = Math.round(centerY);
-                gridCtx.arc(originX, originY, 3, 0, Math.PI * 2);
-                gridCtx.fill();
-                
-                // Restore context state
-                gridCtx.restore();
-                
-                gridCtx.globalAlpha = 1.0;
+                // Update SVG
+                svg.innerHTML = paths.join('') + dots.join('');
+            }
+            
+            // Update resize handler to also resize SVG
+            window.addEventListener('resize', () => {
+                const svg = document.getElementById('grid-svg');
+                if (svg) {
+                    svg.setAttribute('width', window.innerWidth);
+                    svg.setAttribute('height', window.innerHeight);
+                }
+                drawGrid();
+                drawCanvas();
+            });
+            
+            // Initialize SVG size
+            const svg = document.getElementById('grid-svg');
+            if (svg) {
+                svg.setAttribute('width', window.innerWidth);
+                svg.setAttribute('height', window.innerHeight);
             }
 
             // === DRAW ALL ELEMENTS ===
