@@ -2,6 +2,8 @@ import { PointTool } from './point-tool.js';
 import { LineTool } from './line-tool.js';
 import { SelectTool } from './select-tool.js';
 import { TriangleTool } from './triangle-tool.js';
+import { HexagonTool } from './hexagon-tool.js';
+import { FillTriangleTool } from './fill-tools.js'; 
 
 const tools = {
     point: new PointTool(),
