@@ -130,7 +130,7 @@
                 // Grid styling - intelligent line width
                 gridCtx.strokeStyle = '#b388ff';
                 if (scale < 0.5) {
-                    gridCtx.lineWidth = 0.1; // Fixed thin at very low zoom
+                    gridCtx.lineWidth = 0.15; // Fixed thin at very low zoom
                 } else if (scale < 1.0) {
                     gridCtx.lineWidth = 0.2; // Slightly thicker but still hairline
                 } else {
@@ -161,7 +161,7 @@
                 
                 // === DRAW HORIZONTAL LINES ===
                 gridCtx.beginPath();
-                gridCtx.globalAlpha = 0.15;
+                gridCtx.globalAlpha = 0.1;
                 
                 for (let row = startRow; row <= endRow; row++) {
                     const y = row * V_STEP;
