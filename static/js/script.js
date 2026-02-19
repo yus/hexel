@@ -128,8 +128,8 @@
                 
                 // === ZOOM-BASED CONFIGURATION ===
                 const zoomConfig = [
-                    { max: 0.5, horiz: { alpha: 0.15, width: 0.3 }, diag: { alpha: 0.1, width: 0.2 } },
-                    { max: 1.0, horiz: { alpha: 0.15, width: 0.3 }, diag: { alpha: 0.1, width: 0.3 } },
+                    { max: 0.5, horiz: { alpha: 0.2, width: 0.35 }, diag: { alpha: 0.1, width: 0.2 } },
+                    { max: 1.0, horiz: { alpha: 0.2, width: 0.35 }, diag: { alpha: 0.1, width: 0.3 } },
                     { max: Infinity, horiz: { alpha: 0.15, width: () => 0.5 / scale }, diag: { alpha: 0.1, width: () => 0.5 / scale } }
                 ];
                 
