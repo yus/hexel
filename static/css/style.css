@@ -1,0 +1,29 @@
+/* Copy your existing style here, but split into sections */
+:root {
+    --bg: #0a0a0f;
+    --grid: #b388ff;
+    --grid-alpha: 0.2;
+    --ui-bg: #14141c;
+    --ui-bg-hover: #1e1e2a;
+    --ui-border: #2a2a38;
+    --text: #e2e2ea;
+    --text-dim: #8a8a9a;
+    --accent: #b388ff;
+    --accent-dim: #7a5ac0;
+    --accent-bg: #2a1f3a;
+    --success: #4cafaf;
+    --warning: #ffaa66;
+    
+    --header-height: 60px;
+    --toolbar-width: 280px;
+    --mobile-breakpoint: 768px;
+}
+
+/* Rest of your CSS exactly as is, but organized:
+   1. Canvas styles
+   2. Header styles
+   3. Toolbar styles
+   4. Properties panel
+   5. Mobile styles
+   6. Utility classes
+*/
