@@ -1,4 +1,4 @@
-# HEXEL STUDIO 60°GRID
+### HEXEL STUDIO 60°GRID
 
 Hexel Studio & "hexel" term is a foundation for a big data computing on reach UI/UX performance and gradual routine for the webs and mobile interfaces.
 
