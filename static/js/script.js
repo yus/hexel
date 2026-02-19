@@ -545,13 +545,25 @@
                 // Grid toggle
                 function toggleGrid() {
                     gridEnabled = !gridEnabled;
-                    const btn = document.getElementById('header-grid-toggle');
-                    const status = document.getElementById('status-grid');
                     
-                    btn.classList.toggle('active');
-                    status.textContent = gridEnabled ? 'ON' : 'OFF';
-                    drawGrid();
-                    addMessage(gridEnabled ? '⬟ grid enabled' : '⬚ grid disabled');
+                    // Toggle both canvas and SVG
+                    const gridCanvas = document.getElementById('grid-canvas');
+                    const gridSvg = document.getElementById('grid-svg');
+                    
+                    if (gridEnabled) {
+                        gridCanvas.style.display = 'none';  // Hide canvas grid
+                        gridSvg.style.display = 'block';    // Show SVG grid
+                        drawGrid(); // Draw SVG grid
+                    } else {
+                        gridCanvas.style.display = 'none';  // Keep canvas hidden
+                        gridSvg.style.display = 'none';     // Hide SVG grid
+                    }
+                    
+                    // Update UI
+                    const gridToggle = document.getElementById('header-grid-toggle');
+                    if (gridToggle) {
+                        gridToggle.classList.toggle('active', gridEnabled);
+                    }
                 }
                 
                 document.getElementById('header-grid-toggle').addEventListener('click', toggleGrid);
