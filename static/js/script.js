@@ -223,35 +223,38 @@
                     svg.setAttribute('height', window.innerHeight);
                 }
                 drawGrid();
-                drawCanvas();
+                drawAll(); // Fixed: was drawCanvas(), should be drawAll()
             });
             
-            // Initialize SVG size
-            const svg = document.getElementById('grid-svg');
-            if (svg) {
-                svg.setAttribute('width', window.innerWidth);
-                svg.setAttribute('height', window.innerHeight);
-            }
-
-            // Hide canvas grid permanently
-            const gridCanvas = document.getElementById('grid-canvas');
-            if (gridCanvas) {
-                gridCanvas.style.display = 'none';
-            }
-            
-            // Ensure SVG visibility matches gridEnabled state
-            if (svg) {
-                svg.style.display = gridEnabled ? 'block' : 'none';
-                if (gridEnabled) {
-                    drawGrid(); // Draw initial grid
+            // Wait for DOM to be fully loaded before initial manipulation
+            document.addEventListener('DOMContentLoaded', function() {
+                // Initialize SVG size
+                const svg = document.getElementById('grid-svg');
+                if (svg) {
+                    svg.setAttribute('width', window.innerWidth);
+                    svg.setAttribute('height', window.innerHeight);
                 }
-            }
             
-            // Make sure toggle button reflects initial state
-            const gridToggle = document.getElementById('header-grid-toggle');
-            if (gridToggle) {
-                gridToggle.classList.toggle('active', gridEnabled);
-            }
+                // Hide canvas grid permanently
+                const gridCanvas = document.getElementById('grid-canvas');
+                if (gridCanvas) {
+                    gridCanvas.style.display = 'none';
+                }
+                
+                // Ensure SVG visibility matches gridEnabled state
+                if (svg) {
+                    svg.style.display = gridEnabled ? 'block' : 'none';
+                    if (gridEnabled) {
+                        drawGrid(); // Draw initial grid
+                    }
+                }
+                
+                // Make sure toggle button reflects initial state
+                const gridToggle = document.getElementById('header-grid-toggle');
+                if (gridToggle) {
+                    gridToggle.classList.toggle('active', gridEnabled);
+                }
+            });
 
             // === DRAW ALL ELEMENTS ===
             function drawAll() {
