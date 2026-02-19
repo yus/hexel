@@ -17,7 +17,7 @@ export class SelectTool {
     activate() {
         document.body.style.cursor = 'pointer';
         document.body.dataset.tool = 'select';
-        this.showSelectionInfo();
+        // this.showSelectionInfo();
     }
     
     deactivate() {
@@ -64,6 +64,11 @@ export class SelectTool {
     }
     
     showSelectionInfo(hexel, detailed = false) {
+        if (!hexel) {
+            console.warn('showSelectionInfo called with undefined hexel');
+            return;
+        }
+        
         // Update UI
         document.getElementById('selected-hexel').textContent = `(${hexel.q}, ${hexel.r})`;
         
