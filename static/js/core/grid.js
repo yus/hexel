@@ -137,6 +137,12 @@ export function getGridState() {
     return gridEnabled;
 }
 
+export function toggleGrid() {
+    gridEnabled = !gridEnabled;
+    drawGrid(scale, offsetX, offsetY, gridEnabled); // Use your actual draw function
+    return gridEnabled;
+}
+
 export function setGridState(enabled) {
     gridEnabled = enabled;
 }
