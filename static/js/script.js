@@ -172,7 +172,7 @@
                 // Generate horizontal lines
                 for (let row = startRow; row <= endRow; row++) {
                     const y = centerY + row * scaledV;
-                    paths.push(`<line x1="0" y1="${y}" x2="${window.innerWidth}" y2="${y}" stroke="${gridColor}" stroke-opacity="${gridOpacity}" stroke-width="0.1" vector-effect="non-scaling-stroke"/>`);
+                    paths.push(`<line x1="0" y1="${y}" x2="${window.innerWidth}" y2="${y}" stroke="${gridColor}" stroke-opacity="${gridOpacity}" stroke-width="1" vector-effect="non-scaling-stroke" shape-rendering="crispEdges"/>`);
                 }
                 
                 // Generate +60° diagonals
@@ -182,7 +182,7 @@
                     
                     for (let col = startCol - 3; col <= endCol + 3; col++) {
                         const x = centerX + col * scaledH + rowOffset;
-                        paths.push(`<line x1="${x - extend}" y1="${baseY - extend * tan60}" x2="${x + extend}" y2="${baseY + extend * tan60}" stroke="${gridColor}" stroke-opacity="${gridOpacity}" stroke-width="0.1" vector-effect="non-scaling-stroke"/>`);
+                        paths.push(`<line x1="${x - extend}" y1="${baseY - extend * tan60}" x2="${x + extend}" y2="${baseY + extend * tan60}" stroke="${gridColor}" stroke-opacity="${gridOpacity}" stroke-width="1" vector-effect="non-scaling-stroke" shape-rendering="crispEdges"/>`);
                     }
                 }
                 
@@ -193,7 +193,7 @@
                     
                     for (let col = startCol - 3; col <= endCol + 3; col++) {
                         const x = centerX + col * scaledH + rowOffset;
-                        paths.push(`<line x1="${x - extend}" y1="${baseY + extend * tan60}" x2="${x + extend}" y2="${baseY - extend * tan60}" stroke="${gridColor}" stroke-opacity="${gridOpacity}" stroke-width="0.1" vector-effect="non-scaling-stroke"/>`);
+                        paths.push(`<line x1="${x - extend}" y1="${baseY + extend * tan60}" x2="${x + extend}" y2="${baseY - extend * tan60}" stroke="${gridColor}" stroke-opacity="${gridOpacity}" stroke-width="1" vector-effect="non-scaling-stroke" shape-rendering="crispEdges"/>`);
                     }
                 }
                 
