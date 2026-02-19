@@ -172,7 +172,9 @@
                 // Generate horizontal lines
                 for (let row = startRow; row <= endRow; row++) {
                     const y = centerY + row * scaledV;
-                    paths.push(`<line x1="0" y1="${y}" x2="${window.innerWidth}" y2="${y}" stroke="${gridColor}" stroke-opacity="${gridOpacity}" stroke-width="1" vector-effect="non-scaling-stroke" shape-rendering="crispEdges"/>`);
+                    paths.push(`<line x1="0" y1="${y.toFixed(2)}" x2="${window.innerWidth}" y2="${y.toFixed(2)}" 
+                                      stroke="${gridColor}" stroke-opacity="${gridOpacity}" 
+                                      stroke-width="1" vector-effect="non-scaling-stroke"/>`);
                 }
                 
                 // Generate +60° diagonals
@@ -182,7 +184,16 @@
                     
                     for (let col = startCol - 3; col <= endCol + 3; col++) {
                         const x = centerX + col * scaledH + rowOffset;
-                        paths.push(`<line x1="${x - extend}" y1="${baseY - extend * tan60}" x2="${x + extend}" y2="${baseY + extend * tan60}" stroke="${gridColor}" stroke-opacity="${gridOpacity}" stroke-width="1" vector-effect="non-scaling-stroke" shape-rendering="crispEdges"/>`);
+                        
+                        // Round coordinates to 2 decimal places for consistency
+                        const x1 = (x - extend).toFixed(2);
+                        const y1 = (baseY - extend * tan60).toFixed(2);
+                        const x2 = (x + extend).toFixed(2);
+                        const y2 = (baseY + extend * tan60).toFixed(2);
+                        
+                        paths.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" 
+                                          stroke="${gridColor}" stroke-opacity="${gridOpacity}" 
+                                          stroke-width="1" vector-effect="non-scaling-stroke"/>`);
                     }
                 }
                 
@@ -193,7 +204,16 @@
                     
                     for (let col = startCol - 3; col <= endCol + 3; col++) {
                         const x = centerX + col * scaledH + rowOffset;
-                        paths.push(`<line x1="${x - extend}" y1="${baseY + extend * tan60}" x2="${x + extend}" y2="${baseY - extend * tan60}" stroke="${gridColor}" stroke-opacity="${gridOpacity}" stroke-width="1" vector-effect="non-scaling-stroke" shape-rendering="crispEdges"/>`);
+                        
+                        // Round coordinates to 2 decimal places for consistency
+                        const x1 = (x - extend).toFixed(2);
+                        const y1 = (baseY + extend * tan60).toFixed(2);
+                        const x2 = (x + extend).toFixed(2);
+                        const y2 = (baseY - extend * tan60).toFixed(2);
+                        
+                        paths.push(`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" 
+                                          stroke="${gridColor}" stroke-opacity="${gridOpacity}" 
+                                          stroke-width="1" vector-effect="non-scaling-stroke"/>`);
                     }
                 }
                 
