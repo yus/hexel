@@ -1,5 +1,6 @@
 import { setTool } from '../tools/tool-manager.js';
-import { gridEnabled } from '../core/grid.js';
+import { getGridState, toggleGrid } from '../core/grid.js';
+//import { gridEnabled } from '../core/grid.js';
 
 export function initToolbar() {
     // Tool buttons
