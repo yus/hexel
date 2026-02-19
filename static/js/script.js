@@ -114,6 +114,7 @@
             }
 
             // === DRAW GRID ===
+            // === DRAW GRID ===
             function drawGrid() {
                 gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
                 
@@ -162,17 +163,14 @@
                 gridCtx.strokeStyle = '#b388ff';
                 gridCtx.fillStyle = '#b388ff';
                 
-                // Determine if we need pixel snapping (for 1px equivalent lines)
-                const baseLineWidth = Math.max(0.5, 1.0 / Math.sqrt(scale));
-                gridCtx.lineWidth = baseLineWidth;
+                // Line width based on zoom - keep it thin but visible
+                gridCtx.lineWidth = Math.max(0.5, 1.0 / Math.sqrt(scale));
                 
-                // Apply pixel snapping for hairline grids (when line width is effectively 1px or less)
-                const needsSnapping = baseLineWidth <= 1.2; // Apply snapping for thin lines
+                // For 1:1 zoom and around that range, we need a different approach
+                // Instead of translating and rounding, we'll use a fractional pixel approach
                 
-                if (needsSnapping) {
-                    // Translate by 0.5px to align to physical pixels
-                    gridCtx.translate(0.5, 0.5);
-                }
+                // Check if we're in the problematic zoom range (0.9 to 1.4)
+                const isProblematicZoom = scale >= 0.9 && scale <= 1.4;
                 
                 // === HORIZONTAL LINES ===
                 gridCtx.globalAlpha = 0.15;
@@ -181,18 +179,22 @@
                 for (let row = startRow; row <= endRow; row++) {
                     const y = centerY + row * scaledV;
                     
-                    // Round to nearest pixel for sharper lines when zoomed out
-                    const snappedY = needsSnapping ? Math.round(y) : y;
-                    
-                    gridCtx.moveTo(0, snappedY);
-                    gridCtx.lineTo(gridCanvas.width, snappedY);
+                    if (isProblematicZoom) {
+                        // For problematic zoom, use exact coordinates - let the browser handle subpixel rendering
+                        gridCtx.moveTo(0, y);
+                        gridCtx.lineTo(gridCanvas.width, y);
+                    } else {
+                        // For other zooms, snap to nearest half-pixel for cleaner lines
+                        const snappedY = Math.round(y * 2) / 2;
+                        gridCtx.moveTo(0, snappedY);
+                        gridCtx.lineTo(gridCanvas.width, snappedY);
+                    }
                 }
                 gridCtx.stroke();
                 
-                // === +60° DIAGONALS (optimized) ===
+                // === +60° DIAGONALS ===
                 gridCtx.beginPath();
                 
-                // Pre-calculate tan60 for performance
                 const tan60 = Math.tan(60 * Math.PI / 180);
                 const extend = Math.max(gridCanvas.width, gridCanvas.height) * 1.5;
                 
@@ -203,17 +205,22 @@
                     for (let col = startCol - 3; col <= endCol + 3; col++) {
                         const x = centerX + col * scaledH + rowOffset;
                         
-                        // Round to nearest pixel for sharper lines
-                        const snappedX = needsSnapping ? Math.round(x) : x;
-                        const snappedY = needsSnapping ? Math.round(baseY) : baseY;
-                        
-                        gridCtx.moveTo(snappedX - extend, snappedY - extend * tan60);
-                        gridCtx.lineTo(snappedX + extend, snappedY + extend * tan60);
+                        if (isProblematicZoom) {
+                            // Use exact coordinates for problematic zoom
+                            gridCtx.moveTo(x - extend, baseY - extend * tan60);
+                            gridCtx.lineTo(x + extend, baseY + extend * tan60);
+                        } else {
+                            // Snap to half-pixel for other zooms
+                            const snappedX = Math.round(x * 2) / 2;
+                            const snappedY = Math.round(baseY * 2) / 2;
+                            gridCtx.moveTo(snappedX - extend, snappedY - extend * tan60);
+                            gridCtx.lineTo(snappedX + extend, snappedY + extend * tan60);
+                        }
                     }
                 }
                 gridCtx.stroke();
                 
-                // === -60° DIAGONALS (optimized) ===
+                // === -60° DIAGONALS ===
                 gridCtx.beginPath();
                 
                 for (let row = startRow - 3; row <= endRow + 3; row++) {
@@ -223,20 +230,20 @@
                     for (let col = startCol - 3; col <= endCol + 3; col++) {
                         const x = centerX + col * scaledH + rowOffset;
                         
-                        // Round to nearest pixel for sharper lines
-                        const snappedX = needsSnapping ? Math.round(x) : x;
-                        const snappedY = needsSnapping ? Math.round(baseY) : baseY;
-                        
-                        gridCtx.moveTo(snappedX - extend, snappedY + extend * tan60);
-                        gridCtx.lineTo(snappedX + extend, snappedY - extend * tan60);
+                        if (isProblematicZoom) {
+                            // Use exact coordinates for problematic zoom
+                            gridCtx.moveTo(x - extend, baseY + extend * tan60);
+                            gridCtx.lineTo(x + extend, baseY - extend * tan60);
+                        } else {
+                            // Snap to half-pixel for other zooms
+                            const snappedX = Math.round(x * 2) / 2;
+                            const snappedY = Math.round(baseY * 2) / 2;
+                            gridCtx.moveTo(snappedX - extend, snappedY + extend * tan60);
+                            gridCtx.lineTo(snappedX + extend, snappedY - extend * tan60);
+                        }
                     }
                 }
                 gridCtx.stroke();
-                
-                // Remove pixel snapping translation before drawing vertices
-                if (needsSnapping) {
-                    gridCtx.translate(-0.5, -0.5);
-                }
                 
                 // === VERTICES ===
                 gridCtx.globalAlpha = 0.1;
@@ -248,7 +255,7 @@
                     for (let col = startCol; col <= endCol; col++) {
                         const x = centerX + col * scaledH + rowOffset;
                         
-                        // Round vertex positions for cleaner dots
+                        // Always round vertices to whole pixels for clean dots
                         const snappedX = Math.round(x);
                         const snappedY = Math.round(baseY);
                         
@@ -262,7 +269,11 @@
                 gridCtx.fillStyle = '#ffffff';
                 gridCtx.globalAlpha = 0.3;
                 gridCtx.beginPath();
-                gridCtx.arc(Math.round(centerX), Math.round(centerY), 3, 0, Math.PI * 2);
+                
+                // Always round origin to whole pixel
+                const originX = Math.round(centerX);
+                const originY = Math.round(centerY);
+                gridCtx.arc(originX, originY, 3, 0, Math.PI * 2);
                 gridCtx.fill();
                 
                 // Restore context state
