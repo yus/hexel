@@ -1,3 +1,4 @@
+import { drawCanvas, drawCtx } from '../core/canvas.js';
 import { drawCtx } from '../core/canvas.js';
 import { points } from './points.js';
 import { lines } from './lines.js';
