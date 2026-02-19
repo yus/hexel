@@ -233,6 +233,26 @@
                 svg.setAttribute('height', window.innerHeight);
             }
 
+            // Hide canvas grid permanently
+            const gridCanvas = document.getElementById('grid-canvas');
+            if (gridCanvas) {
+                gridCanvas.style.display = 'none';
+            }
+            
+            // Ensure SVG visibility matches gridEnabled state
+            if (svg) {
+                svg.style.display = gridEnabled ? 'block' : 'none';
+                if (gridEnabled) {
+                    drawGrid(); // Draw initial grid
+                }
+            }
+            
+            // Make sure toggle button reflects initial state
+            const gridToggle = document.getElementById('header-grid-toggle');
+            if (gridToggle) {
+                gridToggle.classList.toggle('active', gridEnabled);
+            }
+
             // === DRAW ALL ELEMENTS ===
             function drawAll() {
                 drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
