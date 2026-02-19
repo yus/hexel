@@ -1,4 +1,5 @@
 import { setTool } from '../tools/tool-manager.js';
+import { clearAll } from '../drawing/renderer.js';
 import { getGridState, toggleGrid } from '../core/grid.js'; // Keep this
 // import { gridEnabled } from '../core/grid.js'; // Keep commented
 
