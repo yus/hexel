@@ -153,76 +153,120 @@
                     document.getElementById('mobile-zoom').textContent = scale.toFixed(2) + 'x';
                 }
                 
-                // Hairline grid
-                gridCtx.lineWidth = Math.max(0.5, 0.8 / Math.sqrt(scale));
-                gridCtx.strokeStyle = '#b388ff';
+                // === HAIRLINE GRID WITH PIXEL SNAPPING ===
                 
-                // Horizontal lines
+                // Save context state
+                gridCtx.save();
+                
+                // Set base styles
+                gridCtx.strokeStyle = '#b388ff';
+                gridCtx.fillStyle = '#b388ff';
+                
+                // Determine if we need pixel snapping (for 1px equivalent lines)
+                const baseLineWidth = Math.max(0.5, 1.0 / Math.sqrt(scale));
+                gridCtx.lineWidth = baseLineWidth;
+                
+                // Apply pixel snapping for hairline grids (when line width is effectively 1px or less)
+                const needsSnapping = baseLineWidth <= 1.2; // Apply snapping for thin lines
+                
+                if (needsSnapping) {
+                    // Translate by 0.5px to align to physical pixels
+                    gridCtx.translate(0.5, 0.5);
+                }
+                
+                // === HORIZONTAL LINES ===
                 gridCtx.globalAlpha = 0.15;
                 gridCtx.beginPath();
+                
                 for (let row = startRow; row <= endRow; row++) {
                     const y = centerY + row * scaledV;
-                    gridCtx.moveTo(0, y);
-                    gridCtx.lineTo(gridCanvas.width, y);
+                    
+                    // Round to nearest pixel for sharper lines when zoomed out
+                    const snappedY = needsSnapping ? Math.round(y) : y;
+                    
+                    gridCtx.moveTo(0, snappedY);
+                    gridCtx.lineTo(gridCanvas.width, snappedY);
                 }
                 gridCtx.stroke();
                 
-                // +60° diagonals
+                // === +60° DIAGONALS (optimized) ===
                 gridCtx.beginPath();
+                
+                // Pre-calculate tan60 for performance
+                const tan60 = Math.tan(60 * Math.PI / 180);
+                const extend = Math.max(gridCanvas.width, gridCanvas.height) * 1.5;
+                
                 for (let row = startRow - 3; row <= endRow + 3; row++) {
+                    const rowOffset = (row % 2 === 0) ? 0 : scaledH / 2;
+                    const baseY = centerY + row * scaledV;
+                    
                     for (let col = startCol - 3; col <= endCol + 3; col++) {
-                        const x = centerX + col * scaledH;
-                        const y = centerY + row * scaledV;
-                        const xOffset = (row % 2 === 0) ? 0 : scaledH / 2;
+                        const x = centerX + col * scaledH + rowOffset;
                         
-                        const extend = Math.max(gridCanvas.width, gridCanvas.height);
-                        gridCtx.moveTo(x + xOffset - extend, y - extend * Math.tan(60 * Math.PI / 180));
-                        gridCtx.lineTo(x + xOffset + extend, y + extend * Math.tan(60 * Math.PI / 180));
+                        // Round to nearest pixel for sharper lines
+                        const snappedX = needsSnapping ? Math.round(x) : x;
+                        const snappedY = needsSnapping ? Math.round(baseY) : baseY;
+                        
+                        gridCtx.moveTo(snappedX - extend, snappedY - extend * tan60);
+                        gridCtx.lineTo(snappedX + extend, snappedY + extend * tan60);
                     }
                 }
                 gridCtx.stroke();
                 
-                // -60° diagonals
+                // === -60° DIAGONALS (optimized) ===
                 gridCtx.beginPath();
+                
                 for (let row = startRow - 3; row <= endRow + 3; row++) {
+                    const rowOffset = (row % 2 === 0) ? 0 : scaledH / 2;
+                    const baseY = centerY + row * scaledV;
+                    
                     for (let col = startCol - 3; col <= endCol + 3; col++) {
-                        const x = centerX + col * scaledH;
-                        const y = centerY + row * scaledV;
-                        const xOffset = (row % 2 === 0) ? 0 : scaledH / 2;
+                        const x = centerX + col * scaledH + rowOffset;
                         
-                        const extend = Math.max(gridCanvas.width, gridCanvas.height);
-                        gridCtx.moveTo(x + xOffset - extend, y + extend * Math.tan(60 * Math.PI / 180));
-                        gridCtx.lineTo(x + xOffset + extend, y - extend * Math.tan(60 * Math.PI / 180));
+                        // Round to nearest pixel for sharper lines
+                        const snappedX = needsSnapping ? Math.round(x) : x;
+                        const snappedY = needsSnapping ? Math.round(baseY) : baseY;
+                        
+                        gridCtx.moveTo(snappedX - extend, snappedY + extend * tan60);
+                        gridCtx.lineTo(snappedX + extend, snappedY - extend * tan60);
                     }
                 }
                 gridCtx.stroke();
                 
-                // Vertices
-                gridCtx.fillStyle = '#b388ff';
+                // Remove pixel snapping translation before drawing vertices
+                if (needsSnapping) {
+                    gridCtx.translate(-0.5, -0.5);
+                }
+                
+                // === VERTICES ===
                 gridCtx.globalAlpha = 0.1;
+                
                 for (let row = startRow; row <= endRow; row++) {
+                    const baseY = centerY + row * scaledV;
+                    const rowOffset = (row % 2 !== 0) ? scaledH / 2 : 0;
+                    
                     for (let col = startCol; col <= endCol; col++) {
-                        const x = centerX + col * scaledH;
-                        const y = centerY + row * scaledV;
+                        const x = centerX + col * scaledH + rowOffset;
                         
-                        if (row % 2 !== 0) {
-                            gridCtx.beginPath();
-                            gridCtx.arc(x + scaledH/2, y, 1.0, 0, Math.PI*2);
-                            gridCtx.fill();
-                        } else {
-                            gridCtx.beginPath();
-                            gridCtx.arc(x, y, 1.0, 0, Math.PI*2);
-                            gridCtx.fill();
-                        }
+                        // Round vertex positions for cleaner dots
+                        const snappedX = Math.round(x);
+                        const snappedY = Math.round(baseY);
+                        
+                        gridCtx.beginPath();
+                        gridCtx.arc(snappedX, snappedY, 1.0, 0, Math.PI * 2);
+                        gridCtx.fill();
                     }
                 }
                 
-                // Origin
+                // === ORIGIN ===
                 gridCtx.fillStyle = '#ffffff';
                 gridCtx.globalAlpha = 0.3;
                 gridCtx.beginPath();
-                gridCtx.arc(centerX, centerY, 3, 0, Math.PI*2);
+                gridCtx.arc(Math.round(centerX), Math.round(centerY), 3, 0, Math.PI * 2);
                 gridCtx.fill();
+                
+                // Restore context state
+                gridCtx.restore();
                 
                 gridCtx.globalAlpha = 1.0;
             }
