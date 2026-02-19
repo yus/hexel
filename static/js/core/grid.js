@@ -43,7 +43,7 @@ export function drawGrid(scale, offsetX, offsetY, gridEnabled) {
     updateGridUI(scale, offsetX, offsetY);
     
     // Draw horizontals
-    drawHorizontals(startRow, endRow, left, right, gridColor, horiz);
+    drawHorizontals(startRow, endRow, left, right, gridColor, horiz, scale);
     
     // Draw diagonals
     const tan60 = Math.tan(60 * Math.PI / 180);
@@ -63,7 +63,7 @@ export function drawGrid(scale, offsetX, offsetY, gridEnabled) {
     gridCtx.restore();
 }
 
-function drawHorizontals(startRow, endRow, left, right, gridColor, horiz) {
+function drawHorizontals(startRow, endRow, left, right, gridColor, horiz, scale) {
     gridCtx.beginPath();
     gridCtx.strokeStyle = `${gridColor}${horiz.alpha})`;
     gridCtx.lineWidth = typeof horiz.width === 'function' ? horiz.width(scale) : horiz.width;
