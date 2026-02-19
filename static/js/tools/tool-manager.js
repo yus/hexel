@@ -4,13 +4,16 @@ import { SelectTool } from './select-tool.js';
 import { TriangleTool } from './triangle-tool.js';
 
 let currentTool = 'point';
-let activeTool = null;
+let activeTool = tools[currentTool]; // Initialize with default tool!
+// let activeTool = null;
 
 const tools = {
     point: new PointTool(),
     line: new LineTool(),
     triangle: new TriangleTool(),
-    select: new SelectTool()
+    select: new SelectTool(),
+    hexagon: new HexagonTool(),
+    'fill-triangle': new FillTriangleTool()
 };
 
 export function setTool(toolName) {
