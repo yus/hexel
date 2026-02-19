@@ -122,20 +122,23 @@
                 // Save context state
                 gridCtx.save();
                 
-                // Apply transforms instead of manual coordinate calculations
+                // Apply transforms
                 gridCtx.translate(gridCanvas.width / 2 + offsetX, gridCanvas.height / 2 + offsetY);
                 gridCtx.scale(scale, scale);
                 
-                // Grid styling
-                // Grid styling - intelligent line width
-                gridCtx.strokeStyle = '#b388ff';
-                if (scale < 0.5) {
-                    gridCtx.lineWidth = 0.15; // Fixed thin at very low zoom
-                } else if (scale < 1.0) {
-                    gridCtx.lineWidth = 0.2; // Slightly thicker but still hairline
-                } else {
-                    gridCtx.lineWidth = 0.5 / scale; // Normal calculation for >= 1.0
-                }
+                // === ZOOM-BASED CONFIGURATION ===
+                const zoomConfig = [
+                    { max: 0.5, horiz: { alpha: 0.15, width: 0.3 }, diag: { alpha: 0.1, width: 0.2 } },
+                    { max: 1.0, horiz: { alpha: 0.15, width: 0.3 }, diag: { alpha: 0.1, width: 0.3 } },
+                    { max: Infinity, horiz: { alpha: 0.15, width: () => 0.5 / scale }, diag: { alpha: 0.1, width: () => 0.5 / scale } }
+                ];
+                
+                const config = zoomConfig.find(c => scale < c.max);
+                const horiz = config.horiz;
+                const diag = config.diag;
+                
+                // Base color
+                const gridColor = 'rgba(200, 147, 210,';
                 
                 // Calculate visible range in grid coordinates
                 const left = -gridCanvas.width / 2 / scale;
@@ -161,7 +164,8 @@
                 
                 // === DRAW HORIZONTAL LINES ===
                 gridCtx.beginPath();
-                gridCtx.globalAlpha = 0.1;
+                gridCtx.strokeStyle = `${gridColor}${horiz.alpha})`;
+                gridCtx.lineWidth = typeof horiz.width === 'function' ? horiz.width() : horiz.width;
                 
                 for (let row = startRow; row <= endRow; row++) {
                     const y = row * V_STEP;
@@ -172,6 +176,9 @@
                 
                 // === DRAW DIAGONALS (+60°) ===
                 gridCtx.beginPath();
+                gridCtx.strokeStyle = `${gridColor}${diag.alpha})`;
+                gridCtx.lineWidth = typeof diag.width === 'function' ? diag.width() : diag.width;
+                
                 const tan60 = Math.tan(60 * Math.PI / 180);
                 
                 for (let row = startRow - 3; row <= endRow + 3; row++) {
@@ -181,7 +188,6 @@
                     for (let col = startCol - 3; col <= endCol + 3; col++) {
                         const x = col * H_STEP + rowOffset;
                         
-                        // Draw infinite line through this point at +60°
                         gridCtx.moveTo(x - 1000, baseY - 1000 * tan60);
                         gridCtx.lineTo(x + 1000, baseY + 1000 * tan60);
                     }
@@ -190,6 +196,8 @@
                 
                 // === DRAW DIAGONALS (-60°) ===
                 gridCtx.beginPath();
+                gridCtx.strokeStyle = `${gridColor}${diag.alpha})`;
+                gridCtx.lineWidth = typeof diag.width === 'function' ? diag.width() : diag.width;
                 
                 for (let row = startRow - 3; row <= endRow + 3; row++) {
                     const rowOffset = (row % 2 === 0) ? 0 : H_STEP / 2;
@@ -198,7 +206,6 @@
                     for (let col = startCol - 3; col <= endCol + 3; col++) {
                         const x = col * H_STEP + rowOffset;
                         
-                        // Draw infinite line through this point at -60°
                         gridCtx.moveTo(x - 1000, baseY + 1000 * tan60);
                         gridCtx.lineTo(x + 1000, baseY - 1000 * tan60);
                     }
@@ -232,36 +239,6 @@
                 // Restore context
                 gridCtx.restore();
             }
-            
-            // Update resize handler
-            window.addEventListener('resize', () => {
-                resizeCanvases(); // This already calls drawGrid() and drawAll()
-            });
-            
-            // Wait for DOM to be fully loaded
-            document.addEventListener('DOMContentLoaded', function() {
-                // Hide SVG grid permanently (if it exists)
-                const svg = document.getElementById('grid-svg');
-                if (svg) {
-                    svg.style.display = 'none';
-                }
-                
-                // Make sure canvas grid is visible
-                const gridCanvas = document.getElementById('grid-canvas');
-                if (gridCanvas) {
-                    gridCanvas.style.display = 'block'; // Ensure canvas is visible
-                }
-                
-                // Initial grid draw
-                drawGrid();
-                drawAll();
-                
-                // Make sure toggle button reflects initial state
-                const gridToggle = document.getElementById('header-grid-toggle');
-                if (gridToggle) {
-                    gridToggle.classList.toggle('active', gridEnabled);
-                }
-            });
 
             // === DRAW ALL ELEMENTS ===
             function drawAll() {
