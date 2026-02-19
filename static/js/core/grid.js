@@ -1,3 +1,4 @@
+import { gridCanvas } from './canvas.js';
 import { gridCtx } from './canvas.js';
 import { H_STEP, V_STEP } from '../utils/constants.js';
 import { screenToHexel } from './hexel.js';
