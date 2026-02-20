@@ -38,3 +38,20 @@ export function handleToolAction(event, type, ...args) {
         return activeTool[type](...args);
     }
 }
+
+// Add at the bottom
+let snappingEnabled = true;
+
+export function setSnapping(enabled) {
+    snappingEnabled = enabled;
+    console.log('Tool snapping:', enabled);
+    
+    // You can pass this to active tool if needed
+    if (activeTool && activeTool.setSnapping) {
+        activeTool.setSnapping(enabled);
+    }
+}
+
+export function getSnapping() {
+    return snappingEnabled;
+}
