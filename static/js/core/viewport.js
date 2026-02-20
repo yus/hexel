@@ -5,7 +5,7 @@ let offsetX = 0;
 let offsetY = 0;
 
 export function getViewport() {
-    return { scale, offsetX, offsetY, gridEnabled };
+    return { scale, offsetX, offsetY };
 }
 
 export function setScale(newScale) {
