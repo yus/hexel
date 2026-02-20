@@ -1,9 +1,11 @@
+import { H_STEP, V_STEP } from '../utils/constants.js';
+
 let scale = 1.0;
 let offsetX = 0;
 let offsetY = 0;
 
 export function getViewport() {
-    return { scale, offsetX, offsetY };
+    return { scale, offsetX, offsetY, gridEnabled };
 }
 
 export function setScale(newScale) {
