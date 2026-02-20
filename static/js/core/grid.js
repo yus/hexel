@@ -1,3 +1,4 @@
+import { getViewport } from './viewport.js';
 import { gridCanvas } from './canvas.js';
 import { gridCtx } from './canvas.js';
 import { H_STEP, V_STEP } from '../utils/constants.js';
@@ -139,9 +140,16 @@ export function getGridState() {
 }
 
 export function toggleGrid() {
-    gridEnabled = !gridEnabled;
-    drawGrid(scale, offsetX, offsetY, gridEnabled); // Use your actual draw function
-    return gridEnabled;
+    // Get current scale from viewport
+    const { scale, offsetX, offsetY, gridEnabled } = getViewport();
+    
+    // Toggle the grid state
+    const newState = !gridEnabled;
+    
+    // Redraw with current scale
+    drawGrid(scale, offsetX, offsetY, newState);
+    
+    return newState;
 }
 
 export function setGridState(enabled) {
