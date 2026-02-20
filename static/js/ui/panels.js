@@ -36,6 +36,7 @@ function initSettings() {
         snapToggle.addEventListener('change', (e) => {
             const snap = e.target.checked;
             import('../tools/tool-manager.js').then(m => m.setSnapping(snap));
+            import('../core/grid.js').then(m => m.setSnapping(snap));
         });
     }
 }
