@@ -152,3 +152,19 @@ export function toggleGridState() {
     gridEnabled = !gridEnabled;
     return gridEnabled;
 }
+
+// At the bottom of grid.js, add:
+let gridOpacity = 0.15;
+
+export function setGridOpacity(opacity) {
+    gridOpacity = opacity;
+    // Redraw grid with new opacity
+    const { scale, offsetX, offsetY, gridEnabled } = getViewport();
+    drawGrid(scale, offsetX, offsetY, gridEnabled);
+}
+
+export function setSnapping(enabled) {
+    // Your snapping logic here
+    console.log('Snapping:', enabled);
+    // You might want to store this in a module variable
+}
