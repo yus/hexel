@@ -176,3 +176,22 @@ export function setSnapping(enabled) {
     console.log('Snapping:', enabled);
     // You might want to store this in a module variable
 }
+
+// In static/js/core/grid.js, add this export
+let snappingEnabled = true;
+
+export function setSnapping(enabled) {
+    snappingEnabled = enabled;
+    console.log('Snapping:', enabled);
+    
+    // Optionally update UI or store in localStorage
+    localStorage?.setItem('hexelSnapping', enabled);
+    
+    // You can also dispatch an event for other modules
+    window.dispatchEvent(new CustomEvent('snapping-changed', { detail: { enabled } }));
+}
+
+export function getSnapping() {
+    return snappingEnabled;
+}
+
