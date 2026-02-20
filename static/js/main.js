@@ -4,18 +4,16 @@ import { initToolbar } from './ui/toolbar.js';
 import { initEvents } from './ui/events.js';
 import { initPanels } from './ui/panels.js';
 import { initMobile } from './ui/mobile.js';
-import { getViewport } from './core/viewport.js';
-import { drawGrid } from './core/grid.js';
+import { initShortcuts } from './ui/shortcuts.js';
 import { drawAll } from './drawing/renderer.js';
 import { initGridShader, drawGridGL } from './core/grid-shader.js';
 import { saveState } from './drawing/history.js';
-import { initShortcuts } from './ui/shortcuts.js';
 
 // App state
 let glShader = null;
 let useWebGL = true;
 
-document.addEventListener('DOMContentLoaded', () => {
+document.addEventListener('DOMContentLoaded', async () => {
     console.log('HEXEL STUDIO · 60° Grid initializing...');
     
     // Try WebGL first for perfect hairline grids
@@ -45,20 +43,26 @@ document.addEventListener('DOMContentLoaded', () => {
         const glCanvas = document.getElementById('grid-gl-canvas');
         if (glCanvas) glCanvas.style.display = 'none';
     }
-
-    // In main.js, after WebGL check, add:
-    if (useWebGL && glShader) {
-        drawGridGL(glShader, scale, offsetX, offsetY);
-        document.getElementById('grid-gl-canvas').style.display = 'block';
-        document.getElementById('grid-canvas').style.display = 'none';
-    } else {
-        document.getElementById('grid-canvas').style.display = 'block';
-        document.getElementById('grid-gl-canvas').style.display = 'none';
-        drawGrid(scale, offsetX, offsetY, true); // Force grid enabled
-    }
     
     // Initialize core systems
     initCanvases();
+    
+    // Now import viewport and get values
+    const { getViewport } = await import('./core/viewport.js');
+    const { scale, offsetX, offsetY, gridEnabled } = getViewport();
+    
+    // Draw initial grid
+    if (useWebGL && glShader) {
+        drawGridGL(glShader, scale, offsetX, offsetY);
+    } else {
+        const { drawGrid } = await import('./core/grid.js');
+        drawGrid(scale, offsetX, offsetY, gridEnabled);
+    }
+    
+    // Draw all elements
+    drawAll();
+    
+    // Initialize UI components
     initToolbar();
     initEvents();
     initPanels();
@@ -69,40 +73,31 @@ document.addEventListener('DOMContentLoaded', () => {
     const svg = document.getElementById('grid-svg');
     if (svg) svg.style.display = 'none';
     
-    // Initial draw
-    const { scale, offsetX, offsetY, gridEnabled } = getViewport();
-    
-    if (useWebGL && glShader) {
-        drawGridGL(glShader, scale, offsetX, offsetY);
-    } else {
-        drawGrid(scale, offsetX, offsetY, gridEnabled);
-    }
-    
-    drawAll();
-    
     // Save initial state for undo/redo
     saveState();
     
+    console.log('✨ HEXEL STUDIO ready!');
+    
     // Handle window resize
-    window.addEventListener('resize', () => {
+    window.addEventListener('resize', async () => {
         const glCanvas = document.getElementById('grid-gl-canvas');
         if (glCanvas) {
             glCanvas.width = window.innerWidth;
             glCanvas.height = window.innerHeight;
         }
         
+        const { getViewport } = await import('./core/viewport.js');
         const { scale, offsetX, offsetY, gridEnabled } = getViewport();
         
         if (useWebGL && glShader) {
             drawGridGL(glShader, scale, offsetX, offsetY);
         } else {
+            const { drawGrid } = await import('./core/grid.js');
             drawGrid(scale, offsetX, offsetY, gridEnabled);
         }
         
         drawAll();
     });
-    
-    console.log('✨ HEXEL STUDIO ready!');
 });
 
 // Export for debugging (optional)
@@ -120,27 +115,17 @@ export function toggleRenderer() {
         if (glCanvas) glCanvas.style.display = 'none';
     }
     
-    const { scale, offsetX, offsetY, gridEnabled } = getViewport();
-    
-    if (useWebGL && glShader) {
-        drawGridGL(glShader, scale, offsetX, offsetY);
-    } else {
-        drawGrid(scale, offsetX, offsetY, gridEnabled);
-    }
-}
-
-// Hot reload helper (for development)
-if (import.meta.hot) {
-    import.meta.hot.accept(() => {
-        console.log('🔄 Hot reloading...');
+    // Redraw with new renderer
+    import('./core/viewport.js').then(({ getViewport }) => {
         const { scale, offsetX, offsetY, gridEnabled } = getViewport();
         
         if (useWebGL && glShader) {
             drawGridGL(glShader, scale, offsetX, offsetY);
         } else {
-            drawGrid(scale, offsetX, offsetY, gridEnabled);
+            import('./core/grid.js').then(({ drawGrid }) => {
+                drawGrid(scale, offsetX, offsetY, gridEnabled);
+            });
         }
-        
         drawAll();
     });
 }
