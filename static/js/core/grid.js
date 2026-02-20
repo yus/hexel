@@ -47,8 +47,8 @@ export function drawGrid(scale, offsetX, offsetY, gridEnabled) {
     
     // Draw diagonals
     const tan60 = Math.tan(60 * Math.PI / 180);
-    drawDiagonals(startRow, endRow, startCol, endCol, left, right, gridColor, diag, tan60, true);
-    drawDiagonals(startRow, endRow, startCol, endCol, left, right, gridColor, diag, tan60, false);
+    drawDiagonals(startRow, endRow, startCol, endCol, left, right, gridColor, diag, tan60, true, scale);
+    drawDiagonals(startRow, endRow, startCol, endCol, left, right, gridColor, diag, tan60, false, scale);
     
     // Draw vertices
     drawVertices(startRow, endRow, startCol, endCol);
@@ -76,7 +76,7 @@ function drawHorizontals(startRow, endRow, left, right, gridColor, horiz, scale)
     gridCtx.stroke();
 }
 
-function drawDiagonals(startRow, endRow, startCol, endCol, left, right, gridColor, diag, tan60, positive) {
+function drawDiagonals(startRow, endRow, startCol, endCol, left, right, gridColor, diag, tan60, positive, scale) {
     gridCtx.beginPath();
     gridCtx.strokeStyle = `${gridColor}${diag.alpha})`;
     gridCtx.lineWidth = typeof diag.width === 'function' ? diag.width(scale) : diag.width;
