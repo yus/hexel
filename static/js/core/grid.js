@@ -170,27 +170,30 @@ export function setGridOpacity(opacity) {
     drawGrid(scale, offsetX, offsetY, gridEnabled);
 }
 
-export function setSnapping(enabled) {
-    // Your snapping logic here
-    console.log('Snapping:', enabled);
-    // You might want to store this in a module variable
-}
-
-// In static/js/core/grid.js, add this export
+// Choose ONE snapping variable - this is it
 let snappingEnabled = true;
 
+// Single setSnapping function
 export function setSnapping(enabled) {
     snappingEnabled = enabled;
-    console.log('Snapping:', enabled);
+    console.log('Grid snapping:', enabled);
     
-    // Optionally update UI or store in localStorage
-    localStorage?.setItem('hexelSnapping', enabled);
+    // Store in localStorage if you want
+    localStorage?.setItem('gridSnapping', enabled);
     
-    // You can also dispatch an event for other modules
-    window.dispatchEvent(new CustomEvent('snapping-changed', { detail: { enabled } }));
+    // Dispatch event for other modules
+    window.dispatchEvent(new CustomEvent('snapping-changed', { 
+        detail: { enabled } 
+    }));
 }
 
+// Single getSnapping function
 export function getSnapping() {
     return snappingEnabled;
 }
 
+// Optional: Initialize from localStorage
+const saved = localStorage?.getItem('gridSnapping');
+if (saved !== null) {
+    snappingEnabled = saved === 'true';
+}
