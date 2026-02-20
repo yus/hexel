@@ -45,6 +45,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const glCanvas = document.getElementById('grid-gl-canvas');
         if (glCanvas) glCanvas.style.display = 'none';
     }
+
+    // In main.js, after WebGL check, add:
+    if (useWebGL && glShader) {
+        drawGridGL(glShader, scale, offsetX, offsetY);
+        document.getElementById('grid-gl-canvas').style.display = 'block';
+        document.getElementById('grid-canvas').style.display = 'none';
+    } else {
+        document.getElementById('grid-canvas').style.display = 'block';
+        document.getElementById('grid-gl-canvas').style.display = 'none';
+        drawGrid(scale, offsetX, offsetY, true); // Force grid enabled
+    }
     
     // Initialize core systems
     initCanvases();
