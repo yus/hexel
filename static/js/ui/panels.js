@@ -35,8 +35,24 @@ function initSettings() {
     if (snapToggle) {
         snapToggle.addEventListener('change', (e) => {
             const snap = e.target.checked;
-            import('../tools/tool-manager.js').then(m => m.setSnapping(snap));
-            import('../core/grid.js').then(m => m.setSnapping(snap));
+            
+            // Update tool manager if function exists
+            import('../tools/tool-manager.js').then(m => {
+                if (m.setSnapping) {
+                    m.setSnapping(snap);
+                } else {
+                    console.warn('setSnapping not found in tool-manager.js');
+                }
+            });
+            
+            // Update grid if function exists
+            import('../core/grid.js').then(m => {
+                if (m.setSnapping) {
+                    m.setSnapping(snap);
+                } else {
+                    console.warn('setSnapping not found in grid.js');
+                }
+            });
         });
     }
 }
