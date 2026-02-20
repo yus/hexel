@@ -140,17 +140,16 @@ export function getGridState() {
 }
 
 export function toggleGrid() {
-    // Get current scale from viewport
-    const { scale, offsetX, offsetY, gridEnabled } = getViewport();
-    
-    // Toggle the grid state
-    const newState = !gridEnabled;
-    
-    // Redraw with current scale
-    drawGrid(scale, offsetX, offsetY, newState);
-    
-    return newState;
+    // Make sure you're importing getViewport
+    import('./viewport.js').then(({ getViewport }) => {
+        const { scale, offsetX, offsetY, gridEnabled } = getViewport();
+        const newState = !gridEnabled;
+        drawGrid(scale, offsetX, offsetY, newState);
+        return newState;
+    });
 }
+
+
 
 export function setGridState(enabled) {
     gridEnabled = enabled;
