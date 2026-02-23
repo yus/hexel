@@ -290,16 +290,6 @@ export class HexelRenderer {
         this.hexagonVertexCount = 0;
     }
     
-    setPreviewMode(enabled) {
-        this.previewMode = enabled;
-    }
-    
-    clearPreview() {
-        this.previewPoints = [];
-        this.previewLines = [];
-        this.previewHexagons = [];
-        this.drawAll(this.currentScale, this.currentOffsetX, this.currentOffsetY);
-    }
     /*
     addPoint(q, r, color, size, preview = false) {
         // Convert hexel to world coordinates
@@ -488,6 +478,22 @@ export class HexelRenderer {
         console.log('✅ Drew', totalPoints, 'points');
     }
 
+    drawLine(start, end, color, alpha, dashed = false) {
+        console.log('Drawing line from', start, 'to', end);
+        
+        // For now, just store line preview data
+        // We'll implement actual WebGL line rendering later
+        this.previewLines.push({
+            start: { x: start.q * H_STEP + (start.r % 2 !== 0 ? H_STEP/2 : 0), 
+                     y: start.r * V_STEP },
+            end: { x: end.q * H_STEP + (end.r % 2 !== 0 ? H_STEP/2 : 0), 
+                   y: end.r * V_STEP },
+            color,
+            alpha,
+            dashed
+        });
+    }
+
     drawHexagonOutline(hexel, color, alpha, dashed) {
         // Implement hexagon outline drawing
         console.log('Drawing hexagon outline', hexel);
@@ -496,6 +502,17 @@ export class HexelRenderer {
     drawHexagonCorners(hexel, color, alpha) {
         // Implement corner markers
         console.log('Drawing hexagon corners', hexel);
+    }
+
+    setPreviewMode(enabled) {
+        this.previewMode = enabled;
+    }
+    
+    clearPreview() {
+        this.previewPoints = [];
+        this.previewLines = [];
+        this.previewHexagons = [];
+        this.drawAll(this.currentScale, this.currentOffsetX, this.currentOffsetY);
     }
     
     syncFromStorage() {
