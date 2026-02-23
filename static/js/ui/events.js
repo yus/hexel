@@ -139,8 +139,12 @@ function onTouchMove(e) {
         const touch = e.touches[0];
         const dx = touch.clientX - lastX;
         const dy = touch.clientY - lastY;
+
+        const { scale } = getViewport();
+        const worldDx = dx / scale;
+        const worldDy = -dy / scale;
         
-        setOffset(dx, dy);
+        setOffset(worldDx, worldDy);
         
         const { scale, offsetX, offsetY } = getViewport();
         const renderer = getRenderer();
