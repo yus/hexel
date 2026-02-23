@@ -71,68 +71,43 @@ export class HexelRenderer {
             uniform vec2 u_resolution;
             uniform vec2 u_offset;
             uniform float u_scale;
-            uniform float u_time;
             uniform float u_opacity;
             
-            // Grid parameters
-            const float H_STEP = 48.0;
-            const float V_STEP = 41.569; // 24 * sqrt(3)
-            const vec3 GRID_COLOR = vec3(0.784, 0.576, 0.824); // #c893d2
+            const float TAU = 6.28318530718; // atan(1.0) * 8.0
             
-            // Anti-aliased grid line function
-            float gridLine(float coord, float step, float width) {
-                float gridPos = mod(coord + step/2.0, step) - step/2.0;
-                float dist = abs(gridPos);
-                
-                // Smooth step for anti-aliasing
-                return 1.0 - smoothstep(0.0, width, dist);
+            // Unit vectors at 0°, 60°, and 120°
+            const vec2 unit000 = vec2(0.0, 1.0);      // sin(0), cos(0)
+            const vec2 unit060 = vec2(0.866, 0.5);    // sin(60°), cos(60°)
+            const vec2 unit120 = vec2(0.866, -0.5);   // sin(120°), cos(120°)
+            
+            float gridAxis(float lineWidth, vec2 pos, vec2 axis) {
+                float projection = dot(pos, axis);
+                float gridPos = mod(projection, 1.0);
+                float dist = min(gridPos, 1.0 - gridPos);
+                return smoothstep(lineWidth, 0.0, dist);
             }
             
             void main() {
-                // Get position in grid space
-                vec2 pos = gl_FragCoord.xy - u_offset;
-                pos /= u_scale;
+                // Get normalized coordinates with aspect ratio correction
+                vec2 uv = (gl_FragCoord.xy / u_resolution.xy) - 0.5;
+                uv.x *= u_resolution.x / u_resolution.y;
+                uv *= max(u_resolution.x / u_resolution.y, u_resolution.y / u_resolution.x);
                 
-                // Your ZOOM CONFIGURATION implemented in GLSL!
-                float horizAlpha = u_opacity;
-                float diagAlpha = u_opacity * 0.7;
-                float lineWidth = 0.8;
+                // Apply pan and zoom
+                vec2 pos = uv * u_scale + (u_offset / u_resolution.xy);
+                pos *= 3.0; // Scale to see more/fewer hexagons
                 
-                if (u_scale < 0.5) {
-                    // Very zoomed out
-                    lineWidth = 0.3;
-                } else if (u_scale < 1.0) {
-                    // Zoomed out
-                    lineWidth = 0.4;
-                } else {
-                    // Normal and zoomed in
-                    lineWidth = 0.5 / u_scale;
-                }
+                float lineWidth = 0.05 / u_scale; // Adjust line width with zoom
                 
-                // Horizontal lines
-                float horiz = gridLine(pos.y, V_STEP, lineWidth);
+                // Calculate grid intensity for each axis
+                float r = gridAxis(lineWidth, pos, unit000);
+                float g = gridAxis(lineWidth, pos, unit120);
+                float b = gridAxis(lineWidth, pos, -unit060);
                 
-                // Diagonal lines (+60°)
-                float rowOffset = mod(floor(pos.y / V_STEP), 2.0) * (H_STEP / 2.0);
-                float tan60 = 1.732; // tan(60°)
+                // Combine with your grid color
+                vec3 GRID_COLOR = vec3(0.784, 0.576, 0.824);
+                float alpha = max(max(r, g), b) * u_opacity;
                 
-                // Transform to diagonal coordinates
-                float diagPos1 = pos.x - rowOffset - pos.y / tan60;
-                float diagPos2 = pos.x - rowOffset + pos.y / tan60;
-                
-                float diag1 = gridLine(diagPos1, H_STEP, lineWidth);
-                float diag2 = gridLine(diagPos2, H_STEP, lineWidth);
-                
-                // Combine lines with different alphas for horizontals vs diagonals
-                float alpha = 0.0;
-                
-                if (horiz > 0.0) {
-                    alpha = horiz * horizAlpha;
-                } else if (diag1 > 0.0 || diag2 > 0.0) {
-                    alpha = max(diag1, diag2) * diagAlpha;
-                }
-                
-                // Output final color
                 gl_FragColor = vec4(GRID_COLOR, alpha);
             }
         `;
