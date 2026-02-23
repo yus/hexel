@@ -375,7 +375,7 @@ export class HexelRenderer {
     }
     
     drawAll(scale, offsetX, offsetY) {
-        console.log('drawAll called');
+        // console.log('drawAll called');
         this.currentScale = scale;
         this.currentOffsetX = offsetX;
         this.currentOffsetY = offsetY;
@@ -383,13 +383,14 @@ export class HexelRenderer {
         const gl = this.gl;
         
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-        gl.clearColor(0, 0, 0, 1);
+        gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT);
         
         if (this.gridEnabled) {
             this.drawGrid(scale, offsetX, offsetY);
         }
         
+        this.drawPoints(scale, offsetX, offsetY);
         this.drawPoints(scale, offsetX, offsetY);
         // Add drawLines, drawHexagons etc
     }
@@ -478,6 +479,7 @@ export class HexelRenderer {
         console.log('✅ Drew', totalPoints, 'points');
     }
 
+    /*
     drawLine(start, end, color, alpha, dashed) {
         console.log('🎨 Would draw line:', {start, end, color});
         // Store for later implementation
@@ -495,6 +497,83 @@ export class HexelRenderer {
             alpha,
             dashed
         });
+    } */
+
+    drawLine(start, end, color, alpha, dashed = false) {
+        // Convert hexel coordinates to world coordinates
+        const startX = start.q * H_STEP + (start.r % 2 !== 0 ? H_STEP/2 : 0);
+        const startY = start.r * V_STEP;
+        const endX = end.q * H_STEP + (end.r % 2 !== 0 ? H_STEP/2 : 0);
+        const endY = end.r * V_STEP;
+        
+        // Parse color
+        const r = parseInt(color.slice(1,3), 16) / 255;
+        const g = parseInt(color.slice(3,5), 16) / 255;
+        const b = parseInt(color.slice(5,7), 16) / 255;
+        
+        // Store line data for drawing
+        this.previewLines.push({
+            points: [startX, startY, endX, endY],
+            color: [r, g, b],
+            alpha,
+            dashed
+        });
+    }
+    
+    // Add this new method to draw lines
+    drawLines(scale, offsetX, offsetY) {
+        if (this.previewLines.length === 0) return;
+        
+        const gl = this.gl;
+        const program = this.programs.line; // You'll need a line shader
+        
+        if (!program) {
+            // Fallback: draw lines using points (temporary)
+            this.drawLinesAsPoints();
+            return;
+        }
+        
+        // Use line shader here
+        console.log('🎨 Drawing', this.previewLines.length, 'lines');
+    }
+    
+    // Temporary fallback - draw lines as connected points
+    drawLinesAsPoints() {
+        this.previewLines.forEach(line => {
+            const { points, color, alpha } = line;
+            
+            // Draw start point
+            this.previewPoints.push({
+                x: points[0], y: points[1],
+                r: color[0], g: color[1], b: color[2],
+                size: 2,
+                preview: true
+            });
+            
+            // Draw end point
+            this.previewPoints.push({
+                x: points[2], y: points[3],
+                r: color[0], g: color[1], b: color[2],
+                size: 2,
+                preview: true
+            });
+            
+            // Draw 10 interpolated points along the line
+            for (let i = 1; i < 10; i++) {
+                const t = i / 10;
+                const x = points[0] * (1-t) + points[2] * t;
+                const y = points[1] * (1-t) + points[3] * t;
+                
+                this.previewPoints.push({
+                    x, y,
+                    r: color[0], g: color[1], b: color[2],
+                    size: 1,
+                    preview: true
+                });
+            }
+        });
+        
+        this.updatePointBuffer();
     }
     
     drawHexagonOutline(hexel, color, alpha, dashed) {
