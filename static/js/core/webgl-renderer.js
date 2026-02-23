@@ -62,12 +62,16 @@ export class HexelRenderer {
             uniform float u_opacity;
             
             const float TAU = 6.28318530718;
+            const float H_STEP = 48.0;
+            const float V_STEP = 41.569;
+            const vec3 GRID_COLOR = vec3(0.784, 0.576, 0.824);
             
+            // Unit vectors at 0°, 60°, and 120°
             const vec2 unit000 = vec2(0.0, 1.0);
             const vec2 unit060 = vec2(0.8660254, 0.5);
             const vec2 unit120 = vec2(0.8660254, -0.5);
             
-            float gridAxis(float lineWidth, vec2 pos, vec2 axis) {
+            float gridLine(float lineWidth, vec2 pos, vec2 axis) {
                 float projection = dot(pos, axis);
                 float gridPos = mod(projection, 1.0);
                 float dist = min(gridPos, 1.0 - gridPos);
@@ -75,31 +79,32 @@ export class HexelRenderer {
             }
             
             void main() {
-                vec2 uv = (gl_FragCoord.xy / u_resolution.xy) - 0.5;
+                vec2 uv = (gl_FragCoord.xy - u_offset) / u_resolution.xy - 0.5;
                 uv.x *= u_resolution.x / u_resolution.y;
                 
-                // Apply pan and zoom
-                vec2 pos = uv * 3.0 * u_scale + (u_offset / u_resolution.xy);
+                vec2 pos = uv * 3.0 * u_scale;
                 
-                float lineWidth = 0.2 / u_scale;
+                float lineWidth = 0.08 / u_scale;
                 
-                float r = gridAxis(lineWidth, pos, unit000);
-                float g = gridAxis(lineWidth, pos, unit120);
-                float b = gridAxis(lineWidth, pos, -unit060);
+                // NOW all variables are declared!
+                float horiz = gridLine(lineWidth, pos, unit000);
+                float diag1 = gridLine(lineWidth, pos, unit120);
+                float diag2 = gridLine(lineWidth, pos, -unit060);
                 
-                // float alpha = max(max(r, g), b);
+                float horizAlpha = u_opacity;
+                float diagAlpha = u_opacity * 0.7;
+                
                 float alpha = 0.0;
                 if (horiz > 0.0) {
                     alpha = horiz * horizAlpha;
                 } else if (diag1 > 0.0 || diag2 > 0.0) {
                     alpha = max(diag1, diag2) * diagAlpha;
                 }
-                // If neither condition is true, alpha stays 0
                 
-                // Minimum opacity of 0.3 as requested
-                alpha = max(alpha * u_opacity, 1.0);
+                // Force minimum visibility for debugging
+                alpha = max(alpha, 0.3);
                 
-                gl_FragColor = vec4(vec3(0.784, 0.576, 0.824), alpha);
+                gl_FragColor = vec4(GRID_COLOR, alpha);
             }
         `;
         
