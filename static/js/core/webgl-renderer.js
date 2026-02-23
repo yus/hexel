@@ -323,6 +323,7 @@ export class HexelRenderer {
     }
     
     drawAll(scale, offsetX, offsetY) {
+        console.log('drawAll called');
         this.currentScale = scale;
         this.currentOffsetX = offsetX;
         this.currentOffsetY = offsetY;
