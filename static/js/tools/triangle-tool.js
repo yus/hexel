@@ -146,13 +146,16 @@ export class TriangleTool {
     }
     
     drawPreview() {
-        // NULL CHECK AT THE VERY TOP!
-        if (!this.previewTriangle) {
-            console.log('No preview triangle to draw');
+        // CRITICAL: Capture preview triangle in a local variable
+        const preview = this.previewTriangle;
+        
+        // Check if it exists and has the required properties
+        if (!preview || !preview.hexel) {
+            console.log('No valid preview triangle');
             return;
         }
         
-        // Now safe to use this.previewTriangle
+        // Clear any old preview first
         this.clearPreview();
         
         const renderer = getRenderer();
@@ -160,10 +163,11 @@ export class TriangleTool {
         
         const color = document.querySelector('.color-swatch.active')?.dataset.color || '#ffaa66';
         
+        // Use the LOCAL preview variable, not this.previewTriangle
         renderer.setPreviewMode(true);
         renderer.addTriangle(
-            this.previewTriangle.hexel,  // Now safe!
-            this.previewTriangle.triangle, 
+            preview.hexel,
+            preview.triangle, 
             color, 
             true
         );
