@@ -69,7 +69,7 @@ export class HexelRenderer {
               float axis3 = -0.5 * pos.x - 0.866 * pos.y;
               
               // Grid spacing
-              float spacing = 48.0;
+              float spacing = 12.0;
               
               // Distance to nearest grid line on each axis
               float d1 = abs(mod(axis1 + spacing/2.0, spacing) - spacing/2.0);
