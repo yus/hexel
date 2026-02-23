@@ -8,8 +8,10 @@ import { HexelRenderer } from './core/webgl-renderer.js';
 import { saveState, undo, redo, clearHistory } from './drawing/history.js';
 
 // App state
-let renderer = null;
-let gl = null;
+// let renderer = null;
+// let gl = null;
+
+const renderer = new HexelRenderer(gl);
 
 // Export for other modules to access
 export function getRenderer() {
