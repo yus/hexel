@@ -40,6 +40,10 @@ export class HexelRenderer {
         gl.enable(gl.BLEND);
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     }
+
+    const formatGLSLFloat = (num) => {
+        return num.toString().includes('.') ? num.toString() : num.toString() + '.0';
+    };
     
     initShaders() {
         // Grid shader
@@ -55,10 +59,6 @@ export class HexelRenderer {
                 gl_Position = vec4(screenPos * vec2(1, -1), 0, 1);
             }
         `;
-
-        const formatGLSLFloat = (num) => {
-            return num.toString().includes('.') ? num.toString() : num.toString() + '.0';
-        };
 
         const gridFS = `
             precision highp float;
