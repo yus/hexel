@@ -298,7 +298,7 @@ export class HexelRenderer {
         this.previewHexagons = [];
         this.drawAll(this.currentScale, this.currentOffsetX, this.currentOffsetY);
     }
-    
+    /*
     addPoint(q, r, color, size, preview = false) {
         // Convert hexel to world coordinates
         const x = q * 48 + (r % 2 !== 0 ? 24 : 0);
@@ -318,6 +318,15 @@ export class HexelRenderer {
             this.points.push(point);
         }    
         this.updatePointBuffer(); // <-- THIS IS CRITICAL!
+    }
+    */
+    addPoint(q, r, color, size) {
+        // Convert hexel to world coordinates
+        const x = q * H_STEP + (r % 2 !== 0 ? H_STEP/2 : 0);
+        const y = r * V_STEP;
+        
+        this.points.push({ x, y, color, size });
+        this.updatePointBuffer();
     }
     
     addLine(start, end, color, preview = false) {
@@ -414,7 +423,6 @@ export class HexelRenderer {
         const program = this.programs.point;
         
         gl.useProgram(program);
-        
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.points);
         
         const stride = 7 * 4; // 7 floats * 4 bytes
