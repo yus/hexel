@@ -1,4 +1,5 @@
-import { getViewport, zoom, setOffset } from '../core/viewport.js';
+import { getViewport, setOffset } from '../core/viewport.js';
+// import { getViewport, zoom, setOffset } from '../core/viewport.js';
 import { drawGrid } from '../core/grid.js';
 import { drawAll } from '../drawing/renderer.js';
 import { handleToolAction } from '../tools/tool-manager.js';
@@ -228,7 +229,7 @@ function onKeyDown(e) {
             // Toggle grid
             import('../core/grid.js').then(m => {
                 gridEnabled = !gridEnabled;
-                const { scale, offsetX, offsetY } = getViewport();
+                const { offsetX, offsetY, scale } = getViewport();
                 drawGrid(scale, offsetX, offsetY, gridEnabled);
             });
             break;
@@ -236,6 +237,13 @@ function onKeyDown(e) {
             // Reset view
             setOffset(-offsetX, -offsetY);
             zoom(1 / scale, window.innerWidth/2, window.innerHeight/2);
+            break;
+        // Arrow key handling
+        case 'ArrowLeft':
+            e.preventDefault();
+            const { offsetX } = getViewport(); // Get current offset
+            setOffset(panAmount, 0);
+            updateAfterPan();
             break;
     }
     
