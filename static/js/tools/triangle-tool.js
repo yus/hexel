@@ -54,14 +54,13 @@ export class TriangleTool {
         
         const triangleIndex = this.getTriangleAtPoint(x, y, hexel, scale, offsetX, offsetY);
         
+        // In onMouseMove (around line 62)
         if (triangleIndex !== -1) {
             this.previewTriangle = {
                 hexel: hexel,
                 triangle: triangleIndex
             };
-            this.drawPreview();
-        } else {
-            this.clearPreview();
+            this.drawPreview();  // This calls the method above
         }
     }
     
