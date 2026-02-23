@@ -59,43 +59,47 @@ export class HexelRenderer {
             uniform vec2 u_resolution;
             uniform vec2 u_offset;
             uniform float u_scale;
-            uniform float u_opacity;
             
-            const float H_STEP = 48.0;
-            const float V_STEP = 41.569;
-            const vec3 GRID_COLOR = vec3(0.784, 0.576, 0.824);
-            
-            // Unit vectors for 60° grid
-            const vec2 unit000 = vec2(0.0, 1.0);
-            const vec2 unit060 = vec2(0.8660254, 0.5);
-            const vec2 unit120 = vec2(0.8660254, -0.5);
-            
-            float gridLine(vec2 pos, vec2 axis) {
-                float projection = dot(pos, axis);
-                float gridPos = mod(projection, H_STEP);
-                float dist = abs(gridPos - H_STEP/2.0);
-                
-                // Line width in pixels, independent of zoom
-                float lineWidth = 1.5;
-                
-                return 1.0 - smoothstep(0.0, lineWidth, dist);
-            }
+            const float HEX_SIZE = 24.0;
+            const float H_STEP = HEX_SIZE * 2.0;
+            const float V_STEP = HEX_SIZE * 1.732; // sqrt(3)
             
             void main() {
-                // Position in world coordinates with pan
-                vec2 pos = gl_FragCoord.xy - u_offset * u_resolution;
-                
-                // Apply zoom
+                vec2 pos = gl_FragCoord.xy - u_offset;
                 pos /= u_scale;
                 
-                // Calculate all three grid directions
-                float horiz = gridLine(pos, unit000);
-                float diag1 = gridLine(pos, unit120);
-                float diag2 = gridLine(pos, -unit060);
+                // Find which hexel we're in
+                float r = floor(pos.y / V_STEP);
+                float rowOffset = mod(r, 2.0) * (H_STEP / 2.0);
+                float q = floor((pos.x - rowOffset) / H_STEP);
                 
-                float alpha = max(max(horiz, diag1), diag2) * u_opacity;
+                // Center of this hexel
+                float centerX = q * H_STEP + rowOffset + H_STEP/2.0;
+                float centerY = r * V_STEP + V_STEP/2.0;
                 
-                gl_FragColor = vec4(GRID_COLOR, alpha);
+                // Local coordinates within hexel
+                vec2 local = pos - vec2(centerX, centerY);
+                
+                // Determine which triangle (0-5)
+                float angle = atan(local.y, local.x);
+                if (angle < 0.0) angle += 2.0 * 3.14159;
+                int triangle = int(floor(angle / 1.0472)); // 60° = 1.0472 rad
+                
+                // Draw triangle boundaries
+                float isLine = 0.0;
+                float distToCenter = length(local);
+                if (distToCenter > HEX_SIZE - 1.0) {
+                    isLine = 1.0; // Hexagon border
+                }
+                
+                // Triangle edges (from center to vertices)
+                vec2 vertex = vec2(HEX_SIZE * cos(angle), HEX_SIZE * sin(angle));
+                float distToEdge = distance(local, vertex);
+                if (distToEdge < 1.0) {
+                    isLine = 1.0; // Triangle edge
+                }
+                
+                gl_FragColor = vec4(0.784, 0.576, 0.824, isLine * 0.3);
             }
         `;
 
