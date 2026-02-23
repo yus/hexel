@@ -104,12 +104,17 @@ export class HexelRenderer {
             attribute float a_preview;
             
             uniform vec2 u_resolution;
+            uniform vec2 u_offset;
+            uniform float u_scale;
             
             varying vec3 v_color;
             varying float v_preview;
             
             void main() {
-                vec2 screenPos = a_position / u_resolution * 2.0 - 1.0;
+                // Apply pan and zoom in shader!
+                vec2 worldPos = a_position * u_scale + u_offset;
+                vec2 screenPos = worldPos / u_resolution * 2.0 - 1.0;
+                
                 gl_Position = vec4(screenPos * vec2(1, -1), 0, 1);
                 gl_PointSize = a_size;
                 
