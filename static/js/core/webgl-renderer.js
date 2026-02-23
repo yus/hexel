@@ -291,10 +291,15 @@ export class HexelRenderer {
     updatePointBuffer() {
         const gl = this.gl;
         const data = [];
-        
+        /*
         const scale = this.currentScale || 1.0;
         const offsetX = this.currentOffsetX || 0;
         const offsetY = this.currentOffsetY || 0;
+        */
+        // Use stored values with fallbacks
+        const scale = this.currentScale ?? 1.0;
+        const offsetX = this.currentOffsetX ?? 0;
+        const offsetY = this.currentOffsetY ?? 0;
         
         const addPoints = (points) => {
             points.forEach(p => {
@@ -360,6 +365,11 @@ export class HexelRenderer {
     }
     
     drawPoints(scale, offsetX, offsetY) {
+        // Use the stored values, with fallbacks
+        const scale = this.currentScale ?? 1.0;
+        const offsetX = this.currentOffsetX ?? 0;
+        const offsetY = this.currentOffsetY ?? 0;
+        
         const totalPoints = this.points.length + this.previewPoints.length;
         if (totalPoints === 0) return;
 
