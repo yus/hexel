@@ -208,6 +208,63 @@ export class HexelRenderer {
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.points);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.DYNAMIC_DRAW);
     }
+
+    // Add to HexelRenderer class
+    setPreviewMode(enabled) {
+        this.previewMode = enabled;
+        // Use different blending or shader for previews
+    }
+    
+    clearPreview() {
+        // Just redraw without preview elements
+        this.drawAll(this.currentScale, this.currentOffsetX, this.currentOffsetY);
+    }
+    
+    drawHexagonOutline(hexel, color, alpha, dashed = false) {
+        // Convert hexel to screen coordinates and draw outline
+        const { x, y } = this.hexelToWorld(hexel.q, hexel.r);
+        
+        // Use line shader with appropriate style
+        this.drawPolygon(this.getHexagonVertices(x, y), color, alpha, dashed);
+    }
+    
+    drawHexagonCorners(hexel, color, alpha) {
+        const { x, y } = this.hexelToWorld(hexel.q, hexel.r);
+        const size = HEXEL_SIZE;
+        
+        for (let i = 0; i < 6; i++) {
+            const angle = i * Math.PI / 3;
+            const cx = x + size * Math.cos(angle);
+            const cy = y + size * Math.sin(angle);
+            
+            this.drawPoint({ q: hexel.q, r: hexel.r }, color, 2, alpha);
+        }
+    }
+    
+    drawLine(start, end, color, alpha, dashed = false) {
+        // Draw line between two hexels
+        const startWorld = this.hexelToWorld(start.q, start.r);
+        const endWorld = this.hexelToWorld(end.q, end.r);
+        
+        this.drawLineSegments([startWorld, endWorld], color, alpha, dashed);
+    }
+    
+    drawPoint(hexel, color, size, alpha) {
+        const world = this.hexelToWorld(hexel.q, hexel.r);
+        // Add to point buffer with preview flag
+        this.previewPoints.push({ ...world, color, size, alpha });
+        this.updatePreviewBuffer();
+    }
+    
+    syncFromStorage() {
+        import('../drawing/points.js').then(({ points, lines, triangles, hexagons }) => {
+            this.points = [...points];
+            this.lines = [...lines];
+            this.triangles = [...triangles];
+            this.hexagons = [...hexagons];
+            this.updatePointBuffer();
+        });
+    }
     
     drawAll(scale, offsetX, offsetY) {
         const gl = this.gl;
