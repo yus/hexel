@@ -44,8 +44,23 @@ export class HexelRenderer {
     
     
     initShaders() {
-        // Grid shader
-        const formatGLSLFloat = (num) => {
+      // Grid shader
+      const gridVS = `
+          attribute vec2 a_position;
+          void main() {
+              gl_Position = vec4(a_position, 0, 1);
+          }
+      `;
+      
+      const gridFS = `
+          precision highp float;
+          void main() {
+              gl_FragColor = vec4(1.0, 0.0, 0.0, 0.5); // Solid red, 50% alpha
+          }
+      `;
+      
+      /*  
+      const formatGLSLFloat = (num) => {
             return num.toString().includes('.') ? num.toString() : num.toString() + '.0';
         };
         const gridVS = `
@@ -96,6 +111,7 @@ export class HexelRenderer {
                 gl_FragColor = vec4(GRID_COLOR, alpha);
             }
         `;
+        */
         
         // Point shader
         const pointVS = `
