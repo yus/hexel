@@ -44,6 +44,16 @@ export class SelectTool {
         
         addMessage(`🔍 selected hexel (${hexel.q}, ${hexel.r})`);
     }
+
+    // Add this method to your SelectTool class
+    drawPreview(hexel) {
+        const renderer = getRenderer();
+        if (!renderer) return;
+        
+        renderer.setPreviewMode(true);
+        renderer.drawHexagonOutline(hexel, '#ffffff', 0.5, true);
+        renderer.setPreviewMode(false);
+    }
     
     drawHexagonOutline(hexel, color, alpha, dashed) {
         // Implementation for hexagon outline
