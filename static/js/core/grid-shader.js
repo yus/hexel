@@ -18,7 +18,7 @@ export class HexelRenderer {
         
         // State
         this.gridEnabled = true;
-        this.gridOpacity = 0.15;
+        this.gridOpacity = 0.5;        
         this.previewMode = false;
         this.currentScale = 1.0;
         this.currentOffsetX = 0;
@@ -27,6 +27,11 @@ export class HexelRenderer {
         this.initShaders();
         this.initBuffers();
         this.initBlending();
+
+        // Force an initial draw
+        setTimeout(() => {
+            this.drawAll(1.0, 0, 0);
+        }, 10);
     }
     
     initBlending() {
@@ -54,68 +59,51 @@ export class HexelRenderer {
             uniform vec2 u_resolution;
             uniform vec2 u_offset;
             uniform float u_scale;
-            uniform float u_time;
             uniform float u_opacity;
             
-            // Grid parameters
+            const float TAU = 6.28318530718;
             const float H_STEP = 48.0;
-            const float V_STEP = 41.569; // 24 * sqrt(3)
-            const vec3 GRID_COLOR = vec3(0.784, 0.576, 0.824); // #c893d2
+            const float V_STEP = 41.569;
+            const vec3 GRID_COLOR = vec3(0.784, 0.576, 0.824);
             
-            // Anti-aliased grid line function
-            float gridLine(float coord, float step, float width) {
-                float gridPos = mod(coord + step/2.0, step) - step/2.0;
-                float dist = abs(gridPos);
-                
-                // Smooth step for anti-aliasing
-                return 1.0 - smoothstep(0.0, width, dist);
+            // Unit vectors at 0°, 60°, and 120°
+            const vec2 unit000 = vec2(0.0, 1.0);
+            const vec2 unit060 = vec2(0.8660254, 0.5);
+            const vec2 unit120 = vec2(0.8660254, -0.5);
+            
+            float gridLine(float lineWidth, vec2 pos, vec2 axis) {
+                float projection = dot(pos, axis);
+                float gridPos = mod(projection, 1.0);
+                float dist = min(gridPos, 1.0 - gridPos);
+                return 1.0 - smoothstep(0.0, lineWidth, dist);
             }
             
             void main() {
-                // Get position in grid space
-                vec2 pos = gl_FragCoord.xy - u_offset;
-                pos /= u_scale;
+                vec2 uv = (gl_FragCoord.xy - u_offset) / u_resolution.xy - 0.5;
+                uv.x *= u_resolution.x / u_resolution.y;
                 
-                // Your ZOOM CONFIGURATION implemented in GLSL!
+                vec2 pos = uv * 3.0 * u_scale;
+                
+                float lineWidth = 0.08 / u_scale;
+                
+                // NOW all variables are declared!
+                float horiz = gridLine(lineWidth, pos, unit000);
+                float diag1 = gridLine(lineWidth, pos, unit120);
+                float diag2 = gridLine(lineWidth, pos, -unit060);
+                
                 float horizAlpha = u_opacity;
                 float diagAlpha = u_opacity * 0.7;
-                float lineWidth = 0.8;
                 
-                if (u_scale < 0.5) {
-                    // Very zoomed out
-                    lineWidth = 0.3;
-                } else if (u_scale < 1.0) {
-                    // Zoomed out
-                    lineWidth = 0.4;
-                } else {
-                    // Normal and zoomed in
-                    lineWidth = 0.5 / u_scale;
-                }
-                
-                // Horizontal lines
-                float horiz = gridLine(pos.y, V_STEP, lineWidth);
-                
-                // Diagonal lines (+60°)
-                float rowOffset = mod(floor(pos.y / V_STEP), 2.0) * (H_STEP / 2.0);
-                float tan60 = 1.732; // tan(60°)
-                
-                // Transform to diagonal coordinates
-                float diagPos1 = pos.x - rowOffset - pos.y / tan60;
-                float diagPos2 = pos.x - rowOffset + pos.y / tan60;
-                
-                float diag1 = gridLine(diagPos1, H_STEP, lineWidth);
-                float diag2 = gridLine(diagPos2, H_STEP, lineWidth);
-                
-                // Combine lines with different alphas for horizontals vs diagonals
                 float alpha = 0.0;
-                
                 if (horiz > 0.0) {
                     alpha = horiz * horizAlpha;
                 } else if (diag1 > 0.0 || diag2 > 0.0) {
                     alpha = max(diag1, diag2) * diagAlpha;
                 }
                 
-                // Output final color
+                // Force minimum visibility for debugging
+                alpha = max(alpha, 0.5);
+                
                 gl_FragColor = vec4(GRID_COLOR, alpha);
             }
         `;
@@ -264,6 +252,24 @@ export class HexelRenderer {
         this.buffers.lines = gl.createBuffer();
         this.buffers.preview = gl.createBuffer();
     }
+
+    // Add this method to your HexelRenderer class
+    updateHexagonBuffer() {
+        // If you don't have hexagon support yet, just create an empty method
+        console.log('🔄 Updating hexagon buffer');
+        
+        const gl = this.gl;
+        if (!gl) return;
+        
+        // If you have hexagon data, update the buffer here
+        // For now, just ensure the buffer exists
+        if (!this.buffers.hexagons) {
+            this.buffers.hexagons = gl.createBuffer();
+        }
+        
+        // You can implement actual hexagon rendering later
+        this.hexagonVertexCount = 0;
+    }
     
     setPreviewMode(enabled) {
         this.previewMode = enabled;
@@ -288,13 +294,13 @@ export class HexelRenderer {
         
         const point = { x, y, r: rColor, g: gColor, b: bColor, size: size / 4 };
         
-        if (preview) {
+        
+        if (preview || this.previewMode) {
             this.previewPoints.push(point);
         } else {
             this.points.push(point);
-        }
-        
-        this.updatePointBuffer();
+        }    
+        this.updatePointBuffer(); // <-- THIS IS CRITICAL!
     }
     
     addLine(start, end, color, preview = false) {
@@ -314,21 +320,32 @@ export class HexelRenderer {
         const gl = this.gl;
         const data = [];
         
-        // Regular points
+        // Regular points (preview flag = 0)
         this.points.forEach(p => {
-            data.push(p.x, p.y, p.r, p.g, p.b, p.size, 0); // 0 = not preview
+            data.push(p.x, p.y, p.r, p.g, p.b, p.size, 0);
         });
         
-        // Preview points
+        // Preview points (preview flag = 1)
         this.previewPoints.forEach(p => {
-            data.push(p.x, p.y, p.r, p.g, p.b, p.size, 1); // 1 = preview
+            data.push(p.x, p.y, p.r, p.g, p.b, p.size, 1);
         });
+        
+        if (data.length === 0) {
+            this.pointCount = 0;
+            return;
+        }
         
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.points);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.DYNAMIC_DRAW);
+        
+        // THIS LINE WAS MISSING!
+        this.pointCount = this.points.length + this.previewPoints.length;
+        
+        console.log('Point buffer updated, count:', this.pointCount);
     }
     
     drawAll(scale, offsetX, offsetY) {
+        console.log('drawAll called');
         this.currentScale = scale;
         this.currentOffsetX = offsetX;
         this.currentOffsetY = offsetY;
@@ -336,7 +353,7 @@ export class HexelRenderer {
         const gl = this.gl;
         
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-        gl.clearColor(0, 0, 0, 0);
+        gl.clearColor(0, 0, 0, 1);
         gl.clear(gl.COLOR_BUFFER_BIT);
         
         if (this.gridEnabled) {
@@ -349,32 +366,33 @@ export class HexelRenderer {
     
     drawGrid(scale, offsetX, offsetY) {
         console.log('📐 drawGrid CALLED - scale:', scale, 'opacity:', this.gridOpacity, 'enabled:', this.gridEnabled);
-
-        // If you get here but no grid, add this test:
+        console.log('🎯 drawGrid called', {scale, offsetX, offsetY, opacity: this.gridOpacity});
+            
         const gl = this.gl;
-
-        // TEST 1: Clear with red to prove WebGL works
-        // gl.clearColor(1, 0, 0, 1);
-        // gl.clear(gl.COLOR_BUFFER_BIT);
+        // Test with solid color first
+        console.log('🎯 TEST GRID - drawing magenta');
+    
+        // Simple magenta fill - IGNORES shader completely
+        gl.clearColor(1.0, 0.0, 1.0, 0.25); // Magenta
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        return; // Uncomment to test
         
         const program = this.programs.grid;
         
         gl.useProgram(program);
         
-        // Quad attributes
+        // Set up quad attributes
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.quad);
         const positionLoc = gl.getAttribLocation(program, 'a_position');
         gl.enableVertexAttribArray(positionLoc);
         gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
         
-        // Uniforms
+        // Set ALL uniforms
         gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), 
             gl.canvas.width, gl.canvas.height);
         gl.uniform2f(gl.getUniformLocation(program, 'u_offset'), offsetX, offsetY);
         gl.uniform1f(gl.getUniformLocation(program, 'u_scale'), scale);
-        gl.uniform1f(gl.getUniformLocation(program, 'u_time'), performance.now() / 1000);
         gl.uniform1f(gl.getUniformLocation(program, 'u_opacity'), this.gridOpacity);
-        gl.uniform1f(gl.getUniformLocation(program, 'u_debug'), 0.0);
         
         gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
@@ -414,13 +432,19 @@ export class HexelRenderer {
         gl.uniform1f(gl.getUniformLocation(program, 'u_scale'), scale);
         
         gl.drawArrays(gl.POINTS, 0, this.points.length + this.previewPoints.length);
+        
+        console.log('Drawing points, count:', this.points.length + this.previewPoints.length);
+    
+        if (this.points.length === 0 && this.previewPoints.length === 0) {
+            console.log('No points to draw');
+            return;
+        }
     }
 
     // Add this method to your HexelRenderer class
     clear() {
         console.log('🧹 Clearing renderer data');
         
-        // Clear all data arrays
         this.points = [];
         this.lines = [];
         this.triangles = [];
@@ -429,9 +453,9 @@ export class HexelRenderer {
         this.previewLines = [];
         this.previewHexagons = [];
         
-        // Update buffers (with empty data)
-        this.updatePointBuffer();
-        this.updateHexagonBuffer();
+        // Check if methods exist before calling
+        if (this.updatePointBuffer) this.updatePointBuffer();
+        if (this.updateHexagonBuffer) this.updateHexagonBuffer(); // Now safe
         
         // Force a redraw
         this.drawAll(this.currentScale, this.currentOffsetX, this.currentOffsetY);
