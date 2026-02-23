@@ -43,8 +43,7 @@ export class HexelRenderer {
             attribute vec2 a_position;
             
             void main() {
-                // a_position is already in clip space (-1 to 1)
-                // Just pass it through - the fragment shader handles all the grid math
+                // Just pass through - a_position is already in clip space
                 gl_Position = vec4(a_position, 0, 1);
             }
         `;
@@ -55,24 +54,69 @@ export class HexelRenderer {
             uniform vec2 u_resolution;
             uniform vec2 u_offset;
             uniform float u_scale;
+            uniform float u_time;
+            uniform float u_opacity;
+            
+            // Grid parameters
+            const float H_STEP = 48.0;
+            const float V_STEP = 41.569; // 24 * sqrt(3)
+            const vec3 GRID_COLOR = vec3(0.784, 0.576, 0.824); // #c893d2
+            
+            // Anti-aliased grid line function
+            float gridLine(float coord, float step, float width) {
+                float gridPos = mod(coord + step/2.0, step) - step/2.0;
+                float dist = abs(gridPos);
+                
+                // Smooth step for anti-aliasing
+                return 1.0 - smoothstep(0.0, width, dist);
+            }
             
             void main() {
-                // Create a simple grid pattern
-                vec2 pos = gl_FragCoord.xy;
+                // Get position in grid space
+                vec2 pos = gl_FragCoord.xy - u_offset;
+                pos /= u_scale;
                 
-                // 50px grid lines
-                float xGrid = mod(pos.x, 50.0);
-                float yGrid = mod(pos.y, 50.0);
+                // Your ZOOM CONFIGURATION implemented in GLSL!
+                float horizAlpha = u_opacity;
+                float diagAlpha = u_opacity * 0.7;
+                float lineWidth = 0.8;
                 
-                float isLine = 0.0;
-                if (xGrid < 1.0 || yGrid < 1.0) {
-                    isLine = 1.0;
+                if (u_scale < 0.5) {
+                    // Very zoomed out
+                    lineWidth = 0.3;
+                } else if (u_scale < 1.0) {
+                    // Zoomed out
+                    lineWidth = 0.4;
+                } else {
+                    // Normal and zoomed in
+                    lineWidth = 0.5 / u_scale;
                 }
                 
-                // Purple grid lines
-                vec3 GRID_COLOR = vec3(0.784, 0.576, 0.824);
+                // Horizontal lines
+                float horiz = gridLine(pos.y, V_STEP, lineWidth);
                 
-                gl_FragColor = vec4(GRID_COLOR, isLine * 0.5);
+                // Diagonal lines (+60°)
+                float rowOffset = mod(floor(pos.y / V_STEP), 2.0) * (H_STEP / 2.0);
+                float tan60 = 1.732; // tan(60°)
+                
+                // Transform to diagonal coordinates
+                float diagPos1 = pos.x - rowOffset - pos.y / tan60;
+                float diagPos2 = pos.x - rowOffset + pos.y / tan60;
+                
+                float diag1 = gridLine(diagPos1, H_STEP, lineWidth);
+                float diag2 = gridLine(diagPos2, H_STEP, lineWidth);
+                
+                // Combine lines with different alphas for horizontals vs diagonals
+                float alpha = 0.0;
+                
+                if (horiz > 0.0) {
+                    alpha = horiz * horizAlpha;
+                } else if (diag1 > 0.0 || diag2 > 0.0) {
+                    alpha = max(diag1, diag2) * diagAlpha;
+                }
+                
+                // Output final color
+                gl_FragColor = vec4(GRID_COLOR, alpha);
             }
         `;
         
