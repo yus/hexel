@@ -1,10 +1,8 @@
 import { screenToHexel } from '../core/hexel.js';
 import { getViewport } from '../core/viewport.js';
 import { addMessage } from '../ui/messages.js';
-import { drawCtx } from '../core/canvas.js';
-import { hexelToScreen } from '../core/hexel.js';
-import { HEXEL_SIZE } from '../utils/constants.js';
-import { triangles, addTriangle } from '../drawing/triangles.js';
+import { getRenderer } from '../main.js';
+import { addTriangle } from '../drawing/triangles.js';
 
 export class TriangleTool {
     constructor() {
@@ -28,14 +26,9 @@ export class TriangleTool {
         const { scale, offsetX, offsetY } = getViewport();
         const hexel = screenToHexel(x, y, scale, offsetX, offsetY);
         
-        // Find which triangle was clicked
         const triangleIndex = this.getTriangleAtPoint(x, y, hexel, scale, offsetX, offsetY);
         
         if (triangleIndex !== -1) {
-            this.selectedHexel = hexel;
-            this.selectedTriangle = triangleIndex;
-            
-            // Add triangle to drawing
             const color = document.querySelector('.color-swatch.active')?.dataset.color || '#ffaa66';
             
             addTriangle({
@@ -47,8 +40,11 @@ export class TriangleTool {
             
             addMessage(`△ triangle ${triangleIndex} in hexel (${hexel.q}, ${hexel.r})`);
             
-            // Redraw
-            import('../drawing/renderer.js').then(m => m.drawAll());
+            const renderer = getRenderer();
+            if (renderer) {
+                renderer.syncFromStorage();
+                renderer.drawAll(scale, offsetX, offsetY);
+            }
         }
     }
     
@@ -56,7 +52,6 @@ export class TriangleTool {
         const { scale, offsetX, offsetY } = getViewport();
         const hexel = screenToHexel(x, y, scale, offsetX, offsetY);
         
-        // Find which triangle is being hovered
         const triangleIndex = this.getTriangleAtPoint(x, y, hexel, scale, offsetX, offsetY);
         
         if (triangleIndex !== -1) {
@@ -71,23 +66,31 @@ export class TriangleTool {
     }
     
     getTriangleAtPoint(x, y, hexel, scale, offsetX, offsetY) {
-        const center = hexelToScreen(hexel.q, hexel.r, scale, offsetX, offsetY);
+        const renderer = getRenderer();
+        if (!renderer) return -1;
         
-        // Convert screen point to hexel-local coordinates
-        const localX = (x - center.x) / scale;
-        const localY = (y - center.y) / scale;
+        const gl = renderer.gl;
+        const centerX = gl.canvas.width / 2 + offsetX;
+        const centerY = gl.canvas.height / 2 + offsetY;
         
-        // Hexagon vertices (in local coordinates)
+        const scaledH = 48 * scale;
+        const scaledV = 41.569 * scale;
+        
+        const screenX = centerX + (hexel.r % 2 !== 0 ? (hexel.q + 0.5) * scaledH : hexel.q * scaledH);
+        const screenY = centerY + hexel.r * scaledV;
+        
+        const localX = (x - screenX) / scale;
+        const localY = (y - screenY) / scale;
+        
         const vertices = [];
         for (let i = 0; i < 6; i++) {
             const angle = i * Math.PI / 3;
             vertices.push({
-                x: HEXEL_SIZE * Math.cos(angle),
-                y: HEXEL_SIZE * Math.sin(angle)
+                x: 24 * Math.cos(angle),
+                y: 24 * Math.sin(angle)
             });
         }
         
-        // Check which triangle contains the point
         for (let i = 0; i < 6; i++) {
             const v1 = vertices[i];
             const v2 = vertices[(i + 1) % 6];
@@ -101,7 +104,6 @@ export class TriangleTool {
     }
     
     pointInTriangle(px, py, a, b, c) {
-        // Barycentric coordinate method
         const v0x = c.x - a.x;
         const v0y = c.y - a.y;
         const v1x = b.x - a.x;
@@ -124,20 +126,20 @@ export class TriangleTool {
     
     getTrianglePoints(hexel, triangleIndex) {
         const points = [];
-        const center = { x: hexel.q * H_STEP + (hexel.r % 2 !== 0 ? H_STEP/2 : 0), y: hexel.r * V_STEP };
+        const centerX = hexel.q * 48 + (hexel.r % 2 !== 0 ? 24 : 0);
+        const centerY = hexel.r * 41.569;
         
-        // Triangle vertices (0 = center, 1 = vertex i, 2 = vertex i+1)
         const angle1 = triangleIndex * Math.PI / 3;
         const angle2 = (triangleIndex + 1) * Math.PI / 3;
         
-        points.push({ x: center.x, y: center.y }); // Center
+        points.push({ x: centerX, y: centerY });
         points.push({
-            x: center.x + HEXEL_SIZE * Math.cos(angle1),
-            y: center.y + HEXEL_SIZE * Math.sin(angle1)
+            x: centerX + 24 * Math.cos(angle1),
+            y: centerY + 24 * Math.sin(angle1)
         });
         points.push({
-            x: center.x + HEXEL_SIZE * Math.cos(angle2),
-            y: center.y + HEXEL_SIZE * Math.sin(angle2)
+            x: centerX + 24 * Math.cos(angle2),
+            y: centerY + 24 * Math.sin(angle2)
         });
         
         return points;
@@ -148,49 +150,24 @@ export class TriangleTool {
         
         this.clearPreview();
         
-        drawCtx.save();
+        const renderer = getRenderer();
+        if (!renderer) return;
+        
+        const color = document.querySelector('.color-swatch.active')?.dataset.color || '#ffaa66';
+        
+        renderer.setPreviewMode(true);
+        renderer.addTriangle(this.previewTriangle.hexel, this.previewTriangle.triangle, color, true);
+        renderer.setPreviewMode(false);
         
         const { scale, offsetX, offsetY } = getViewport();
-        const center = hexelToScreen(
-            this.previewTriangle.hexel.q, 
-            this.previewTriangle.hexel.r, 
-            scale, offsetX, offsetY
-        );
-        
-        // Get triangle vertices
-        const angle1 = this.previewTriangle.triangle * Math.PI / 3;
-        const angle2 = (this.previewTriangle.triangle + 1) * Math.PI / 3;
-        
-        const v1 = {
-            x: center.x + HEXEL_SIZE * scale * Math.cos(angle1),
-            y: center.y + HEXEL_SIZE * scale * Math.sin(angle1)
-        };
-        const v2 = {
-            x: center.x + HEXEL_SIZE * scale * Math.cos(angle2),
-            y: center.y + HEXEL_SIZE * scale * Math.sin(angle2)
-        };
-        
-        // Draw preview triangle
-        drawCtx.fillStyle = '#ffffff';
-        drawCtx.globalAlpha = 0.2;
-        drawCtx.beginPath();
-        drawCtx.moveTo(center.x, center.y);
-        drawCtx.lineTo(v1.x, v1.y);
-        drawCtx.lineTo(v2.x, v2.y);
-        drawCtx.closePath();
-        drawCtx.fill();
-        
-        drawCtx.strokeStyle = '#ffffff';
-        drawCtx.lineWidth = 2 / scale;
-        drawCtx.setLineDash([5 / scale, 5 / scale]);
-        drawCtx.globalAlpha = 0.6;
-        drawCtx.stroke();
-        
-        drawCtx.restore();
+        renderer.drawAll(scale, offsetX, offsetY);
     }
     
     clearPreview() {
+        const renderer = getRenderer();
+        if (renderer) {
+            renderer.clearPreview();
+        }
         this.previewTriangle = null;
-        import('../drawing/renderer.js').then(m => m.drawAll());
     }
 }
