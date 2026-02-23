@@ -1,4 +1,4 @@
-import { getViewport } from './viewport.js'; // Adjust path as needed
+import { getViewport } from '../core/viewport.js';
 import { H_STEP, V_STEP, HEXEL_SIZE } from '../utils/constants.js';
 
 // WebGL Renderer - Unified GPU rendering for grid AND elements
