@@ -3,8 +3,8 @@ import { LineTool } from './line-tool.js';
 import { SelectTool } from './select-tool.js';
 import { TriangleTool } from './triangle-tool.js';
 import { HexagonTool } from './hexagon-tool.js';
-import { FillTriangleTool } from './fill-tools.js'; 
-import { PanTool } from './pan-tool.js'; 
+import { FillTriangleTool } from './fill-tools.js';
+import { PanTool } from './pan-tool.js';
 
 const tools = {
     point: new PointTool(),
@@ -13,21 +13,28 @@ const tools = {
     select: new SelectTool(),
     hexagon: new HexagonTool(),
     'fill-triangle': new FillTriangleTool(),
-    pan: new PanTool() 
+    pan: new PanTool()
 };
 
 let currentTool = 'point';
-let activeTool = tools[currentTool]; // Initialize with default tool!
-// let activeTool = null;
+let activeTool = tools.point;
 
 export function setTool(toolName) {
-    if (activeTool) {
+    console.log('Switching tool to:', toolName);
+    
+    // Deactivate current tool if it has the method
+    if (activeTool && typeof activeTool.deactivate === 'function') {
         activeTool.deactivate();
     }
     
+    // Set new tool
     currentTool = toolName;
     activeTool = tools[toolName];
-    activeTool.activate();
+    
+    // Activate new tool if it has the method
+    if (activeTool && typeof activeTool.activate === 'function') {
+        activeTool.activate();
+    }
     
     // Update UI
     document.querySelectorAll('.tool-btn').forEach(btn => {
@@ -35,25 +42,17 @@ export function setTool(toolName) {
     });
 }
 
-export function handleToolAction(event, type, ...args) {
-    if (activeTool && activeTool[type]) {
-        return activeTool[type](...args);
-    }
+export function getCurrentTool() {
+    return activeTool;
 }
 
-// Add at the bottom
-let snappingEnabled = true;
-
-export function setSnapping(enabled) {
-    snappingEnabled = enabled;
-    console.log('Tool snapping:', enabled);
+export function handleToolAction(action, ...args) {
+    if (!activeTool) return;
     
-    // You can pass this to active tool if needed
-    if (activeTool && activeTool.setSnapping) {
-        activeTool.setSnapping(enabled);
+    const fn = activeTool[action];
+    if (typeof fn === 'function') {
+        return fn.apply(activeTool, args);
+    } else {
+        console.log(`Tool ${currentTool} has no ${action} method`);
     }
-}
-
-export function getSnapping() {
-    return snappingEnabled;
 }
