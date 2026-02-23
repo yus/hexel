@@ -14,28 +14,6 @@ export class PointTool {
         // Point tool doesn't need mouse up
     }
 
-    onMouseMove(x, y) {
-        const { scale, offsetX, offsetY } = getViewport();
-        const hexel = screenToHexel(x, y, scale, offsetX, offsetY);
-        
-        // Clear old preview
-        const renderer = getRenderer();
-        if (renderer) {
-            renderer.clearPreview();
-            
-            // Draw preview dot
-            const color = document.querySelector('.color-swatch.active')?.dataset.color || '#ffaa66';
-            const size = parseInt(document.getElementById('size-slider')?.value || '8');
-            
-            renderer.setPreviewMode(true);
-            renderer.addPoint(hexel.q, hexel.r, color, size, true);
-            renderer.setPreviewMode(false);
-            
-            const { scale, offsetX, offsetY } = getViewport();
-            renderer.drawAll(scale, offsetX, offsetY);
-        }
-    }
-    
     onClick(x, y) {
         const { scale, offsetX, offsetY } = getViewport();
         const hexel = screenToHexel(x, y, scale, offsetX, offsetY);
@@ -43,24 +21,39 @@ export class PointTool {
         const color = document.querySelector('.color-swatch.active')?.dataset.color || '#ffaa66';
         const size = parseInt(document.getElementById('size-slider')?.value || '8');
         
-        // Add to storage (this updates points array)
-        addPoint(hexel.q, hexel.r, color, size);
+        // Add to storage
+        import('../drawing/points.js').then(m => m.addPoint(hexel.q, hexel.r, color, size));
         
-        // CRITICAL: Update renderer with new points
+        // Add to renderer
         const renderer = getRenderer();
         if (renderer) {
-            // Clear and reload all points from storage
-            import('../drawing/points.js').then(({ points }) => {
-                renderer.points = []; // Clear existing
-                points.forEach(p => {
-                    renderer.addPoint(p.q, p.r, p.color, p.size);
-                });
-                
-                // Redraw
-                const { scale, offsetX, offsetY } = getViewport();
-                renderer.drawAll(scale, offsetX, offsetY);
-            });
+            renderer.addPoint(hexel.q, hexel.r, color, size);
+            const { scale, offsetX, offsetY } = getViewport();
+            renderer.drawAll(scale, offsetX, offsetY);
         }
+        
+        import('../ui/panels.js').then(m => m.updateStats());
+        addMessage(`✨ point at (${hexel.q}, ${hexel.r})`);
+    }
+    
+    onMouseMove(x, y) {
+        const { scale, offsetX, offsetY } = getViewport();
+        const hexel = screenToHexel(x, y, scale, offsetX, offsetY);
+        
+        const renderer = getRenderer();
+        if (renderer) {
+            renderer.clearPreview();
+            
+            const color = document.querySelector('.color-swatch.active')?.dataset.color || '#ffaa66';
+            const size = parseInt(document.getElementById('size-slider')?.value || '8');
+            
+            renderer.setPreviewMode(true);
+            renderer.addPoint(hexel.q, hexel.r, color, size, true);
+            renderer.setPreviewMode(false);
+            
+            renderer.drawAll(scale, offsetX, offsetY);
+        }
+    }
         
         import('../ui/panels.js').then(m => m.updateStats());
         addMessage(`✨ point at (${hexel.q}, ${hexel.r})`);
