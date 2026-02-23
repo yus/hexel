@@ -334,10 +334,32 @@ export class HexelRenderer {
     }
     
     addLine(start, end, color, preview = false) {
-        // Implementation for lines
-        const target = preview ? this.previewLines : this.lines;
-        target.push({ start, end, color });
-        this.updateLineBuffer();
+        // Convert hexel coordinates to world coordinates if needed
+        const startX = start.x || (start.q * H_STEP + (start.r % 2 !== 0 ? H_STEP/2 : 0));
+        const startY = start.y || (start.r * V_STEP);
+        const endX = end.x || (end.q * H_STEP + (end.r % 2 !== 0 ? H_STEP/2 : 0));
+        const endY = end.y || (end.r * V_STEP);
+        
+        const lineData = {
+            start: { x: startX, y: startY },
+            end: { x: endX, y: endY },
+            color: color,
+            q_start: start.q,
+            r_start: start.r,
+            q_end: end.q,
+            r_end: end.r
+        };
+        
+        if (preview) {
+            this.previewLines.push(lineData);
+            console.log('👀 Preview line added');
+        } else {
+            this.lines.push(lineData);
+            console.log('📏 Permanent line added, total:', this.lines.length);
+        }
+        
+        // Trigger redraw
+        this.drawAll(this.currentScale, this.currentOffsetX, this.currentOffsetY);
     }
     
     addHexagon(q, r, color, preview = false) {
@@ -520,21 +542,47 @@ export class HexelRenderer {
         });
     }
     
-    // Add this new method to draw lines
     drawLines(scale, offsetX, offsetY) {
-        if (this.previewLines.length === 0) return;
+        if (this.previewLines.length === 0 && this.lines.length === 0) return;
         
-        const gl = this.gl;
-        const program = this.programs.line; // You'll need a line shader
+        console.log('🎯 Drawing lines, preview:', this.previewLines.length, 'permanent:', this.lines.length);
         
-        if (!program) {
-            // Fallback: draw lines using points (temporary)
-            this.drawLinesAsPoints();
-            return;
-        }
+        // Combine both preview and permanent lines
+        const allLines = [...this.lines, ...this.previewLines];
         
-        // Use line shader here
-        console.log('🎨 Drawing', this.previewLines.length, 'lines');
+        // Convert each line to a series of points
+        allLines.forEach(line => {
+            const startX = line.start.x || (line.start.q * H_STEP + (line.start.r % 2 !== 0 ? H_STEP/2 : 0));
+            const startY = line.start.y || (line.start.r * V_STEP);
+            const endX = line.end.x || (line.end.q * H_STEP + (line.end.r % 2 !== 0 ? H_STEP/2 : 0));
+            const endY = line.end.y || (line.end.r * V_STEP);
+            
+            const color = line.color || '#ffaa66';
+            const r = parseInt(color.slice(1,3), 16) / 255;
+            const g = parseInt(color.slice(3,5), 16) / 255;
+            const b = parseInt(color.slice(5,7), 16) / 255;
+            
+            // Draw the line as 20 connected points
+            for (let i = 0; i <= 20; i++) {
+                const t = i / 20;
+                const x = startX * (1-t) + endX * t;
+                const y = startY * (1-t) + endY * t;
+                
+                // Add to preview points for immediate drawing
+                this.previewPoints.push({
+                    x, y,
+                    r, g, b,
+                    size: 3, // Bigger points for visibility
+                    preview: true
+                });
+            }
+        });
+        
+        // Update point buffer to include these line-points
+        this.updatePointBuffer();
+        
+        // Let drawPoints handle the actual rendering
+        console.log('✅ Added', allLines.length, 'lines as points');
     }
     
     // Temporary fallback - draw lines as connected points
