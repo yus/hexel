@@ -146,8 +146,13 @@ export class TriangleTool {
     }
     
     drawPreview() {
-        if (!this.previewTriangle) return;
+        // NULL CHECK AT THE VERY TOP!
+        if (!this.previewTriangle) {
+            console.log('No preview triangle to draw');
+            return;
+        }
         
+        // Now safe to use this.previewTriangle
         this.clearPreview();
         
         const renderer = getRenderer();
@@ -156,7 +161,12 @@ export class TriangleTool {
         const color = document.querySelector('.color-swatch.active')?.dataset.color || '#ffaa66';
         
         renderer.setPreviewMode(true);
-        renderer.addTriangle(this.previewTriangle.hexel, this.previewTriangle.triangle, color, true);
+        renderer.addTriangle(
+            this.previewTriangle.hexel,  // Now safe!
+            this.previewTriangle.triangle, 
+            color, 
+            true
+        );
         renderer.setPreviewMode(false);
         
         const { scale, offsetX, offsetY } = getViewport();
