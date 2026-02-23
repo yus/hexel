@@ -24,28 +24,43 @@ export class LineTool {
         const { scale, offsetX, offsetY } = getViewport();
         this.startHexel = screenToHexel(x, y, scale, offsetX, offsetY);
         this.isDrawing = true;
-        console.log('Line start:', this.startHexel);
+        console.log('Line started at:', this.startHexel);
     }
     
     onMouseMove(x, y) {
         if (!this.isDrawing) return;
         
         const { scale, offsetX, offsetY } = getViewport();
-        this.previewEnd = screenToHexel(x, y, scale, offsetX, offsetY);
+        const currentHexel = screenToHexel(x, y, scale, offsetX, offsetY);
         
-        this.drawPreview();
+        const renderer = getRenderer();
+        if (renderer) {
+            renderer.clearPreview();
+            renderer.setPreviewMode(true);
+            // Draw preview line
+            renderer.drawLine(this.startHexel, currentHexel, '#ffffff', 0.6, true);
+            renderer.setPreviewMode(false);
+            renderer.drawAll(scale, offsetX, offsetY);
+        }
     }
     
     onMouseUp(x, y) {
-        if (!this.isDrawing || !this.startHexel) return;
+        if (!this.isDrawing) return;
         
         const { scale, offsetX, offsetY } = getViewport();
         const endHexel = screenToHexel(x, y, scale, offsetX, offsetY);
         
-        // Add line logic here
         console.log('Line from', this.startHexel, 'to', endHexel);
+        addMessage(`📏 line from (${this.startHexel.q},${this.startHexel.r}) to (${endHexel.q},${endHexel.r})`);
         
-        this.cancelPreview();
+        this.isDrawing = false;
+        this.startHexel = null;
+        
+        const renderer = getRenderer();
+        if (renderer) {
+            renderer.clearPreview();
+            renderer.drawAll(scale, offsetX, offsetY);
+        }
     }
     
     drawPreview() {
