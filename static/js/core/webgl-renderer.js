@@ -58,65 +58,24 @@ export class HexelRenderer {
             uniform vec2 u_resolution;
             uniform vec2 u_offset;
             uniform float u_scale;
-            uniform float u_time;
-            uniform float u_opacity;
-            uniform float u_debug;
-            
-            const float H_STEP = 48.0;
-            const float V_STEP = 41.569;
-            const vec3 GRID_COLOR = vec3(0.784, 0.576, 0.824);
-            
-            float gridLine(float coord, float step, float width) {
-                float gridPos = mod(coord + step/2.0, step) - step/2.0;
-                float dist = abs(gridPos);
-                return 1.0 - smoothstep(0.0, width, dist);
-            }
             
             void main() {
-                // DEBUG: Force visibility if enabled
-                if (u_debug > 0.5) {
-                    gl_FragColor = vec4(1.0, 0.0, 0.0, 0.5);
-                    return;
+                // Create a simple grid pattern
+                vec2 pos = gl_FragCoord.xy;
+                
+                // 50px grid lines
+                float xGrid = mod(pos.x, 50.0);
+                float yGrid = mod(pos.y, 50.0);
+                
+                float isLine = 0.0;
+                if (xGrid < 1.0 || yGrid < 1.0) {
+                    isLine = 1.0;
                 }
                 
-                vec2 pos = gl_FragCoord.xy - u_offset;
-                pos /= u_scale;
+                // Purple grid lines
+                vec3 GRID_COLOR = vec3(0.784, 0.576, 0.824);
                 
-                // Your zoom configuration
-                float horizAlpha = u_opacity;
-                float diagAlpha = u_opacity * 0.7;
-                float lineWidth = 0.8;
-                
-                if (u_scale < 0.5) {
-                    lineWidth = 0.3;
-                } else if (u_scale < 1.0) {
-                    lineWidth = 0.4;
-                } else {
-                    lineWidth = 0.5 / u_scale;
-                }
-                
-                // Horizontal lines
-                float horiz = gridLine(pos.y, V_STEP, lineWidth);
-                
-                // Diagonal lines
-                float rowOffset = mod(floor(pos.y / V_STEP), 2.0) * (H_STEP / 2.0);
-                float tan60 = 1.732;
-                
-                float diagPos1 = pos.x - rowOffset - pos.y / tan60;
-                float diagPos2 = pos.x - rowOffset + pos.y / tan60;
-                
-                float diag1 = gridLine(diagPos1, H_STEP, lineWidth);
-                float diag2 = gridLine(diagPos2, H_STEP, lineWidth);
-                
-                float alpha = 0.0;
-                if (horiz > 0.0) {
-                    alpha = horiz * horizAlpha;
-                } else if (diag1 > 0.0 || diag2 > 0.0) {
-                    alpha = max(diag1, diag2) * diagAlpha;
-                }
-                
-                // gl_FragColor = vec4(GRID_COLOR, alpha);
-                gl_FragColor = vec4(1.0, 0.0, 0.0, 0.5); // Solid red, 50% alpha
+                gl_FragColor = vec4(GRID_COLOR, isLine * 0.5);
             }
         `;
         
