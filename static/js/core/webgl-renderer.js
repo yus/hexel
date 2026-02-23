@@ -362,7 +362,7 @@ export class HexelRenderer {
     // In webgl-renderer.js, temporarily replace drawGrid with:
     drawGrid(scale, offsetX, offsetY) {
         const gl = this.gl;
-        gl.clearColor(0.5, 0.2, 0.8, 1); // Purple
+        gl.clearColor(0.5, 0.2, 0.8, 0.5); // Purple
         gl.clear(gl.COLOR_BUFFER_BIT);
     }
     
