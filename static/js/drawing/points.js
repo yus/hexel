@@ -1,11 +1,11 @@
+// static/js/drawing/points.js
 export let points = [];
+export let lines = [];
+export let triangles = [];
+export let hexagons = [];
 
 export function addPoint(q, r, color, size) {
-    const exists = points.some(p => p.q === q && p.r === r);
-    if (exists) return false;
-    
     points.push({ q, r, color, size });
-    return true;
 }
 
 export function removePoint(q, r) {
@@ -15,3 +15,8 @@ export function removePoint(q, r) {
 export function clearPoints() {
     points = [];
 }
+
+// Similar for lines, triangles, hexagons...
+export function clearLines() { lines = []; }
+export function clearTriangles() { triangles = []; }
+export function clearHexagons() { hexagons = []; }
