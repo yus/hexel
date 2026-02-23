@@ -57,7 +57,15 @@ export class LineTool {
         const { scale, offsetX, offsetY } = getViewport();
         const endHexel = screenToHexel(x, y, scale, offsetX, offsetY);
         
-        console.log('Line from', this.startHexel, 'to', endHexel);
+        // Store in permanent storage
+        import('../drawing/lines.js').then(m => {
+            m.addLine({
+                start: this.startHexel,
+                end: endHexel,
+                color: document.querySelector('.color-swatch.active')?.dataset.color || '#ffaa66'
+            });
+        });
+        
         addMessage(`📏 line from (${this.startHexel.q},${this.startHexel.r}) to (${endHexel.q},${endHexel.r})`);
         
         this.isDrawing = false;
