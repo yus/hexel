@@ -54,8 +54,4 @@ export class PointTool {
             renderer.drawAll(scale, offsetX, offsetY);
         }
     }
-        
-        import('../ui/panels.js').then(m => m.updateStats());
-        addMessage(`✨ point at (${hexel.q}, ${hexel.r})`);
-    }
 }
