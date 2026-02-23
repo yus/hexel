@@ -23,7 +23,7 @@ export function getCurrentToolName() {
     return currentTool;
 }
 
-function setTool(toolName) {
+export function setTool(toolName) {
     if (activeTool && typeof activeTool.deactivate === 'function') {
         activeTool.deactivate();
     }
