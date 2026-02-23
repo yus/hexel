@@ -62,12 +62,23 @@ export class HexelRenderer {
           void main() {
               vec2 pos = (gl_FragCoord.xy - u_offset * u_resolution) / u_scale;
               
-              // Simple 50px grid
-              float xLine = mod(pos.x, 50.0);
-              float yLine = mod(pos.y, 50.0);
+              // Three axes at 0°, 60°, and 120°
+              float axis1 = pos.x;
+              float axis2 = -0.5 * pos.x + 0.866 * pos.y;
+              float axis3 = -0.5 * pos.x - 0.866 * pos.y;
               
+              // Grid spacing
+              float spacing = 48.0;
+              
+              // Distance to nearest grid line on each axis
+              float d1 = abs(mod(axis1 + spacing/2.0, spacing) - spacing/2.0);
+              float d2 = abs(mod(axis2 + spacing/2.0, spacing) - spacing/2.0);
+              float d3 = abs(mod(axis3 + spacing/2.0, spacing) - spacing/2.0);
+              
+              float lineWidth = 1.5;
               float isLine = 0.0;
-              if (xLine < 1.5 || yLine < 1.5) {
+              
+              if (d1 < lineWidth || d2 < lineWidth || d3 < lineWidth) {
                   isLine = 1.0;
               }
               
