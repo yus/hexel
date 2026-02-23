@@ -44,6 +44,7 @@ export class HexelRenderer {
             
             void main() {
                 // a_position is already in clip space (-1 to 1)
+                // Just pass it through - the fragment shader handles all the grid math
                 gl_Position = vec4(a_position, 0, 1);
             }
         `;
