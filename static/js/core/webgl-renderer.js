@@ -1,5 +1,12 @@
 import { getViewport } from '../core/viewport.js';
-import { HEXEL_SIZE, H_STEP, V_STEP, SQRT3, GRID_COLOR, DEFAULT_POINT_COLOR, GRID_LINE_WIDTH, POINT_SIZE } from '../utils/constants.js';
+import { HEXEL_SIZE, 
+        H_STEP, 
+        V_STEP, 
+        SQRT3, 
+        GRID_COLOR, 
+        DEFAULT_POINT_COLOR, 
+        GRID_LINE_WIDTH, 
+        POINT_SIZE } from '../utils/constants.js';
 
 export class HexelRenderer {
     constructor(gl) {
@@ -55,7 +62,7 @@ export class HexelRenderer {
             uniform float u_scale;
             uniform float u_opacity;
             
-            const float H_STEP = ${H_STEP};
+            const float H_STEP = ${H_STEP}.0;
             const float V_STEP = ${V_STEP};
             const float SQRT3 = ${SQRT3};
             const vec3 GRID_COLOR = vec3(${parseInt(GRID_COLOR.slice(1,3),16)/255}, ${parseInt(GRID_COLOR.slice(3,5),16)/255}, ${parseInt(GRID_COLOR.slice(5,7),16)/255});
