@@ -488,6 +488,19 @@ export class HexelRenderer {
         console.log('✅ Drew', totalPoints, 'points');
     }
 
+    syncFromStorage() {
+        import('../drawing/points.js').then(({ points }) => {
+            this.points = [];
+            points.forEach(p => {
+                this.addPoint(p.q, p.r, p.color, p.size);
+            });
+            this.updatePointBuffer();
+            
+            const { scale, offsetX, offsetY } = getViewport();
+            this.drawAll(scale, offsetX, offsetY);
+        });
+    }
+    
     // Add this method to your HexelRenderer class
     clear() {
         console.log('🧹 Clearing renderer data');
