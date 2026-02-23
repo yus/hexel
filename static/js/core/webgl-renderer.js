@@ -61,7 +61,6 @@ export class HexelRenderer {
             uniform float u_scale;
             uniform float u_opacity;
             
-            const float TAU = 6.28318530718;
             const float H_STEP = 48.0;
             const float V_STEP = 41.569;
             const vec3 GRID_COLOR = vec3(0.784, 0.576, 0.824);
@@ -71,49 +70,30 @@ export class HexelRenderer {
             const vec2 unit060 = vec2(0.8660254, 0.5);
             const vec2 unit120 = vec2(0.8660254, -0.5);
             
-            float gridLine(float lineWidth, vec2 pos, vec2 axis) {
+            float gridLine(vec2 pos, vec2 axis) {
                 float projection = dot(pos, axis);
-                float gridPos = mod(projection, 1.0);
-                float dist = min(gridPos, 1.0 - gridPos);
+                float gridPos = mod(projection, H_STEP);
+                float dist = abs(gridPos - H_STEP/2.0);
+                
+                // Line width in pixels, independent of zoom
+                float lineWidth = 1.5;
+                
                 return 1.0 - smoothstep(0.0, lineWidth, dist);
             }
             
             void main() {
-                // Position with pan and zoom
-                vec2 uv = (gl_FragCoord.xy - u_offset) / u_resolution.xy - 0.5;
-                uv.x *= u_resolution.x / u_resolution.y;
+                // Position in world coordinates with pan
+                vec2 pos = gl_FragCoord.xy - u_offset * u_resolution;
                 
-                // Scale to control hex density
-                vec2 pos = uv * 3.0 * u_scale;
-                
-                // Line width adjusts with zoom
-                float lineWidth = 0.08 / u_scale;
-                
-                // Your zoom configuration
-                float horizAlpha = u_opacity;
-                float diagAlpha = u_opacity * 0.7;
-                
-                if (u_scale < 0.5) {
-                    lineWidth = 0.3 / u_scale;
-                } else if (u_scale < 1.0) {
-                    lineWidth = 0.4 / u_scale;
-                }
+                // Apply zoom
+                pos /= u_scale;
                 
                 // Calculate all three grid directions
-                float horiz = gridLine(lineWidth, pos, unit000);
-                float diag1 = gridLine(lineWidth, pos, unit120);
-                float diag2 = gridLine(lineWidth, pos, -unit060);
+                float horiz = gridLine(pos, unit000);
+                float diag1 = gridLine(pos, unit120);
+                float diag2 = gridLine(pos, -unit060);
                 
-                // Combine with different opacities
-                float alpha = 0.0;
-                if (horiz > 0.0) {
-                    alpha = horiz * horizAlpha;
-                } else if (diag1 > 0.0 || diag2 > 0.0) {
-                    alpha = max(diag1, diag2) * diagAlpha;
-                }
-                
-                // Ensure minimum visibility
-                alpha = max(alpha, 0.1);
+                float alpha = max(max(horiz, diag1), diag2) * u_opacity;
                 
                 gl_FragColor = vec4(GRID_COLOR, alpha);
             }
@@ -398,32 +378,25 @@ export class HexelRenderer {
     }
     
     drawGrid(scale, offsetX, offsetY) {
-        console.log('📐 drawGrid CALLED - scale:', scale, 'opacity:', this.gridOpacity, 'enabled:', this.gridEnabled);
-        console.log('🎯 drawGrid called', {scale, offsetX, offsetY, opacity: this.gridOpacity});
-            
         const gl = this.gl;
-        // Test with solid color first
-        console.log('🎯 TEST GRID - drawing magenta');
-    
-        // Simple magenta fill - IGNORES shader completely
-        // gl.clearColor(1.0, 0.0, 1.0, 0.25); // Magenta
-        // gl.clear(gl.COLOR_BUFFER_BIT);
-        // return; // Uncomment to test
-        
         const program = this.programs.grid;
         
         gl.useProgram(program);
         
-        // Set up quad attributes
+        // Quad attributes
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.quad);
         const positionLoc = gl.getAttribLocation(program, 'a_position');
         gl.enableVertexAttribArray(positionLoc);
         gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
         
-        // Set ALL uniforms
+        // CRITICAL: Convert offset from canvas 2D space to WebGL clip space
+        // This makes panning work correctly
+        const webglOffsetX = (offsetX / gl.canvas.width) * 2.0;
+        const webglOffsetY = (offsetY / gl.canvas.height) * 2.0;
+        
         gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), 
             gl.canvas.width, gl.canvas.height);
-        gl.uniform2f(gl.getUniformLocation(program, 'u_offset'), offsetX, offsetY);
+        gl.uniform2f(gl.getUniformLocation(program, 'u_offset'), webglOffsetX, webglOffsetY);
         gl.uniform1f(gl.getUniformLocation(program, 'u_scale'), scale);
         gl.uniform1f(gl.getUniformLocation(program, 'u_opacity'), this.gridOpacity);
         
