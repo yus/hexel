@@ -27,12 +27,12 @@ function initSettings() {
     const gridOpacity = document.getElementById('grid-opacity');
     const snapToggle = document.getElementById('snap-toggle');
     
-    // Grid opacity handler
+    // In the grid opacity slider handler
     if (gridOpacity) {
         gridOpacity.addEventListener('input', (e) => {
             const opacity = parseFloat(e.target.value);
             
-            // Update renderer directly
+            // IMPORTANT: Import getRenderer at the top of the file!
             const renderer = getRenderer();
             if (renderer) {
                 renderer.gridOpacity = opacity;
@@ -40,7 +40,6 @@ function initSettings() {
                 renderer.drawAll(scale, offsetX, offsetY);
             }
             
-            // Also update grid.js for compatibility
             import('../core/grid.js').then(m => m.setGridOpacity(opacity));
         });
     }
