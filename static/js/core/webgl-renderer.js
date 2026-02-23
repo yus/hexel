@@ -18,7 +18,7 @@ export class HexelRenderer {
         
         // State
         this.gridEnabled = true;
-        this.gridOpacity = 1.0;        
+        this.gridOpacity = 0.5;        
         this.previewMode = false;
         this.currentScale = 1.0;
         this.currentOffsetX = 0;
@@ -102,7 +102,7 @@ export class HexelRenderer {
                 }
                 
                 // Force minimum visibility for debugging
-                alpha = max(alpha, 0.3);
+                alpha = max(alpha, 0.5);
                 
                 gl_FragColor = vec4(GRID_COLOR, alpha);
             }
@@ -373,7 +373,7 @@ export class HexelRenderer {
         console.log('🎯 TEST GRID - drawing magenta');
     
         // Simple magenta fill - IGNORES shader completely
-        gl.clearColor(1.0, 0.0, 1.0, 1.0); // Magenta
+        gl.clearColor(1.0, 0.0, 1.0, 0.25); // Magenta
         gl.clear(gl.COLOR_BUFFER_BIT);
         return; // Uncomment to test
         
