@@ -358,8 +358,15 @@ export class HexelRenderer {
         // Draw points
         this.drawPoints(scale, offsetX, offsetY);
     }
-    
+
+    // In webgl-renderer.js, temporarily replace drawGrid with:
     drawGrid(scale, offsetX, offsetY) {
+        const gl = this.gl;
+        gl.clearColor(0.5, 0.2, 0.8, 1); // Purple
+        gl.clear(gl.COLOR_BUFFER_BIT);
+    }
+    
+    /* drawGrid(scale, offsetX, offsetY) {
         const gl = this.gl;
         const program = this.programs.grid;
         
@@ -380,7 +387,7 @@ export class HexelRenderer {
         
         // Draw
         gl.drawArrays(gl.TRIANGLES, 0, 6);
-    }
+    } */
     
     drawPoints(scale, offsetX, offsetY) {
         if (this.points.length === 0) return;
