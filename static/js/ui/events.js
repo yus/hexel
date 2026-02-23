@@ -1,5 +1,5 @@
-import { getViewport, setOffset, zoom } from '../core/viewport.js';
 import { getRenderer } from '../main.js';
+import { getViewport, setOffset, zoom } from '../core/viewport.js';
 import { handleToolAction } from '../tools/tool-manager.js';
 import { showZoomIndicator } from './indicators.js';
 
@@ -12,23 +12,25 @@ const dragThreshold = 3;
 const clickDelay = 200;
 
 export function initEvents() {
-    const drawCanvas = document.getElementById('grid-gl-canvas'); // Now using WebGL canvas
+    // const drawCanvas = document.getElementById('grid-gl-canvas'); // Now using WebGL canvas
+    // The canvas is grid-gl-canvas, not drawCanvas!
+    const canvas = document.getElementById('grid-gl-canvas');
     
     // Mouse events
-    drawCanvas.addEventListener('mousedown', onMouseDown);
-    drawCanvas.addEventListener('mousemove', onMouseMove);
-    drawCanvas.addEventListener('mouseup', onMouseUp);
-    drawCanvas.addEventListener('wheel', onWheel);
+    canvas.addEventListener('mousedown', onMouseDown);
+    canvas.addEventListener('mousemove', onMouseMove);
+    canvas.addEventListener('mouseup', onMouseUp);
+    canvas.addEventListener('wheel', onWheel);
     
     // Touch events
-    drawCanvas.addEventListener('touchstart', onTouchStart);
-    drawCanvas.addEventListener('touchmove', onTouchMove);
-    drawCanvas.addEventListener('touchend', onTouchEnd);
+    canvas.addEventListener('touchstart', onTouchStart);
+    canvas.addEventListener('touchmove', onTouchMove);
+    canvas.addEventListener('touchend', onTouchEnd);
     
     // Keyboard events
     document.addEventListener('keydown', onKeyDown);
     // Add to initEvents
-    console.log('Events initialized on:', drawCanvas);
+    console.log('Events initialized on:', canvas);
 }
 
 function onMouseDown(e) {
