@@ -45,19 +45,17 @@ export class SelectTool {
         addMessage(`🔍 selected hexel (${hexel.q}, ${hexel.r})`);
     }
 
-    // Add this method to your SelectTool class
     drawPreview(hexel) {
         const renderer = getRenderer();
         if (!renderer) return;
         
         renderer.setPreviewMode(true);
+        // Draw hexagon outline
         renderer.drawHexagonOutline(hexel, '#ffffff', 0.5, true);
         renderer.setPreviewMode(false);
-    }
-    
-    drawHexagonOutline(hexel, color, alpha, dashed) {
-        // Implementation for hexagon outline
-        // We'll add this later
+        
+        const { scale, offsetX, offsetY } = getViewport();
+        renderer.drawAll(scale, offsetX, offsetY);
     }
     
     drawSelectionHighlight(hexel) {
@@ -65,9 +63,17 @@ export class SelectTool {
         if (!renderer) return;
         
         renderer.setPreviewMode(true);
-        renderer.drawHexagonOutline(hexel, '#ffaa66', 0.8, false); // solid
+        renderer.drawHexagonOutline(hexel, '#ffaa66', 0.8, false);
         renderer.drawHexagonCorners(hexel, '#ffaa66', 0.3);
         renderer.setPreviewMode(false);
+        
+        const { scale, offsetX, offsetY } = getViewport();
+        renderer.drawAll(scale, offsetX, offsetY);
+    }
+    
+    drawHexagonOutline(hexel, color, alpha, dashed) {
+        // Implementation for hexagon outline
+        // We'll add this later
     }
     
     clearHighlight() {
