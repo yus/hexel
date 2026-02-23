@@ -1,18 +1,19 @@
-import { points } from './points.js';
-import { lines } from './lines.js';
-import { triangles } from './triangles.js';
+import { getRenderer } from '../main.js';
 
 const MAX_HISTORY = 50;
 let history = [];
 let currentIndex = -1;
 
-// Save current state
-export function saveState() {
-    // Create snapshot
+// Save current state from renderer
+export function saveState(renderer = getRenderer()) {
+    if (!renderer) return;
+    
+    // Get data from renderer
     const state = {
-        points: JSON.parse(JSON.stringify(points)),
-        lines: JSON.parse(JSON.stringify(lines)),
-        triangles: JSON.parse(JSON.stringify(triangles)),
+        points: [...renderer.points],
+        lines: [...renderer.lines],
+        triangles: [...renderer.triangles],
+        hexagons: [...renderer.hexagons],
         timestamp: Date.now()
     };
     
@@ -30,45 +31,73 @@ export function saveState() {
         history.shift();
         currentIndex--;
     }
+    
+    console.log(`📝 Saved state ${currentIndex + 1}/${history.length}`);
 }
 
-export function undo() {
+export function undo(renderer = getRenderer()) {
+    if (!renderer) return false;
+    
     if (currentIndex > 0) {
         currentIndex--;
-        restoreState(history[currentIndex]);
-        import('../ui/messages.js').then(m => m.addMessage('↩️ undo'));
+        restoreState(history[currentIndex], renderer);
+        import('../ui/messages.js').then(m => 
+            m.addMessage('↩️ Undo', 'info', 1500)
+        );
         return true;
     }
     return false;
 }
 
-export function redo() {
+export function redo(renderer = getRenderer()) {
+    if (!renderer) return false;
+    
     if (currentIndex < history.length - 1) {
         currentIndex++;
-        restoreState(history[currentIndex]);
-        import('../ui/messages.js').then(m => m.addMessage('↪️ redo'));
+        restoreState(history[currentIndex], renderer);
+        import('../ui/messages.js').then(m => 
+            m.addMessage('↪️ Redo', 'info', 1500)
+        );
         return true;
     }
     return false;
 }
 
-function restoreState(state) {
-    // Clear and restore
-    points.length = 0;
-    lines.length = 0;
-    triangles.length = 0;
+function restoreState(state, renderer) {
+    if (!renderer || !state) return;
     
-    points.push(...state.points);
-    lines.push(...state.lines);
-    triangles.push(...state.triangles);
+    // Restore data to renderer
+    renderer.points = [...state.points];
+    renderer.lines = [...state.lines];
+    renderer.triangles = [...state.triangles];
+    renderer.hexagons = [...state.hexagons];
+    
+    // Update WebGL buffers
+    renderer.updatePointBuffer();
+    if (renderer.updateLineBuffer) renderer.updateLineBuffer();
+    if (renderer.updateTriangleBuffer) renderer.updateTriangleBuffer();
     
     // Redraw
-    import('./renderer.js').then(m => m.drawAll());
-    import('../ui/panels.js').then(m => m.updateStats());
+    import('./core/viewport.js').then(({ getViewport }) => {
+        const { scale, offsetX, offsetY } = getViewport();
+        renderer.drawAll(scale, offsetX, offsetY);
+    });
+    
+    // Update UI stats
+    import('../ui/panels.js').then(m => m.updateStats(renderer));
 }
 
 export function clearHistory() {
     history = [];
     currentIndex = -1;
-    saveState(); // Save initial empty state
+    console.log('🧹 History cleared');
+}
+
+export function getHistoryInfo() {
+    return {
+        length: history.length,
+        current: currentIndex + 1,
+        canUndo: currentIndex > 0,
+        canRedo: currentIndex < history.length - 1
+    };
 }
