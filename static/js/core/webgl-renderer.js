@@ -446,32 +446,42 @@ export class HexelRenderer {
     }
     
     drawPoints(scale, offsetX, offsetY) {
-        console.log('🎯 Drawing points, count:', this.points.length + this.previewPoints.length);
+        const totalPoints = this.points.length + this.previewPoints.length;
+        if (totalPoints === 0) return;
         
-        if (this.points.length === 0 && this.previewPoints.length === 0) {
-            console.log('No points to draw');
-            return;
-        }
+        console.log('🎯 Drawing points, count:', totalPoints);
         
         const gl = this.gl;
         const program = this.programs.point;
-        if (!program) {
-            console.error('Point program not found');
-            return;
-        }
         
         gl.useProgram(program);
         
-        // Bind point buffer
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.points);
+        // Prepare data with screen space transformation
+        const transformedData = [];
         
-        // Log first point for debugging
-        if (this.points.length > 0) {
-            console.log('First point:', this.points[0]);
-        }
+        const processPoint = (p) => {
+            // Convert world coordinates to screen coordinates
+            const screenX = p.x * scale + offsetX + gl.canvas.width/2;
+            const screenY = p.y * scale + offsetY + gl.canvas.height/2;
+            
+            transformedData.push(
+                screenX, screenY,
+                p.r, p.g, p.b,
+                p.size,
+                p.preview ? 1 : 0
+            );
+        };
         
-        // Set up attributes (adjust stride based on your data layout)
-        const stride = 7 * 4; // 7 floats * 4 bytes (x,y,r,g,b,size,preview)
+        this.points.forEach(processPoint);
+        this.previewPoints.forEach(processPoint);
+        
+        // Create temporary buffer with transformed coordinates
+        const tempBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, tempBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(transformedData), gl.DYNAMIC_DRAW);
+        
+        // Set up attributes
+        const stride = 7 * 4;
         
         const positionLoc = gl.getAttribLocation(program, 'a_position');
         gl.enableVertexAttribArray(positionLoc);
@@ -489,17 +499,19 @@ export class HexelRenderer {
         gl.enableVertexAttribArray(previewLoc);
         gl.vertexAttribPointer(previewLoc, 1, gl.FLOAT, false, stride, 24);
         
-        // Set uniforms
+        // Set uniforms (now identity because we transformed in CPU)
         gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), 
             gl.canvas.width, gl.canvas.height);
-        gl.uniform2f(gl.getUniformLocation(program, 'u_offset'), offsetX, offsetY);
-        gl.uniform1f(gl.getUniformLocation(program, 'u_scale'), scale);
+        gl.uniform2f(gl.getUniformLocation(program, 'u_offset'), 0, 0);
+        gl.uniform1f(gl.getUniformLocation(program, 'u_scale'), 1);
         
-        // Draw points
-        const totalPoints = this.points.length + this.previewPoints.length;
+        // Draw
         gl.drawArrays(gl.POINTS, 0, totalPoints);
         
-        console.log('✅ Drew', totalPoints, 'points');
+        // Clean up
+        gl.deleteBuffer(tempBuffer);
+        
+        console.log('✅ Drew', totalPoints, 'points at screen positions');
     }
 
     /*
