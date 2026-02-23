@@ -1,5 +1,5 @@
-import { H_STEP, V_STEP } from '../utils/constants.js';
 import { getRenderer } from '../main.js';
+import { H_STEP, V_STEP } from '../utils/constants.js';
 
 export function screenToHexel(screenX, screenY, scale, offsetX, offsetY) {
     // Get canvas dimensions from renderer's gl context
