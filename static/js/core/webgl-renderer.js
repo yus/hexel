@@ -81,16 +81,23 @@ export class HexelRenderer {
                 // Apply pan and zoom
                 vec2 pos = uv * 3.0 * u_scale + (u_offset / u_resolution.xy);
                 
-                float lineWidth = 0.08 / u_scale;
+                float lineWidth = 0.2 / u_scale;
                 
                 float r = gridAxis(lineWidth, pos, unit000);
                 float g = gridAxis(lineWidth, pos, unit120);
                 float b = gridAxis(lineWidth, pos, -unit060);
                 
-                float alpha = max(max(r, g), b);
+                // float alpha = max(max(r, g), b);
+                float alpha = 0.0;
+                if (horiz > 0.0) {
+                    alpha = horiz * horizAlpha;
+                } else if (diag1 > 0.0 || diag2 > 0.0) {
+                    alpha = max(diag1, diag2) * diagAlpha;
+                }
+                // If neither condition is true, alpha stays 0
                 
                 // Minimum opacity of 0.3 as requested
-                alpha = max(alpha * u_opacity, 0.3);
+                alpha = max(alpha * u_opacity, 1.0);
                 
                 gl_FragColor = vec4(vec3(0.784, 0.576, 0.824), alpha);
             }
@@ -358,7 +365,10 @@ export class HexelRenderer {
             
         const gl = this.gl;
         // Test with solid color first
-        gl.clearColor(0, 1, 0, .25); // Green
+        console.log('🎯 TEST GRID - drawing magenta');
+    
+        // Simple magenta fill - IGNORES shader completely
+        gl.clearColor(1.0, 0.0, 1.0, 1.0); // Magenta
         gl.clear(gl.COLOR_BUFFER_BIT);
         return; // Uncomment to test
         
