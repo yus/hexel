@@ -5,7 +5,7 @@ import { getRenderer } from '../main.js';
 
 // Grid state
 let gridEnabled = true;
-let gridOpacity = 0.15;
+let gridOpacity = 0.5;
 let gridSnappingEnabled = true;
 
 // Re-export for backward compatibility
