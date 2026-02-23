@@ -52,29 +52,6 @@ export function getSnapping() {
     return snappingEnabled;
 }
 
-export function setTool(toolName) {
-    console.log('Switching tool to:', toolName);
-    
-    // Deactivate current tool if it has the method
-    if (activeTool && typeof activeTool.deactivate === 'function') {
-        activeTool.deactivate();
-    }
-    
-    // Set new tool
-    currentTool = toolName;
-    activeTool = tools[toolName];
-    
-    // Activate new tool if it has the method
-    if (activeTool && typeof activeTool.activate === 'function') {
-        activeTool.activate();
-    }
-    
-    // Update UI
-    document.querySelectorAll('.tool-btn').forEach(btn => {
-        btn.classList.toggle('active', btn.dataset.tool === toolName);
-    });
-}
-
 export function getCurrentTool() {
     return activeTool;
 }
