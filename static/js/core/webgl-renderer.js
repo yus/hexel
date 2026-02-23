@@ -96,7 +96,7 @@ export class HexelRenderer {
                 float dw = abs(w - floor(w + 0.5));
                 
                 // Line width adapts to zoom
-                float lineWidth = 0.08 / u_scale;
+                float lineWidth = 0.03 / u_scale;
                 lineWidth = clamp(lineWidth, 0.02, 0.2);
                 
                 // Determine which lines to draw based on mode
