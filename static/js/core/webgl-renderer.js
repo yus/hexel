@@ -343,7 +343,7 @@ export class HexelRenderer {
         const b = parseInt(color.slice(5,7), 16) / 255;
         
         // Add points along the line
-        const numPoints = 20;
+        const numPoints = 50; // Was 20, now 50 for smoother lines
         for (let i = 0; i <= numPoints; i++) {
             const t = i / numPoints;
             const x = startX * (1-t) + endX * t;
@@ -352,7 +352,7 @@ export class HexelRenderer {
             this.points.push({
                 x, y,
                 r, g, b,
-                size: 3,
+                size: 4, // Slightly bigger
                 preview: false
             });
         }
@@ -430,17 +430,12 @@ export class HexelRenderer {
         gl.enableVertexAttribArray(positionLoc);
         gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
         
-        // Convert offset to WebGL space (critical for panning!)
-        const webglOffsetX = offsetX / gl.canvas.width;
-        const webglOffsetY = offsetY / gl.canvas.height;
-        
-        // Set all uniforms
+        // Pass the SAME transformation to grid shader
         gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), 
             gl.canvas.width, gl.canvas.height);
-        gl.uniform2f(gl.getUniformLocation(program, 'u_offset'), webglOffsetX, webglOffsetY);
+        gl.uniform2f(gl.getUniformLocation(program, 'u_offset'), offsetX, offsetY);
         gl.uniform1f(gl.getUniformLocation(program, 'u_scale'), scale);
         gl.uniform1f(gl.getUniformLocation(program, 'u_opacity'), this.gridOpacity);
-        gl.uniform1f(gl.getUniformLocation(program, 'u_mode'), this.gridMode || 0.0);
         
         gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
