@@ -72,56 +72,44 @@ export class HexelRenderer {
             uniform float u_scale;
             uniform float u_opacity;
             
-            const float EDGE = 24.0; // Your hexel size
+            const float SIZE = 24.0; // triangle size
             const float SQRT3 = 1.73205080757;
             
             void main() {
                 vec2 pos = (gl_FragCoord.xy - u_offset) / u_scale;
                 
-                // Calculate triangle coordinates (a, b, c) using the article's formula
-                float a = ceil(( pos.x - SQRT3/3.0 * pos.y) / EDGE);
-                float b = floor(( SQRT3 * 2.0/3.0 * pos.y) / EDGE) + 1.0;
-                float c = ceil((-pos.x - SQRT3/3.0 * pos.y) / EDGE);
+                // Barycentric coordinates for triangle grid
+                // Three axes at 0°, 120°, and 240°
                 
-                // Get center of this triangle using the article's center formula
-                float centerX = (0.5 * a - 0.5 * c) * EDGE;
-                float centerY = (-SQRT3/6.0 * a + SQRT3/3.0 * b - SQRT3/6.0 * c) * EDGE;
+                // Axis 1: horizontal (x-axis)
+                float u = pos.x;
                 
-                // The three edge directions (perpendicular to each lane)
-                vec2 edgeDir1 = vec2(1.0, 0.0);        // Horizontal
-                vec2 edgeDir2 = vec2(-0.5, SQRT3/2.0); // 120°
-                vec2 edgeDir3 = vec2(-0.5, -SQRT3/2.0); // 240°
+                // Axis 2: 120° diagonal
+                float v = -0.5 * pos.x + SQRT3/2.0 * pos.y;
                 
-                // Distance to each lane
-                float dist1 = abs(dot(pos, edgeDir1) - a * EDGE);
-                float dist2 = abs(dot(pos, edgeDir2) - b * EDGE);
-                float dist3 = abs(dot(pos, edgeDir3) - c * EDGE);
+                // Axis 3: 240° diagonal 
+                float w = -0.5 * pos.x - SQRT3/2.0 * pos.y;
                 
-                // Draw edges (lines between triangles)
-                float isEdge = 0.0;
-                float lineWidth = 1.5;
+                // Scale to grid size
+                u = u / SIZE;
+                v = v / SIZE;
+                w = w / SIZE;
                 
-                if (dist1 < lineWidth || dist2 < lineWidth || dist3 < lineWidth) {
-                    isEdge = 1.0;
+                // Distance to nearest grid line on each axis
+                float du = abs(u - floor(u + 0.5));
+                float dv = abs(v - floor(v + 0.5));
+                float dw = abs(w - floor(w + 0.5));
+                
+                // Line width
+                float lineWidth = 0.05;
+                
+                // If close to any grid line, draw it
+                float grid = 0.0;
+                if (du < lineWidth || dv < lineWidth || dw < lineWidth) {
+                    grid = 1.0;
                 }
                 
-                // Also draw the outline of each hexagon (optional)
-                // A hexagon is formed by 6 triangles with the same (floor division)
-                float q = floor((a + c) / 3.0);
-                float r = floor((a + b) / 3.0);
-                
-                // Center of the hexagon
-                float hexCenterX = (q * 2.0 + (mod(r, 2.0))) * EDGE * 0.75;
-                float hexCenterY = r * EDGE * SQRT3;
-                
-                float distToHexCenter = distance(pos, vec2(hexCenterX, hexCenterY));
-                float hexRadius = EDGE;
-                
-                if (abs(distToHexCenter - hexRadius) < lineWidth) {
-                    isEdge = max(isEdge, 0.8); // Hexagon border more visible
-                }
-                
-                gl_FragColor = vec4(0.784, 0.576, 0.824, isEdge * u_opacity);
+                gl_FragColor = vec4(0.784, 0.576, 0.824, grid * u_opacity);
             }
         `;
 
