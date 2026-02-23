@@ -62,6 +62,7 @@ function syncDataToRenderer(renderer) {
 
 // Clear everything
 export function clearAll() {
+    // Clear data storage
     import('./points.js').then(m => {
         m.clearPoints();
         m.clearLines?.();
@@ -69,15 +70,18 @@ export function clearAll() {
         m.clearHexagons?.();
     });
     
+    // Clear renderer
     const renderer = getRenderer();
     if (renderer) {
         renderer.clear();
+        
+        import('./viewport.js').then(({ getViewport }) => {
+            const { scale, offsetX, offsetY } = getViewport();
+            renderer.drawAll(scale, offsetX, offsetY);
+        });
     }
     
-    drawAll();
-    
-    import('../ui/panels.js').then(m => m.updateStats());
-    import('../ui/messages.js').then(m => m.addMessage('🧹 Canvas cleared'));
+    import('./panels.js').then(m => m.updateStats());
     
     return true;
 }
