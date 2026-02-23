@@ -348,9 +348,20 @@ export class HexelRenderer {
         gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
     
-    drawPoints() {
+    drawPoints(scale, offsetX, offsetY) {
         const totalPoints = this.points.length + this.previewPoints.length;
         if (totalPoints === 0) return;
+
+         console.log('🎯 Drawing points at scale:', scale, 'offset:', offsetX, offsetY);
+        
+        // Log first point's screen position
+        if (this.points.length > 0) {
+            const p = this.points[0];
+            const screenX = p.x * scale + offsetX + this.gl.canvas.width/2;
+            const screenY = p.y * scale + offsetY + this.gl.canvas.height/2;
+            console.log('First point screen position:', screenX, screenY);
+            console.log('Canvas size:', this.gl.canvas.width, this.gl.canvas.height);
+        }
         
         const gl = this.gl;
         const program = this.programs.point;
