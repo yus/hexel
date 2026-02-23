@@ -22,6 +22,9 @@ export class PointTool {
         
         const added = addPoint(hexel.q, hexel.r, color, size);
 
+        // In point-tool.js, after adding a point:
+        import('../ui/panels.js').then(m => m.updateStats());
+
         // After adding point to storage
         const renderer = getRenderer();
         if (renderer) {
