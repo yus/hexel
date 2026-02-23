@@ -405,7 +405,6 @@ export class HexelRenderer {
     clear() {
         console.log('🧹 Clearing renderer data');
         
-        // Clear all data arrays
         this.points = [];
         this.lines = [];
         this.triangles = [];
@@ -414,9 +413,9 @@ export class HexelRenderer {
         this.previewLines = [];
         this.previewHexagons = [];
         
-        // Update buffers (with empty data)
-        this.updatePointBuffer();
-        this.updateHexagonBuffer();
+        // Check if methods exist before calling
+        if (this.updatePointBuffer) this.updatePointBuffer();
+        if (this.updateHexagonBuffer) this.updateHexagonBuffer(); // Now safe
         
         // Force a redraw
         this.drawAll(this.currentScale, this.currentOffsetX, this.currentOffsetY);
