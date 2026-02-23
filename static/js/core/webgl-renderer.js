@@ -71,23 +71,18 @@ export class HexelRenderer {
             uniform vec2 u_offset;
             uniform float u_scale;
             uniform float u_opacity;
+            uniform float u_mode; // 0 = both, 1 = horizontal only, 2 = vertical only
             
-            const float SIZE = 24.0; // triangle size
+            const float SIZE = 24.0;
             const float SQRT3 = 1.73205080757;
             
             void main() {
-                vec2 pos = (gl_FragCoord.xy - u_offset) / u_scale;
+                // Apply pan and zoom
+                vec2 pos = (gl_FragCoord.xy - u_offset * u_resolution) / u_scale;
                 
                 // Barycentric coordinates for triangle grid
-                // Three axes at 0°, 120°, and 240°
-                
-                // Axis 1: horizontal (x-axis)
                 float u = pos.x;
-                
-                // Axis 2: 120° diagonal
                 float v = -0.5 * pos.x + SQRT3/2.0 * pos.y;
-                
-                // Axis 3: 240° diagonal 
                 float w = -0.5 * pos.x - SQRT3/2.0 * pos.y;
                 
                 // Scale to grid size
@@ -100,13 +95,25 @@ export class HexelRenderer {
                 float dv = abs(v - floor(v + 0.5));
                 float dw = abs(w - floor(w + 0.5));
                 
-                // Line width
-                float lineWidth = 0.05;
+                // Line width adapts to zoom
+                float lineWidth = 0.08 / u_scale;
+                lineWidth = clamp(lineWidth, 0.02, 0.2);
                 
-                // If close to any grid line, draw it
+                // Determine which lines to draw based on mode
                 float grid = 0.0;
-                if (du < lineWidth || dv < lineWidth || dw < lineWidth) {
-                    grid = 1.0;
+                
+                if (u_mode == 0.0) { // Both
+                    if (du < lineWidth || dv < lineWidth || dw < lineWidth) {
+                        grid = 1.0;
+                    }
+                } else if (u_mode == 1.0) { // Horizontal only (u axis)
+                    if (du < lineWidth) {
+                        grid = 1.0;
+                    }
+                } else if (u_mode == 2.0) { // Vertical only (v and w axes)
+                    if (dv < lineWidth || dw < lineWidth) {
+                        grid = 1.0;
+                    }
                 }
                 
                 gl_FragColor = vec4(0.784, 0.576, 0.824, grid * u_opacity);
