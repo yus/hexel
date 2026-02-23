@@ -478,9 +478,12 @@ export class HexelRenderer {
         console.log('✅ Drew', totalPoints, 'points');
     }
 
-    drawLine(start, end, color, alpha, dashed = false) {
-        console.log('Drawing line from', start, 'to', end);
-        
+    drawLine(start, end, color, alpha, dashed) {
+        console.log('🎨 Would draw line:', {start, end, color});
+        // Store for later implementation
+        this.pendingLines = this.pendingLines || [];
+        this.pendingLines.push({start, end, color, alpha, dashed});
+
         // For now, just store line preview data
         // We'll implement actual WebGL line rendering later
         this.previewLines.push({
@@ -493,15 +496,17 @@ export class HexelRenderer {
             dashed
         });
     }
-
+    
     drawHexagonOutline(hexel, color, alpha, dashed) {
-        // Implement hexagon outline drawing
-        console.log('Drawing hexagon outline', hexel);
+        console.log('🔷 Would draw hexagon outline:', {hexel, color});
     }
     
     drawHexagonCorners(hexel, color, alpha) {
-        // Implement corner markers
-        console.log('Drawing hexagon corners', hexel);
+        console.log('🔶 Would draw hexagon corners:', {hexel, color});
+    }
+    
+    addTriangle(hexel, triangleIndex, color, preview) {
+        console.log('△ Would draw triangle:', {hexel, triangleIndex, color});
     }
 
     setPreviewMode(enabled) {
