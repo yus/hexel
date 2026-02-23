@@ -36,16 +36,49 @@ export function initEvents() {
 function onMouseMove(e) {
     if (!lastX) return;
     
-    // Always get mouse position
-    const rect = e.target.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    const dx = e.clientX - lastX;
+    const dy = e.clientY - lastY;
     
-    // Let the ACTIVE tool handle it
-    handleToolAction('onMouseMove', x, y);
+    // Dead zone - ignore tiny movements
+    if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return;
     
-    lastX = e.clientX;
-    lastY = e.clientY;
+    // Check if we should start dragging
+    if (!isDragging) {
+        const dist = Math.hypot(dx, dy);
+        if (dist > dragThreshold) {
+            isDragging = true;
+            console.log('Started dragging');
+        }
+    }
+    
+    if (isDragging) {
+        // Get current viewport
+        const { scale, offsetX, offsetY } = getViewport();
+        
+        // REDUCE pan speed - divide by zoom level
+        const panSpeed = 1.0 / scale;
+        const worldDx = dx * panSpeed * 0.5; // Half speed for smoothness
+        const worldDy = -dy * panSpeed * 0.5; // Invert Y and half speed
+        
+        // Update viewport
+        setOffset(worldDx, worldDy);
+        
+        // Get new values and redraw
+        const newViewport = getViewport();
+        const renderer = getRenderer();
+        if (renderer) {
+            renderer.drawAll(newViewport.scale, newViewport.offsetX, newViewport.offsetY);
+        }
+        
+        lastX = e.clientX;
+        lastY = e.clientY;
+    } else {
+        // Tool hover
+        const rect = e.target.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
+        handleToolAction('onMouseMove', x, y);
+    }
 }
 
 function onMouseDown(e) {
@@ -79,18 +112,21 @@ function onWheel(e) {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
-    // Zoom factor (negative for natural direction)
-    const delta = -e.deltaY * 0.001;
+    // Slower, smoother zoom
+    const delta = -e.deltaY * 0.0005; // Reduced from 0.001
     const zoomFactor = 1 + delta;
     
-    // Apply zoom
+    // Clamp zoom to reasonable range
+    const { scale } = getViewport();
+    const newScale = scale * zoomFactor;
+    if (newScale < 0.2 || newScale > 5.0) return; // Limit zoom range
+    
     zoom(zoomFactor, x, y);
     
-    // Redraw
-    const { scale, offsetX, offsetY } = getViewport();
+    const { scale: newScale2, offsetX, offsetY } = getViewport();
     const renderer = getRenderer();
     if (renderer) {
-        renderer.drawAll(scale, offsetX, offsetY);
+        renderer.drawAll(newScale2, offsetX, offsetY);
     }
     
     showZoomIndicator();
