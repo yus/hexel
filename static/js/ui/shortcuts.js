@@ -2,10 +2,12 @@ import { getViewport, setOffset, zoom } from '../core/viewport.js';
 import { getRenderer } from '../main.js';
 import { addMessage } from './messages.js';
 import { showZoomIndicator } from './indicators.js';
-import { setTool } from '../tools/tool-manager.js';
+import { setTool, getCurrentToolName } from '../tools/tool-manager.js';
 import { undo, redo } from '../drawing/history.js';
 
 let gridEnabled = true;
+let previousTool = 'point';
+let spacePressed = false;
 
 export function initShortcuts() {
     document.addEventListener('keydown', handleKeyDown);
@@ -19,8 +21,19 @@ function handleKeyDown(e) {
     // Ignore if in input/textarea
     if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
     
+    // --- MOMENTARY PAN (SPACEBAR) ---
+    if (e.code === 'Space' && !spacePressed && !e.repeat) {
+        e.preventDefault();
+        spacePressed = true;
+        
+        // Store current tool and switch to pan
+        previousTool = getCurrentToolName();
+        setTool('pan');
+        document.body.style.cursor = 'grab';
+    }
+    
     // Tool shortcuts (no modifiers)
-    if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+    if (!e.ctrlKey && !e.metaKey && !e.altKey && !spacePressed) {
         switch(e.key.toLowerCase()) {
             case 'p':
                 e.preventDefault();
@@ -52,7 +65,7 @@ function handleKeyDown(e) {
                 setTool('fill-triangle');
                 addMessage('🎨 Fill tool selected', 'info', 1000);
                 break;
-            case ' ':
+            case 'g':
                 e.preventDefault();
                 toggleGrid();
                 break;
@@ -86,30 +99,26 @@ function handleKeyDown(e) {
         }
     }
     
-    // Navigation with arrow keys
-    if (!e.ctrlKey && !e.metaKey && !e.altKey) {
+    // Navigation with arrow keys (only if not in pan mode)
+    if (!e.ctrlKey && !e.metaKey && !e.altKey && !spacePressed) {
         const panAmount = 20;
         
         switch(e.key) {
             case 'ArrowLeft':
                 e.preventDefault();
-                setOffset(panAmount, 0);
-                updateAfterPan();
+                panView(panAmount, 0);
                 break;
             case 'ArrowRight':
                 e.preventDefault();
-                setOffset(-panAmount, 0);
-                updateAfterPan();
+                panView(-panAmount, 0);
                 break;
             case 'ArrowUp':
                 e.preventDefault();
-                setOffset(0, panAmount);
-                updateAfterPan();
+                panView(0, panAmount);
                 break;
             case 'ArrowDown':
                 e.preventDefault();
-                setOffset(0, -panAmount);
-                updateAfterPan();
+                panView(0, -panAmount);
                 break;
         }
     }
@@ -132,7 +141,14 @@ function handleKeyDown(e) {
 }
 
 function handleKeyUp(e) {
-    // Handle key release if needed
+    // Release spacebar - go back to previous tool
+    if (e.code === 'Space' && spacePressed) {
+        e.preventDefault();
+        spacePressed = false;
+        
+        setTool(previousTool);
+        document.body.style.cursor = 'default';
+    }
 }
 
 function toggleGrid() {
@@ -184,6 +200,15 @@ function zoomOut() {
     zoom(0.8, centerX, centerY);
     updateAfterPan();
     showZoomIndicator();
+}
+
+function panView(dx, dy) {
+    const { scale } = getViewport();
+    const worldDx = dx / scale;
+    const worldDy = -dy / scale; // Invert Y for natural feel
+    
+    setOffset(worldDx, worldDy);
+    updateAfterPan();
 }
 
 function updateAfterPan() {
