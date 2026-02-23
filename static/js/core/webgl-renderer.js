@@ -66,7 +66,7 @@ export class HexelRenderer {
             const float V_STEP = 41.569;
             const vec3 GRID_COLOR = vec3(0.784, 0.576, 0.824);
             
-            // Unit vectors at 0°, 60°, and 120°
+            // Unit vectors for 60° grid
             const vec2 unit000 = vec2(0.0, 1.0);
             const vec2 unit060 = vec2(0.8660254, 0.5);
             const vec2 unit120 = vec2(0.8660254, -0.5);
@@ -79,21 +79,32 @@ export class HexelRenderer {
             }
             
             void main() {
+                // Position with pan and zoom
                 vec2 uv = (gl_FragCoord.xy - u_offset) / u_resolution.xy - 0.5;
                 uv.x *= u_resolution.x / u_resolution.y;
                 
+                // Scale to control hex density
                 vec2 pos = uv * 3.0 * u_scale;
                 
+                // Line width adjusts with zoom
                 float lineWidth = 0.08 / u_scale;
                 
-                // NOW all variables are declared!
+                // Your zoom configuration
+                float horizAlpha = u_opacity;
+                float diagAlpha = u_opacity * 0.7;
+                
+                if (u_scale < 0.5) {
+                    lineWidth = 0.3 / u_scale;
+                } else if (u_scale < 1.0) {
+                    lineWidth = 0.4 / u_scale;
+                }
+                
+                // Calculate all three grid directions
                 float horiz = gridLine(lineWidth, pos, unit000);
                 float diag1 = gridLine(lineWidth, pos, unit120);
                 float diag2 = gridLine(lineWidth, pos, -unit060);
                 
-                float horizAlpha = u_opacity;
-                float diagAlpha = u_opacity * 0.7;
-                
+                // Combine with different opacities
                 float alpha = 0.0;
                 if (horiz > 0.0) {
                     alpha = horiz * horizAlpha;
@@ -101,8 +112,8 @@ export class HexelRenderer {
                     alpha = max(diag1, diag2) * diagAlpha;
                 }
                 
-                // Force minimum visibility for debugging
-                alpha = max(alpha, 0.5);
+                // Ensure minimum visibility
+                alpha = max(alpha, 0.1);
                 
                 gl_FragColor = vec4(GRID_COLOR, alpha);
             }
