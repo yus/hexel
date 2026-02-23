@@ -312,12 +312,24 @@ export class HexelRenderer {
         this.updatePointBuffer(); // <-- THIS IS CRITICAL!
     }
     */
-    addPoint(q, r, color, size) {
-        // Convert hexel to world coordinates
+    addPoint(q, r, color, size, preview = false) {
+        // Convert hexel to world coordinates using H_STEP and V_STEP
         const x = q * H_STEP + (r % 2 !== 0 ? H_STEP/2 : 0);
         const y = r * V_STEP;
         
-        this.points.push({ x, y, color, size });
+        // Parse color (assuming hex format like "#ffaa66")
+        const rColor = parseInt(color.slice(1,3), 16) / 255;
+        const gColor = parseInt(color.slice(3,5), 16) / 255;
+        const bColor = parseInt(color.slice(5,7), 16) / 255;
+        
+        const point = { x, y, r: rColor, g: gColor, b: bColor, size: size / 4 };
+        
+        if (preview || this.previewMode) {
+            this.previewPoints.push(point);
+        } else {
+            this.points.push(point);
+        }
+        
         this.updatePointBuffer();
     }
     
