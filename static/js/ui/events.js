@@ -60,21 +60,26 @@ function onMouseMove(e) {
     }
     
     if (isDragging) {
-        setOffset(dx, dy);
-        const { scale, offsetX, offsetY } = getViewport();
+        // These values are in screen pixels
+        setOffset(dx, dy); 
         
+        const { scale, offsetX, offsetY } = getViewport();
         const renderer = getRenderer();
         if (renderer) {
-            // Force redraw with new offset
+            // Store current view state in renderer
+            renderer.currentScale = scale;
+            renderer.currentOffsetX = offsetX;
+            renderer.currentOffsetY = offsetY;
             renderer.drawAll(scale, offsetX, offsetY);
         }
-    } else {
+    }
+    /* else {
         // Tool hover
         const rect = e.target.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
         handleToolAction('onMouseMove', x, y);
-    }
+    } */
     
     lastX = e.clientX;
     lastY = e.clientY;
