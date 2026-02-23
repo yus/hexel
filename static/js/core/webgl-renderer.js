@@ -18,7 +18,7 @@ export class HexelRenderer {
         
         // State
         this.gridEnabled = true;
-        this.gridOpacity = 0.15;
+        this.gridOpacity = 0.5;
         this.previewMode = false;
         this.currentScale = 1.0;
         this.currentOffsetX = 0;
