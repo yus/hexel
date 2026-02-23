@@ -51,6 +51,15 @@ document.addEventListener('DOMContentLoaded', async () => {
         console.error('Renderer initialization failed:', e);
         return;
     }
+
+    // Make renderer globally available for debugging
+    window.hexelRenderer = renderer;
+    
+    // Force a proper initial draw with viewport values
+    import('./core/viewport.js').then(({ getViewport }) => {
+        const { scale, offsetX, offsetY } = getViewport();
+        renderer.drawAll(scale, offsetX, offsetY);
+    });
     
     // Hide old canvases
     const gridCanvas = document.getElementById('grid-canvas');
