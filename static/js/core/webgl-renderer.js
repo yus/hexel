@@ -70,36 +70,58 @@ export class HexelRenderer {
             uniform vec2 u_resolution;
             uniform vec2 u_offset;
             uniform float u_scale;
+            uniform float u_opacity;
             
-            const float EDGE = 24.0;
-            const float SQRT3 = 1.7320508;
+            const float EDGE = 24.0; // Your hexel size
+            const float SQRT3 = 1.73205080757;
             
             void main() {
                 vec2 pos = (gl_FragCoord.xy - u_offset) / u_scale;
                 
-                // Calculate triangle coordinates (a, b, c)
-                float a = ceil((pos.x - SQRT3/3.0 * pos.y) / EDGE);
-                float b = floor((SQRT3 * 2.0/3.0 * pos.y) / EDGE) + 1.0;
+                // Calculate triangle coordinates (a, b, c) using the article's formula
+                float a = ceil(( pos.x - SQRT3/3.0 * pos.y) / EDGE);
+                float b = floor(( SQRT3 * 2.0/3.0 * pos.y) / EDGE) + 1.0;
                 float c = ceil((-pos.x - SQRT3/3.0 * pos.y) / EDGE);
                 
-                // Get center of this triangle
+                // Get center of this triangle using the article's center formula
                 float centerX = (0.5 * a - 0.5 * c) * EDGE;
                 float centerY = (-SQRT3/6.0 * a + SQRT3/3.0 * b - SQRT3/6.0 * c) * EDGE;
                 
-                // Distance to triangle center
-                float dist = distance(pos, vec2(centerX, centerY));
+                // The three edge directions (perpendicular to each lane)
+                vec2 edgeDir1 = vec2(1.0, 0.0);        // Horizontal
+                vec2 edgeDir2 = vec2(-0.5, SQRT3/2.0); // 120°
+                vec2 edgeDir3 = vec2(-0.5, -SQRT3/2.0); // 240°
                 
-                // Triangle edges (using the three lines from article)
-                float edge1 = abs(dot(pos, vec2(1.0, 0.0)) - a * EDGE);
-                float edge2 = abs(dot(pos, vec2(-0.5, SQRT3/2.0)) - b * EDGE);
-                float edge3 = abs(dot(pos, vec2(-0.5, -SQRT3/2.0)) - c * EDGE);
+                // Distance to each lane
+                float dist1 = abs(dot(pos, edgeDir1) - a * EDGE);
+                float dist2 = abs(dot(pos, edgeDir2) - b * EDGE);
+                float dist3 = abs(dot(pos, edgeDir3) - c * EDGE);
                 
+                // Draw edges (lines between triangles)
                 float isEdge = 0.0;
-                if (edge1 < 1.0 || edge2 < 1.0 || edge3 < 1.0) {
+                float lineWidth = 1.5;
+                
+                if (dist1 < lineWidth || dist2 < lineWidth || dist3 < lineWidth) {
                     isEdge = 1.0;
                 }
                 
-                gl_FragColor = vec4(0.784, 0.576, 0.824, isEdge * 0.3);
+                // Also draw the outline of each hexagon (optional)
+                // A hexagon is formed by 6 triangles with the same (floor division)
+                float q = floor((a + c) / 3.0);
+                float r = floor((a + b) / 3.0);
+                
+                // Center of the hexagon
+                float hexCenterX = (q * 2.0 + (mod(r, 2.0))) * EDGE * 0.75;
+                float hexCenterY = r * EDGE * SQRT3;
+                
+                float distToHexCenter = distance(pos, vec2(hexCenterX, hexCenterY));
+                float hexRadius = EDGE;
+                
+                if (abs(distToHexCenter - hexRadius) < lineWidth) {
+                    isEdge = max(isEdge, 0.8); // Hexagon border more visible
+                }
+                
+                gl_FragColor = vec4(0.784, 0.576, 0.824, isEdge * u_opacity);
             }
         `;
 
