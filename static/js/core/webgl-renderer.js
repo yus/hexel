@@ -1,3 +1,11 @@
+// Add these constants at the very top of the file, before the HexelRenderer class
+const HEXEL_SIZE = 24;
+const H_STEP = HEXEL_SIZE * 2;        // 48
+const V_STEP = HEXEL_SIZE * 1.7320508; // ~41.569 (sqrt(3) * size)
+
+// Or import them if they exist in constants.js:
+// import { H_STEP, V_STEP, HEXEL_SIZE } from '../utils/constants.js';
+
 // WebGL Renderer - Unified GPU rendering for grid AND elements
 export class HexelRenderer {
     constructor(gl) {
