@@ -53,7 +53,7 @@ export class HexelRenderer {
             }
         `;
         
-        /*const gridFS = `
+        const gridFS = `
             precision highp float;
             
             uniform vec2 u_resolution;
@@ -106,9 +106,9 @@ export class HexelRenderer {
                 
                 gl_FragColor = vec4(GRID_COLOR, alpha);
             }
-        `;*/
+        `;
 
-        const gridFS = `
+        /* const gridFS = `
             precision highp float;
             
             uniform vec2 u_resolution;
@@ -128,7 +128,7 @@ export class HexelRenderer {
                 
                 gl_FragColor = vec4(0.784, 0.576, 0.824, isLine * u_opacity);
             }
-        `;
+        `; */
         
         // === POINT SHADER ===
         const pointVS = `
