@@ -32,6 +32,9 @@ export class HexelRenderer {
         setTimeout(() => {
             this.drawAll(1.0, 0, 0);
         }, 10);
+
+        // TEST: Add a point at origin
+        this.addPoint(0, 0, '#ffaa66', 8);
     }
     
     initBlending() {
