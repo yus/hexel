@@ -19,6 +19,17 @@ const tools = {
 let currentTool = 'point';
 let activeTool = tools.point;
 
+let snappingEnabled = true;
+
+export function setSnapping(enabled) {
+    snappingEnabled = enabled;
+    console.log('Snapping:', enabled);
+}
+
+export function getSnapping() {
+    return snappingEnabled;
+}
+
 export function setTool(toolName) {
     console.log('Switching tool to:', toolName);
     
