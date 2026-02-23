@@ -70,7 +70,85 @@ export class HexelRenderer {
                 gl_Position = vec4(screenPos * vec2(1, -1), 0, 1);
             }
         `;
-        
+
+        // In webgl-renderer.js, find your grid fragment shader and temporarily replace with this:
+
+        const gridFS = `
+            precision highp float;
+            
+            uniform vec2 u_resolution;
+            uniform vec2 u_offset;
+            uniform float u_scale;
+            uniform float u_time;
+            uniform float u_debug; // Add this
+            
+            const float H_STEP = 48.0;
+            const float V_STEP = 41.569;
+            const vec3 GRID_COLOR = vec3(0.784, 0.576, 0.824);
+            
+            float gridLine(float coord, float step, float width) {
+                float gridPos = mod(coord + step/2.0, step) - step/2.0;
+                float dist = abs(gridPos);
+                return 1.0 - smoothstep(0.0, width, dist);
+            }
+            
+            void main() {
+                vec2 pos = gl_FragCoord.xy - u_offset;
+                pos /= u_scale;
+                
+                // DEBUG: Force visibility
+                if (u_debug > 0.5) {
+                    gl_FragColor = vec4(1.0, 0.0, 0.0, 0.5); // RED semi-transparent
+                    return;
+                }
+                
+                // Your zoom configuration
+                float horizAlpha = 0.15;
+                float diagAlpha = 0.1;
+                float lineWidth = 0.8;
+                
+                if (u_scale < 0.5) {
+                    horizAlpha = 0.15;
+                    diagAlpha = 0.1;
+                    lineWidth = 0.3;
+                } else if (u_scale < 1.0) {
+                    horizAlpha = 0.15;
+                    diagAlpha = 0.1;
+                    lineWidth = 0.4;
+                } else {
+                    horizAlpha = 0.15;
+                    diagAlpha = 0.1;
+                    lineWidth = 0.5 / u_scale;
+                }
+                
+                // Horizontal lines
+                float horiz = gridLine(pos.y, V_STEP, lineWidth);
+                
+                // Diagonal lines
+                float rowOffset = mod(floor(pos.y / V_STEP), 2.0) * (H_STEP / 2.0);
+                float tan60 = 1.732;
+                
+                float diagPos1 = pos.x - rowOffset - pos.y / tan60;
+                float diagPos2 = pos.x - rowOffset + pos.y / tan60;
+                
+                float diag1 = gridLine(diagPos1, H_STEP, lineWidth);
+                float diag2 = gridLine(diagPos2, H_STEP, lineWidth);
+                
+                float alpha = 0.0;
+                if (horiz > 0.0) {
+                    alpha = horiz * horizAlpha;
+                } else if (diag1 > 0.0 || diag2 > 0.0) {
+                    alpha = max(diag1, diag2) * diagAlpha;
+                }
+                
+                // DEBUG: Ensure minimum alpha
+                alpha = max(alpha, 0.1);
+                
+                gl_FragColor = vec4(GRID_COLOR, alpha);
+            }
+        `;
+
+        /*
         const gridFS = `
             precision highp float;
             
@@ -135,6 +213,7 @@ export class HexelRenderer {
                 gl_FragColor = vec4(GRID_COLOR, alpha);
             }
         `;
+        */
         
         // Compile shaders
         this.programs.grid = this.createProgram(gridVS, gridFS);
