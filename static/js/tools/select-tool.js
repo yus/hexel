@@ -45,13 +45,9 @@ export class SelectTool {
         addMessage(`🔍 selected hexel (${hexel.q}, ${hexel.r})`);
     }
     
-    drawHoverHighlight(hexel) {
-        const renderer = getRenderer();
-        if (!renderer) return;
-        
-        renderer.setPreviewMode(true);
-        renderer.drawHexagonOutline(hexel, '#ffffff', 0.5, true); // dashed
-        renderer.setPreviewMode(false);
+    drawHexagonOutline(hexel, color, alpha, dashed) {
+        // Implementation for hexagon outline
+        // We'll add this later
     }
     
     drawSelectionHighlight(hexel) {
