@@ -315,6 +315,8 @@ export class HexelRenderer {
         this.currentScale = scale;
         this.currentOffsetX = offsetX;
         this.currentOffsetY = offsetY;
+
+        console.log('🎨 drawAll with scale:', scale, 'offset:', offsetX, offsetY);
         
         const gl = this.gl;
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
@@ -389,6 +391,8 @@ export class HexelRenderer {
         
         gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), 
             gl.canvas.width, gl.canvas.height);
+        gl.uniform2f(gl.getUniformLocation(program, 'u_offset'), offsetX, offsetY);
+        gl.uniform1f(gl.getUniformLocation(program, 'u_scale'), scale);
         
         gl.drawArrays(gl.POINTS, 0, totalPoints);
     }
