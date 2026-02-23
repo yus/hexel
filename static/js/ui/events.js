@@ -33,86 +33,41 @@ export function initEvents() {
     console.log('Events initialized on:', canvas);
 }
 
+function onMouseMove(e) {
+    if (!lastX) return;
+    
+    // Always get mouse position
+    const rect = e.target.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    // Let the ACTIVE tool handle it
+    handleToolAction('onMouseMove', x, y);
+    
+    lastX = e.clientX;
+    lastY = e.clientY;
+}
+
 function onMouseDown(e) {
-    console.log('Mouse down', e.clientX, e.clientY);
     e.preventDefault();
     
     const rect = e.target.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
-    isDragging = false;
+    handleToolAction('onMouseDown', x, y);
+    
     lastX = e.clientX;
     lastY = e.clientY;
-    clickStartTime = Date.now();
-    clickStartPos = { x: e.clientX, y: e.clientY };
-    
-    handleToolAction('onMouseDown', x, y);
-}
-
-function onMouseMove(e) {
-    if (!lastX) return;
-    
-    const dx = e.clientX - lastX;
-    const dy = e.clientY - lastY;
-    
-    // Check if we should start dragging
-    if (!isDragging) {
-        const dist = Math.hypot(e.clientX - clickStartPos.x, e.clientY - clickStartPos.y);
-        if (dist > dragThreshold) {
-            isDragging = true;
-        }
-    }
-    /*
-    if (isDragging) {
-        console.log('Dragging:', { dx, dy });
-        
-        // Get current viewport
-        const { scale, offsetX, offsetY } = getViewport();
-        
-        // IMPORTANT: Convert screen pixels to world coordinates
-        // The offset needs to be scaled by zoom!
-        const worldDx = dx / scale;
-        const worldDy = dy / scale;
-        
-        // Update viewport with world coordinates
-        setOffset(worldDx, worldDy);
-        
-        // Get new values after update
-        const newViewport = getViewport();
-        const renderer = getRenderer();
-        if (renderer) {
-            renderer.drawAll(newViewport.scale, newViewport.offsetX, newViewport.offsetY);
-        }
-        
-        // Update last position for next move
-        lastX = e.clientX;
-        lastY = e.clientY;
-    } else {
-        // Tool hover
-        const rect = e.target.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        handleToolAction('onMouseMove', x, y);
-    } 
-    */
 }
 
 function onMouseUp(e) {
-    if (!isDragging) {
-        const clickDuration = Date.now() - clickStartTime;
-        const rect = e.target.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        
-        if (clickDuration < clickDelay) {
-            handleToolAction('onClick', x, y);
-        } else {
-            handleToolAction('onLongClick', x, y);
-        }
-    }
+    const rect = e.target.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
     
-    isDragging = false;
+    handleToolAction('onMouseUp', x, y);
+    
     lastX = null;
     lastY = null;
 }
