@@ -1,4 +1,4 @@
-eimport { getViewport, setOffset, zoom } from '../core/viewport.js';
+import { getViewport, setOffset, zoom } from '../core/viewport.js';
 import { getRenderer } from '../main.js';
 import { handleToolAction } from '../tools/tool-manager.js';
 import { showZoomIndicator } from './indicators.js';
