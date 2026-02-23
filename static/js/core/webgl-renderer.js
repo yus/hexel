@@ -240,6 +240,24 @@ export class HexelRenderer {
         this.buffers.lines = gl.createBuffer();
         this.buffers.preview = gl.createBuffer();
     }
+
+    // Add this method to your HexelRenderer class
+    updateHexagonBuffer() {
+        // If you don't have hexagon support yet, just create an empty method
+        console.log('🔄 Updating hexagon buffer');
+        
+        const gl = this.gl;
+        if (!gl) return;
+        
+        // If you have hexagon data, update the buffer here
+        // For now, just ensure the buffer exists
+        if (!this.buffers.hexagons) {
+            this.buffers.hexagons = gl.createBuffer();
+        }
+        
+        // You can implement actual hexagon rendering later
+        this.hexagonVertexCount = 0;
+    }
     
     setPreviewMode(enabled) {
         this.previewMode = enabled;
