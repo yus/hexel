@@ -11,7 +11,8 @@ const tools = {
     triangle: new TriangleTool(),
     select: new SelectTool(),
     hexagon: new HexagonTool(),
-    'fill-triangle': new FillTriangleTool()
+    'fill-triangle': new FillTriangleTool(),
+    pan: new PanTool() 
 };
 
 let currentTool = 'point';
