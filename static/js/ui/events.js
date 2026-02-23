@@ -36,49 +36,15 @@ export function initEvents() {
 function onMouseMove(e) {
     if (!lastX) return;
     
-    const dx = e.clientX - lastX;
-    const dy = e.clientY - lastY;
+    const rect = e.target.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
     
-    // Dead zone - ignore tiny movements
-    if (Math.abs(dx) < 2 && Math.abs(dy) < 2) return;
+    // ONLY tools handle mouse movement
+    handleToolAction('onMouseMove', x, y);
     
-    // Check if we should start dragging
-    if (!isDragging) {
-        const dist = Math.hypot(dx, dy);
-        if (dist > dragThreshold) {
-            isDragging = true;
-            console.log('Started dragging');
-        }
-    }
-    
-    if (isDragging) {
-        // Get current viewport
-        const { scale, offsetX, offsetY } = getViewport();
-        
-        // REDUCE pan speed - divide by zoom level
-        const panSpeed = 1.0 / scale;
-        const worldDx = dx * panSpeed * 0.5; // Half speed for smoothness
-        const worldDy = -dy * panSpeed * 0.5; // Invert Y and half speed
-        
-        // Update viewport
-        setOffset(worldDx, worldDy);
-        
-        // Get new values and redraw
-        const newViewport = getViewport();
-        const renderer = getRenderer();
-        if (renderer) {
-            renderer.drawAll(newViewport.scale, newViewport.offsetX, newViewport.offsetY);
-        }
-        
-        lastX = e.clientX;
-        lastY = e.clientY;
-    } else {
-        // Tool hover
-        const rect = e.target.getBoundingClientRect();
-        const x = e.clientX - rect.left;
-        const y = e.clientY - rect.top;
-        handleToolAction('onMouseMove', x, y);
-    }
+    lastX = e.clientX;
+    lastY = e.clientY;
 }
 
 function onMouseDown(e) {
@@ -92,6 +58,18 @@ function onMouseDown(e) {
     
     lastX = e.clientX;
     lastY = e.clientY;
+    clickStartPos = { x: e.clientX, y: e.clientY };
+}
+
+function onWheel(e) {
+    e.preventDefault();
+    
+    // Let the ACTIVE tool handle wheel
+    const rect = e.target.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+    
+    handleToolAction('onWheel', e, x, y);
 }
 
 function onMouseUp(e) {
@@ -103,33 +81,6 @@ function onMouseUp(e) {
     
     lastX = null;
     lastY = null;
-}
-
-function onWheel(e) {
-    e.preventDefault();
-    
-    const rect = e.target.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-    
-    // Slower, smoother zoom
-    const delta = -e.deltaY * 0.0005; // Reduced from 0.001
-    const zoomFactor = 1 + delta;
-    
-    // Clamp zoom to reasonable range
-    const { scale } = getViewport();
-    const newScale = scale * zoomFactor;
-    if (newScale < 0.2 || newScale > 5.0) return; // Limit zoom range
-    
-    zoom(zoomFactor, x, y);
-    
-    const { scale: newScale2, offsetX, offsetY } = getViewport();
-    const renderer = getRenderer();
-    if (renderer) {
-        renderer.drawAll(newScale2, offsetX, offsetY);
-    }
-    
-    showZoomIndicator();
 }
 
 function onTouchStart(e) {
