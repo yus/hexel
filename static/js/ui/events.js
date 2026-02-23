@@ -60,12 +60,12 @@ function onMouseMove(e) {
     }
     
     if (isDragging) {
-        // Pan view
         setOffset(dx, dy);
         const { scale, offsetX, offsetY } = getViewport();
         
         const renderer = getRenderer();
         if (renderer) {
+            // Force redraw with new offset
             renderer.drawAll(scale, offsetX, offsetY);
         }
     } else {
