@@ -75,13 +75,13 @@ export function clearAll() {
     if (renderer) {
         renderer.clear();
         
-        import('./viewport.js').then(({ getViewport }) => {
+        import('../core/viewport.js').then(({ getViewport }) => {
             const { scale, offsetX, offsetY } = getViewport();
             renderer.drawAll(scale, offsetX, offsetY);
         });
     }
     
-    import('./panels.js').then(m => m.updateStats());
+    import('../ui/panels.js').then(m => m.updateStats());
     
     return true;
 }
