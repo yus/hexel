@@ -63,7 +63,7 @@ function onMouseMove(e) {
             isDragging = true;
         }
     }
-    
+    /*
     if (isDragging) {
         console.log('Dragging:', { dx, dy });
         
@@ -94,7 +94,8 @@ function onMouseMove(e) {
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
         handleToolAction('onMouseMove', x, y);
-    }
+    } 
+    */
 }
 
 function onMouseUp(e) {
