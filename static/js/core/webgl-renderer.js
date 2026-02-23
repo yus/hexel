@@ -395,9 +395,9 @@ export class HexelRenderer {
         console.log('🎯 TEST GRID - drawing magenta');
     
         // Simple magenta fill - IGNORES shader completely
-        gl.clearColor(1.0, 0.0, 1.0, 0.25); // Magenta
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        return; // Uncomment to test
+        // gl.clearColor(1.0, 0.0, 1.0, 0.25); // Magenta
+        // gl.clear(gl.COLOR_BUFFER_BIT);
+        // return; // Uncomment to test
         
         const program = this.programs.grid;
         
