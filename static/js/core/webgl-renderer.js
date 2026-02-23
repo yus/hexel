@@ -54,8 +54,24 @@ export class HexelRenderer {
       
       const gridFS = `
           precision highp float;
+          
+          uniform vec2 u_resolution;
+          uniform vec2 u_offset;
+          uniform float u_scale;
+          
           void main() {
-              gl_FragColor = vec4(1.0, 0.0, 0.0, 0.5); // Solid red, 50% alpha
+              vec2 pos = (gl_FragCoord.xy - u_offset * u_resolution) / u_scale;
+              
+              // Simple 50px grid
+              float xLine = mod(pos.x, 50.0);
+              float yLine = mod(pos.y, 50.0);
+              
+              float isLine = 0.0;
+              if (xLine < 1.5 || yLine < 1.5) {
+                  isLine = 1.0;
+              }
+              
+              gl_FragColor = vec4(0.784, 0.576, 0.824, isLine * 0.3);
           }
       `;
       
