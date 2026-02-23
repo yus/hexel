@@ -1,11 +1,9 @@
-// Keyboard shortcuts management
-import { setTool } from '../tools/tool-manager.js';
-import { getViewport, zoom, setOffset } from '../core/viewport.js';
-import { drawGrid } from '../core/grid.js';
-import { drawAll } from '../drawing/renderer.js';
-import { undo, redo } from '../drawing/history.js';
+import { getViewport, setOffset, zoom } from '../core/viewport.js';
+import { getRenderer } from '../main.js';
 import { addMessage } from './messages.js';
 import { showZoomIndicator } from './indicators.js';
+import { setTool } from '../tools/tool-manager.js';
+import { undo, redo } from '../drawing/history.js';
 
 let gridEnabled = true;
 
@@ -85,32 +83,12 @@ function handleKeyDown(e) {
                 e.preventDefault();
                 redo();
                 break;
-            case 'c':
-                // Copy (future implementation)
-                if (e.target.tagName !== 'INPUT') {
-                    e.preventDefault();
-                    copySelection();
-                }
-                break;
-            case 'v':
-                // Paste (future implementation)
-                if (e.target.tagName !== 'INPUT') {
-                    e.preventDefault();
-                    pasteSelection();
-                }
-                break;
-            case 'a':
-                // Select all
-                e.preventDefault();
-                selectAll();
-                break;
         }
     }
     
     // Navigation with arrow keys
     if (!e.ctrlKey && !e.metaKey && !e.altKey) {
         const panAmount = 20;
-        const { scale, offsetX, offsetY } = getViewport();
         
         switch(e.key) {
             case 'ArrowLeft':
@@ -155,46 +133,34 @@ function handleKeyDown(e) {
 
 function handleKeyUp(e) {
     // Handle key release if needed
-    if (e.key === 'Shift') {
-        // Temporary tool switch released
-    }
 }
 
 function toggleGrid() {
-    gridEnabled = !gridEnabled;
-    
-    const { scale, offsetX, offsetY } = getViewport();
-    
-    // Update WebGL or canvas grid
-    const glCanvas = document.getElementById('grid-gl-canvas');
-    if (glCanvas && glCanvas.style.display !== 'none') {
-        // WebGL grid - toggle visibility
-        glCanvas.style.opacity = gridEnabled ? '1' : '0';
-    } else {
-        // Canvas grid
-        drawGrid(scale, offsetX, offsetY, gridEnabled);
-    }
-    
-    // Update UI
-    const gridToggle = document.getElementById('header-grid-toggle');
-    if (gridToggle) {
-        gridToggle.classList.toggle('active', gridEnabled);
-        gridToggle.innerHTML = gridEnabled ? 
-            '<span>⬟</span> <span>GRID ON</span>' : 
-            '<span>⬟</span> <span>GRID OFF</span>';
-    }
-    
-    document.getElementById('status-grid').textContent = gridEnabled ? 'ON' : 'OFF';
-    addMessage(`📐 Grid ${gridEnabled ? 'enabled' : 'disabled'}`);
+    import('../core/grid.js').then(m => {
+        gridEnabled = m.toggleGrid();
+        
+        const { scale, offsetX, offsetY } = getViewport();
+        const renderer = getRenderer();
+        if (renderer) {
+            renderer.gridEnabled = gridEnabled;
+            renderer.drawAll(scale, offsetX, offsetY);
+        }
+        
+        const gridToggle = document.getElementById('header-grid-toggle');
+        if (gridToggle) {
+            gridToggle.classList.toggle('active', gridEnabled);
+        }
+        
+        document.getElementById('status-grid').textContent = gridEnabled ? 'ON' : 'OFF';
+        addMessage(`📐 Grid ${gridEnabled ? 'enabled' : 'disabled'}`);
+    });
 }
 
 function resetView() {
     const { scale, offsetX, offsetY } = getViewport();
     
-    // Reset to center
     setOffset(-offsetX, -offsetY);
     
-    // Reset zoom to 1.0
     const centerX = window.innerWidth / 2;
     const centerY = window.innerHeight / 2;
     zoom(1 / scale, centerX, centerY);
@@ -221,20 +187,11 @@ function zoomOut() {
 }
 
 function updateAfterPan() {
-    const { scale, offsetX, offsetY, gridEnabled } = getViewport();
-    
-    // Update WebGL or canvas
-    const glCanvas = document.getElementById('grid-gl-canvas');
-    if (glCanvas && glCanvas.style.display !== 'none') {
-        import('../core/grid-shader.js').then(m => {
-            const { glShader } = require('../main.js');
-            if (glShader) m.drawGridGL(glShader, scale, offsetX, offsetY);
-        });
-    } else {
-        drawGrid(scale, offsetX, offsetY, gridEnabled);
+    const { scale, offsetX, offsetY } = getViewport();
+    const renderer = getRenderer();
+    if (renderer) {
+        renderer.drawAll(scale, offsetX, offsetY);
     }
-    
-    drawAll();
 }
 
 function cancelCurrentAction() {
@@ -247,20 +204,6 @@ function cancelCurrentAction() {
     });
 }
 
-// Placeholders for future features
-function copySelection() {
-    addMessage('📋 Copy (coming soon)', 'info', 1500);
-}
-
-function pasteSelection() {
-    addMessage('📋 Paste (coming soon)', 'info', 1500);
-}
-
-function selectAll() {
-    addMessage('🔲 Select all (coming soon)', 'info', 1500);
-}
-
-// Export for use in other modules
 export function setGridState(enabled) {
     gridEnabled = enabled;
 }
