@@ -28,6 +28,7 @@ export class HexagonTool {
         
         const renderer = getRenderer();
         if (renderer) {
+            renderer.syncFromStorage();
             renderer.addHexagon(hexel.q, hexel.r, color);
             renderer.drawAll(scale, offsetX, offsetY);
         }
