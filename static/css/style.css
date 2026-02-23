@@ -76,6 +76,7 @@ body {
     opacity: 1 !important;
     background: transparent;
     z-index: 100;
+    pointer-events: auto !important;
 }
 
 /* ===== HEADER ===== */
