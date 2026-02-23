@@ -41,10 +41,27 @@ export class HexelRenderer {
         // === GRID SHADER (your existing one with debug) ===
         const gridVS = `
             attribute vec2 a_position;
+            uniform vec2 u_resolution;
+            uniform vec2 u_offset;
+            uniform float u_scale;
             
             void main() {
-                // Just pass through - a_position is already in clip space
-                gl_Position = vec4(a_position, 0, 1);
+                // a_position is in clip space (-1 to 1)
+                // We need to transform it to world space with offset and scale
+                
+                // First, convert from clip space to screen pixels
+                vec2 screenPos = (a_position * 0.5 + 0.5) * u_resolution;
+                
+                // Apply pan (offset)
+                screenPos -= u_offset;
+                
+                // Apply zoom (scale)
+                screenPos /= u_scale;
+                
+                // Convert back to clip space
+                vec2 clipPos = (screenPos / u_resolution) * 2.0 - 1.0;
+                
+                gl_Position = vec4(clipPos * vec2(1, -1), 0, 1);
             }
         `;
         
