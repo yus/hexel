@@ -5,6 +5,15 @@ import { getRenderer } from '../main.js';
 import { addPoint } from '../drawing/points.js';
 
 export class PointTool {
+    // Add these empty methods to prevent errors
+    onMouseDown(x, y) {
+        // Point tool doesn't need mouse down
+    }
+    
+    onMouseUp(x, y) {
+        // Point tool doesn't need mouse up
+    }
+    
     onClick(x, y) {
         const { scale, offsetX, offsetY } = getViewport();
         const hexel = screenToHexel(x, y, scale, offsetX, offsetY);
