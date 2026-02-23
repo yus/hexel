@@ -292,11 +292,18 @@ export class HexelRenderer {
         const gl = this.gl;
         const data = [];
         
-        // Store points in WORLD coordinates (NO transform here!)
+        const scale = this.currentScale || 1.0;
+        const offsetX = this.currentOffsetX || 0;
+        const offsetY = this.currentOffsetY || 0;
+        
         const addPoints = (points) => {
             points.forEach(p => {
+                // Transform to screen coordinates using CURRENT viewport
+                const screenX = p.x * scale + offsetX + gl.canvas.width/2;
+                const screenY = p.y * scale + offsetY + gl.canvas.height/2;
+                
                 data.push(
-                    p.x, p.y,  // World coordinates!
+                    screenX, screenY,
                     p.r, p.g, p.b,
                     p.size,
                     p.preview ? 1 : 0
@@ -306,6 +313,8 @@ export class HexelRenderer {
         
         addPoints(this.points);
         addPoints(this.previewPoints);
+        
+        if (data.length === 0) return;
         
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.points);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.DYNAMIC_DRAW);
