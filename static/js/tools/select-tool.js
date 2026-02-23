@@ -30,7 +30,7 @@ export class SelectTool {
             this.hoverHexel.q !== hexel.q || 
             this.hoverHexel.r !== hexel.r) {
             this.hoverHexel = hexel;
-            this.drawHoverHighlight(hexel);
+            this.drawPreview(hexel);
         }
     }
     
