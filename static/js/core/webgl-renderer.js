@@ -488,6 +488,16 @@ export class HexelRenderer {
         console.log('✅ Drew', totalPoints, 'points');
     }
 
+    drawHexagonOutline(hexel, color, alpha, dashed) {
+        // Implement hexagon outline drawing
+        console.log('Drawing hexagon outline', hexel);
+    }
+    
+    drawHexagonCorners(hexel, color, alpha) {
+        // Implement corner markers
+        console.log('Drawing hexagon corners', hexel);
+    }
+    
     syncFromStorage() {
         import('../drawing/points.js').then(({ points }) => {
             this.points = [];
