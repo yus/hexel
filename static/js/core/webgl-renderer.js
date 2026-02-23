@@ -41,12 +41,13 @@ export class HexelRenderer {
         gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
     }
 
-    const formatGLSLFloat = (num) => {
-        return num.toString().includes('.') ? num.toString() : num.toString() + '.0';
-    };
+    
     
     initShaders() {
         // Grid shader
+        const formatGLSLFloat = (num) => {
+            return num.toString().includes('.') ? num.toString() : num.toString() + '.0';
+        };
         const gridVS = `
             attribute vec2 a_position;
             uniform vec2 u_resolution;
