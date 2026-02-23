@@ -37,8 +37,15 @@ export class LineTool {
         if (renderer) {
             renderer.clearPreview();
             renderer.setPreviewMode(true);
-            // Draw preview line
-            renderer.drawLine(this.startHexel, currentHexel, '#ffffff', 0.6, true);
+            
+            // Check if method exists
+            if (typeof renderer.drawLine === 'function') {
+                renderer.drawLine(this.startHexel, currentHexel, '#ffffff', 0.6, true);
+            } else {
+                // Fallback: just log
+                console.log('Preview line from', this.startHexel, 'to', currentHexel);
+            }
+            
             renderer.setPreviewMode(false);
             renderer.drawAll(scale, offsetX, offsetY);
         }
