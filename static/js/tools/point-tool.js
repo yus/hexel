@@ -21,6 +21,19 @@ export class PointTool {
         const size = parseInt(document.getElementById('size-slider').value);
         
         const added = addPoint(hexel.q, hexel.r, color, size);
+
+        // After adding point to storage
+        const renderer = getRenderer();
+        if (renderer) {
+            // Sync data from storage to renderer
+            import('../drawing/points.js').then(({ points }) => {
+                renderer.points = [...points];
+                renderer.updatePointBuffer();
+                
+                const { scale, offsetX, offsetY } = getViewport();
+                renderer.drawAll(scale, offsetX, offsetY);
+            });
+        }
         
         if (added) {
             addMessage(`✨ point at (${hexel.q}, ${hexel.r})`);
