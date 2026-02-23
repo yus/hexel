@@ -415,4 +415,25 @@ export class HexelRenderer {
         
         gl.drawArrays(gl.POINTS, 0, this.points.length + this.previewPoints.length);
     }
+
+    // Add this method to your HexelRenderer class
+    clear() {
+        console.log('🧹 Clearing renderer data');
+        
+        // Clear all data arrays
+        this.points = [];
+        this.lines = [];
+        this.triangles = [];
+        this.hexagons = [];
+        this.previewPoints = [];
+        this.previewLines = [];
+        this.previewHexagons = [];
+        
+        // Update buffers (with empty data)
+        this.updatePointBuffer();
+        this.updateHexagonBuffer();
+        
+        // Force a redraw
+        this.drawAll(this.currentScale, this.currentOffsetX, this.currentOffsetY);
+    }
 }
