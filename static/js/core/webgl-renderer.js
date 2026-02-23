@@ -10,6 +10,8 @@ export class HexelRenderer {
         // Data storage
         this.points = [];
         this.lines = [];
+        this.triangles = [];
+        this.hexagons = [];
         this.previewPoints = [];
         this.previewLines = [];
         
