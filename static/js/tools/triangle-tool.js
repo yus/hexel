@@ -203,4 +203,9 @@ export class TriangleTool {
         }
         this.previewTriangle = null;
     }
+
+    // Required methods for tool-manager
+    onMouseDown() {}
+    
+    onMouseUp() {}
 }
