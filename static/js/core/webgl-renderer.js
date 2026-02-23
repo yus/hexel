@@ -282,13 +282,13 @@ export class HexelRenderer {
         
         const point = { x, y, r: rColor, g: gColor, b: bColor, size: size / 4 };
         
-        if (preview) {
+        
+        if (preview || this.previewMode) {
             this.previewPoints.push(point);
         } else {
             this.points.push(point);
-        }
-        
-        this.updatePointBuffer();
+        }    
+        this.updatePointBuffer(); // <-- THIS IS CRITICAL!
     }
     
     addLine(start, end, color, preview = false) {
@@ -399,6 +399,13 @@ export class HexelRenderer {
         gl.uniform1f(gl.getUniformLocation(program, 'u_scale'), scale);
         
         gl.drawArrays(gl.POINTS, 0, this.points.length + this.previewPoints.length);
+        
+        console.log('Drawing points, count:', this.points.length + this.previewPoints.length);
+    
+        if (this.points.length === 0 && this.previewPoints.length === 0) {
+            console.log('No points to draw');
+            return;
+        }
     }
 
     // Add this method to your HexelRenderer class
