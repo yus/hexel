@@ -10,27 +10,18 @@ export function initPanels() {
 }
 
 export function updateStats() {
-    document.getElementById('stat-points').textContent = points.length;
-    document.getElementById('status-points').textContent = points.length;
-    document.getElementById('stat-lines').textContent = lines.length;
+    import('../drawing/points.js').then(m => {
+        document.getElementById('stat-points').textContent = m.points.length;
+        document.getElementById('status-points').textContent = m.points.length;
+    });
     
-    // Also update hexel info from renderer if needed
-    const renderer = getRenderer();
-    if (renderer) {
-        // Update any renderer-specific stats
-        import('../drawing/points.js').then(m => {
-            document.getElementById('stat-points').textContent = m.points.length;
-            document.getElementById('status-points').textContent = m.points.length;
-        });
-        
-        import('../drawing/lines.js').then(m => {
-            document.getElementById('stat-lines').textContent = m.lines.length;
-        });
-        
-        // Grid size
-        document.getElementById('stat-grid').textContent = '48px';
-        document.getElementById('stat-hexel').textContent = '24';
-    }
+    import('../drawing/lines.js').then(m => {
+        document.getElementById('stat-lines').textContent = m.lines.length;
+    });
+    
+    // Grid size (static for now)
+    document.getElementById('stat-grid').textContent = '48px';
+    document.getElementById('stat-hexel').textContent = '24';
 }
 
 function initSettings() {
