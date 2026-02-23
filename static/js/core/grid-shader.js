@@ -115,7 +115,8 @@ export class HexelRenderer {
                     alpha = max(diag1, diag2) * diagAlpha;
                 }
                 
-                gl_FragColor = vec4(GRID_COLOR, alpha);
+                // gl_FragColor = vec4(GRID_COLOR, alpha);
+                gl_FragColor = vec4(1.0, 0.0, 0.0, 0.5); // Solid red, 50% alpha
             }
         `;
         
@@ -347,7 +348,15 @@ export class HexelRenderer {
     }
     
     drawGrid(scale, offsetX, offsetY) {
+        console.log('📐 drawGrid CALLED - scale:', scale, 'opacity:', this.gridOpacity, 'enabled:', this.gridEnabled);
+
+        // If you get here but no grid, add this test:
         const gl = this.gl;
+
+        // TEST 1: Clear with red to prove WebGL works
+        gl.clearColor(1, 0, 0, 1);
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        
         const program = this.programs.grid;
         
         gl.useProgram(program);
