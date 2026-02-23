@@ -19,6 +19,28 @@ const tools = {
 let currentTool = 'point';
 let activeTool = tools.point;
 
+export function getCurrentToolName() {
+    return currentTool;
+}
+
+export function setTool(toolName) {
+    if (activeTool && typeof activeTool.deactivate === 'function') {
+        activeTool.deactivate();
+    }
+    
+    currentTool = toolName;
+    activeTool = tools[toolName];
+    
+    if (activeTool && typeof activeTool.activate === 'function') {
+        activeTool.activate();
+    }
+    
+    // Update UI
+    document.querySelectorAll('.tool-btn').forEach(btn => {
+        btn.classList.toggle('active', btn.dataset.tool === toolName);
+    });
+}
+
 let snappingEnabled = true;
 
 export function setSnapping(enabled) {
@@ -67,3 +89,11 @@ export function handleToolAction(action, ...args) {
         console.log(`Tool ${currentTool} has no ${action} method`);
     }
 }
+
+// Export all
+export { 
+    setTool, 
+    getCurrentTool, 
+    getCurrentToolName,
+    handleToolAction 
+};
