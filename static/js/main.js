@@ -8,10 +8,8 @@ import { HexelRenderer } from './core/webgl-renderer.js';
 import { saveState, undo, redo, clearHistory } from './drawing/history.js';
 
 // App state
-// let renderer = null;
-// let gl = null;
-
-const renderer = new HexelRenderer(gl);
+let renderer = null;
+let gl = null;
 
 // Export for other modules to access
 export function getRenderer() {
@@ -60,6 +58,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     if (gridCanvas) gridCanvas.style.display = 'none';
     if (drawCanvas) drawCanvas.style.display = 'none';
+
+    renderer = new HexelRenderer(gl);
     
     // Initialize UI with renderer reference
     initToolbar(renderer);
