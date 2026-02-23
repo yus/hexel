@@ -235,14 +235,11 @@ export class HexelRenderer {
         const gl = this.gl;
         const data = [];
         
+        // Store points in WORLD coordinates (NO transform here!)
         const addPoints = (points) => {
             points.forEach(p => {
-                // Transform to screen coordinates
-                const screenX = p.x * this.currentScale + this.currentOffsetX + gl.canvas.width/2;
-                const screenY = p.y * this.currentScale + this.currentOffsetY + gl.canvas.height/2;
-                
                 data.push(
-                    screenX, screenY,
+                    p.x, p.y,  // World coordinates!
                     p.r, p.g, p.b,
                     p.size,
                     p.preview ? 1 : 0
