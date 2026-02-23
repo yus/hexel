@@ -11,7 +11,6 @@ export class PanTool {
     activate() {
         document.body.style.cursor = 'grab';
         document.body.dataset.tool = 'pan';
-        console.log('Pan tool activated');
     }
     
     deactivate() {
@@ -35,10 +34,9 @@ export class PanTool {
         
         const { scale } = getViewport();
         
-        // Smooth, slow pan that feels like dragging paper
-        const panSpeed = 0.8 / scale; // Even slower for precise control
-        const worldDx = dx * panSpeed;
-        const worldDy = -dy * panSpeed;
+        // Pan at speed that feels good
+        const worldDx = dx / scale;
+        const worldDy = -dy / scale; // Invert Y for natural feel
         
         setOffset(worldDx, worldDy);
         
