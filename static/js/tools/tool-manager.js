@@ -4,6 +4,7 @@ import { SelectTool } from './select-tool.js';
 import { TriangleTool } from './triangle-tool.js';
 import { HexagonTool } from './hexagon-tool.js';
 import { FillTriangleTool } from './fill-tools.js'; 
+import { PanTool } from './pan-tool.js'; 
 
 const tools = {
     point: new PointTool(),
