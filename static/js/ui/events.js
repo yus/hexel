@@ -1,4 +1,4 @@
-import { getViewport, setOffset, zoom } from '../core/viewport.js';
+eimport { getViewport, setOffset, zoom } from '../core/viewport.js';
 import { getRenderer } from '../main.js';
 import { handleToolAction } from '../tools/tool-manager.js';
 import { showZoomIndicator } from './indicators.js';
@@ -30,6 +30,7 @@ export function initEvents() {
 }
 
 function onMouseDown(e) {
+    console.log('Mouse down', e.clientX, e.clientY);
     e.preventDefault();
     
     const rect = e.target.getBoundingClientRect();
@@ -60,26 +61,36 @@ function onMouseMove(e) {
     }
     
     if (isDragging) {
-        // Update viewport
-        setOffset(dx, dy);
+        console.log('Dragging:', { dx, dy });
         
-        // Get new values and redraw
+        // Get current viewport
         const { scale, offsetX, offsetY } = getViewport();
+        
+        // IMPORTANT: Convert screen pixels to world coordinates
+        // The offset needs to be scaled by zoom!
+        const worldDx = dx / scale;
+        const worldDy = dy / scale;
+        
+        // Update viewport with world coordinates
+        setOffset(worldDx, worldDy);
+        
+        // Get new values after update
+        const newViewport = getViewport();
         const renderer = getRenderer();
         if (renderer) {
-            renderer.drawAll(scale, offsetX, offsetY);
+            renderer.drawAll(newViewport.scale, newViewport.offsetX, newViewport.offsetY);
         }
-    }
-    /* else {
+        
+        // Update last position for next move
+        lastX = e.clientX;
+        lastY = e.clientY;
+    } else {
         // Tool hover
         const rect = e.target.getBoundingClientRect();
         const x = e.clientX - rect.left;
         const y = e.clientY - rect.top;
         handleToolAction('onMouseMove', x, y);
-    } */
-    
-    lastX = e.clientX;
-    lastY = e.clientY;
+    }
 }
 
 function onMouseUp(e) {
@@ -108,14 +119,20 @@ function onWheel(e) {
     const x = e.clientX - rect.left;
     const y = e.clientY - rect.top;
     
+    // Zoom factor (negative for natural direction)
     const delta = -e.deltaY * 0.001;
-    zoom(1 + delta, x, y);
+    const zoomFactor = 1 + delta;
     
+    // Apply zoom
+    zoom(zoomFactor, x, y);
+    
+    // Redraw
     const { scale, offsetX, offsetY } = getViewport();
     const renderer = getRenderer();
     if (renderer) {
         renderer.drawAll(scale, offsetX, offsetY);
     }
+    
     showZoomIndicator();
 }
 
