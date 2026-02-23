@@ -58,6 +58,7 @@ export class HexelRenderer {
           uniform vec2 u_resolution;
           uniform vec2 u_offset;
           uniform float u_scale;
+          uniform float u_opacity;
           
           void main() {
               vec2 pos = (gl_FragCoord.xy - u_offset * u_resolution) / u_scale;
