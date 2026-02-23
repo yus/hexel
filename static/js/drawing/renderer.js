@@ -1,56 +1,104 @@
-// ===== ALL IMPORTS AT THE TOP =====
-import { drawCanvas, drawCtx } from '../core/canvas.js';
-import { points } from './points.js';
-import { lines } from './lines.js';
-import { triangles } from './triangles.js';  // <-- MOVED HERE from bottom
-import { hexelToScreen } from '../core/hexel.js';
+// static/js/drawing/renderer.js
+// This file now acts as a compatibility layer for the WebGL renderer
+
+import { getRenderer } from '../main.js';
 import { getViewport } from '../core/viewport.js';
 
-// ===== YOUR EXISTING drawAll FUNCTION =====
+// Re-export data arrays for backward compatibility
+import { points, lines, triangles, hexagons } from './points.js';
+export { points, lines, triangles, hexagons };
+
+// Main drawing function - now uses WebGL renderer
 export function drawAll() {
-    drawCtx.clearRect(0, 0, drawCanvas.width, drawCanvas.height);
+    const renderer = getRenderer();
+    if (!renderer) {
+        console.warn('Renderer not available');
+        return;
+    }
     
+    // Sync data from storage to renderer
+    syncDataToRenderer(renderer);
+    
+    // Get current viewport
     const { scale, offsetX, offsetY } = getViewport();
     
-    // Draw points
-    points.forEach(point => {
-        const screen = hexelToScreen(point.q, point.r, scale, offsetX, offsetY);
-        
-        drawCtx.fillStyle = point.color;
-        drawCtx.globalAlpha = 0.9;
-        drawCtx.beginPath();
-        drawCtx.arc(screen.x, screen.y, point.size * Math.sqrt(scale), 0, Math.PI*2);
-        drawCtx.fill();
-        
-        drawCtx.strokeStyle = '#ffffff';
-        drawCtx.lineWidth = 1.5;
-        drawCtx.stroke();
-    });
-    
-    // Draw triangles if you have them
-    triangles.forEach(triangle => {
-        // Your triangle drawing code
-    });
-    
-    // Draw lines
-    lines.forEach(line => {
-        // Your line drawing code
-    });
+    // Draw everything
+    renderer.drawAll(scale, offsetX, offsetY);
 }
 
-// ===== ADD clearAll FUNCTION =====
-export function clearAll() {
-    // Clear all drawing data
-    points.length = 0;
-    lines.length = 0;
-    triangles.length = 0;
+// Sync data from storage modules to WebGL renderer
+function syncDataToRenderer(renderer) {
+    // Clear renderer data
+    renderer.points = [];
+    renderer.lines = [];
+    renderer.triangles = [];
+    renderer.hexagons = [];
     
-    // Redraw empty canvas
+    // Copy points
+    points.forEach(p => {
+        renderer.addPoint(p.q, p.r, p.color, p.size);
+    });
+    
+    // Copy lines (if your renderer supports them)
+    if (renderer.addLine && lines) {
+        lines.forEach(l => renderer.addLine(l));
+    }
+    
+    // Copy triangles
+    if (renderer.addTriangle && triangles) {
+        triangles.forEach(t => renderer.addTriangle(t));
+    }
+    
+    // Copy hexagons
+    if (renderer.addHexagon && hexagons) {
+        hexagons.forEach(h => renderer.addHexagon(h));
+    }
+    
+    // Update WebGL buffers
+    renderer.updatePointBuffer();
+    if (renderer.updateLineBuffer) renderer.updateLineBuffer();
+    if (renderer.updateTriangleBuffer) renderer.updateTriangleBuffer();
+}
+
+// Clear everything
+export function clearAll() {
+    import('./points.js').then(m => {
+        m.clearPoints();
+        m.clearLines?.();
+        m.clearTriangles?.();
+        m.clearHexagons?.();
+    });
+    
+    const renderer = getRenderer();
+    if (renderer) {
+        renderer.clear();
+    }
+    
     drawAll();
     
-    // Update stats
     import('../ui/panels.js').then(m => m.updateStats());
     import('../ui/messages.js').then(m => m.addMessage('🧹 Canvas cleared'));
     
     return true;
+}
+
+// Individual clear functions
+export function clearPoints() {
+    import('./points.js').then(m => m.clearPoints());
+    drawAll();
+}
+
+export function clearLines() {
+    import('./points.js').then(m => m.clearLines?.());
+    drawAll();
+}
+
+export function clearTriangles() {
+    import('./points.js').then(m => m.clearTriangles?.());
+    drawAll();
+}
+
+// Force a redraw (useful after direct data manipulation)
+export function redraw() {
+    drawAll();
 }
