@@ -89,11 +89,3 @@ export function handleToolAction(action, ...args) {
         console.log(`Tool ${currentTool} has no ${action} method`);
     }
 }
-
-// Export all
-export { 
-    setTool,
-    getCurrentTool, 
-    getCurrentToolName,
-    handleToolAction 
-};
