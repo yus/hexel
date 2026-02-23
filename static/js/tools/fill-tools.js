@@ -1,16 +1,13 @@
 import { screenToHexel } from '../core/hexel.js';
 import { getViewport } from '../core/viewport.js';
 import { addMessage } from '../ui/messages.js';
-import { drawCtx } from '../core/canvas.js';
-import { hexelToScreen } from '../core/hexel.js';
-import { HEXEL_SIZE, H_STEP, V_STEP } from '../utils/constants.js';
-import { triangles, addTriangle, addHexelFill } from '../drawing/triangles.js';
+import { getRenderer } from '../main.js';
+import { addTriangle } from '../drawing/triangles.js';
 
 export class FillTriangleTool {
     constructor() {
         this.mode = 'single'; // 'single' or 'hexel'
         this.previewTriangle = null;
-        this.brushSize = 1; // For future multi-brush
     }
     
     activate() {
@@ -41,21 +38,12 @@ export class FillTriangleTool {
                     </button>
                 </div>
             </div>
-            <div class="coord-display">
-                <div class="section-title">BRUSH SIZE</div>
-                <input type="range" id="fill-size" class="size-slider" min="1" max="5" value="1">
-                <div class="size-labels">
-                    <span>1x1</span>
-                    <span>5x5</span>
-                </div>
-            </div>
         `;
         
-        // Add event listeners
         propsDiv.querySelectorAll('[data-fill-mode]').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 this.mode = e.target.dataset.fillMode;
-                this.showProperties(); // Refresh
+                this.showProperties();
             });
         });
     }
@@ -64,15 +52,12 @@ export class FillTriangleTool {
         const { scale, offsetX, offsetY } = getViewport();
         const hexel = screenToHexel(x, y, scale, offsetX, offsetY);
         
-        // Find which triangle was clicked
         const triangleIndex = this.getTriangleAtPoint(x, y, hexel, scale, offsetX, offsetY);
         
         if (triangleIndex !== -1) {
             const color = document.querySelector('.color-swatch.active')?.dataset.color || '#ffaa66';
-            const size = parseInt(document.getElementById('fill-size')?.value || '1');
             
             if (this.mode === 'single') {
-                // Fill single triangle
                 addTriangle({
                     hexel: hexel,
                     triangle: triangleIndex,
@@ -81,7 +66,6 @@ export class FillTriangleTool {
                 });
                 addMessage(`🎨 filled triangle ${triangleIndex} in hexel (${hexel.q}, ${hexel.r})`);
             } else {
-                // Fill all 6 triangles in hexel
                 for (let i = 0; i < 6; i++) {
                     addTriangle({
                         hexel: hexel,
@@ -93,8 +77,12 @@ export class FillTriangleTool {
                 addMessage(`⬟ filled hexel (${hexel.q}, ${hexel.r}) with 6 triangles`);
             }
             
-            // Redraw
-            import('../drawing/renderer.js').then(m => m.drawAll());
+            // Update renderer
+            const renderer = getRenderer();
+            if (renderer) {
+                renderer.syncFromStorage();
+                renderer.drawAll(scale, offsetX, offsetY);
+            }
         }
     }
     
@@ -102,7 +90,6 @@ export class FillTriangleTool {
         const { scale, offsetX, offsetY } = getViewport();
         const hexel = screenToHexel(x, y, scale, offsetX, offsetY);
         
-        // Find which triangle is being hovered
         const triangleIndex = this.getTriangleAtPoint(x, y, hexel, scale, offsetX, offsetY);
         
         if (triangleIndex !== -1) {
@@ -117,23 +104,33 @@ export class FillTriangleTool {
     }
     
     getTriangleAtPoint(x, y, hexel, scale, offsetX, offsetY) {
-        const center = hexelToScreen(hexel.q, hexel.r, scale, offsetX, offsetY);
+        const renderer = getRenderer();
+        if (!renderer) return -1;
         
-        // Convert screen point to hexel-local coordinates
-        const localX = (x - center.x) / scale;
-        const localY = (y - center.y) / scale;
+        // Get hexel center in screen coordinates
+        const gl = renderer.gl;
+        const centerX = gl.canvas.width / 2 + offsetX;
+        const centerY = gl.canvas.height / 2 + offsetY;
         
-        // Hexagon vertices
+        const scaledH = 48 * scale;
+        const scaledV = 41.569 * scale;
+        
+        const screenX = centerX + (hexel.r % 2 !== 0 ? (hexel.q + 0.5) * scaledH : hexel.q * scaledH);
+        const screenY = centerY + hexel.r * scaledV;
+        
+        // Convert to local coordinates
+        const localX = (x - screenX) / scale;
+        const localY = (y - screenY) / scale;
+        
         const vertices = [];
         for (let i = 0; i < 6; i++) {
             const angle = i * Math.PI / 3;
             vertices.push({
-                x: HEXEL_SIZE * Math.cos(angle),
-                y: HEXEL_SIZE * Math.sin(angle)
+                x: 24 * Math.cos(angle),
+                y: 24 * Math.sin(angle)
             });
         }
         
-        // Check each triangle
         for (let i = 0; i < 6; i++) {
             const v1 = vertices[i];
             const v2 = vertices[(i + 1) % 6];
@@ -172,67 +169,36 @@ export class FillTriangleTool {
         
         this.clearPreview();
         
-        drawCtx.save();
+        const renderer = getRenderer();
+        if (!renderer) return;
         
-        const { scale, offsetX, offsetY } = getViewport();
-        const center = hexelToScreen(
-            this.previewTriangle.hexel.q, 
-            this.previewTriangle.hexel.r, 
-            scale, offsetX, offsetY
-        );
+        const color = document.querySelector('.color-swatch.active')?.dataset.color || '#ffaa66';
+        
+        renderer.setPreviewMode(true);
         
         if (this.mode === 'single') {
             // Preview single triangle
-            this.drawTrianglePreview(center, this.previewTriangle.triangle, scale);
+            renderer.addTriangle(this.previewTriangle.hexel, this.previewTriangle.triangle, color, true);
         } else {
             // Preview full hexel
             for (let i = 0; i < 6; i++) {
-                this.drawTrianglePreview(center, i, scale, 0.1); // Lower alpha for unselected
+                renderer.addTriangle(this.previewTriangle.hexel, i, color, true);
             }
-            // Highlight the hovered triangle
-            this.drawTrianglePreview(center, this.previewTriangle.triangle, scale, 0.3);
         }
         
-        drawCtx.restore();
-    }
-    
-    drawTrianglePreview(center, triangleIndex, scale, alpha = 0.2) {
-        const angle1 = triangleIndex * Math.PI / 3;
-        const angle2 = (triangleIndex + 1) * Math.PI / 3;
+        renderer.setPreviewMode(false);
         
-        const v1 = {
-            x: center.x + HEXEL_SIZE * scale * Math.cos(angle1),
-            y: center.y + HEXEL_SIZE * scale * Math.sin(angle1)
-        };
-        const v2 = {
-            x: center.x + HEXEL_SIZE * scale * Math.cos(angle2),
-            y: center.y + HEXEL_SIZE * scale * Math.sin(angle2)
-        };
-        
-        // Get current color
-        const color = document.querySelector('.color-swatch.active')?.dataset.color || '#ffaa66';
-        
-        // Draw preview triangle
-        drawCtx.fillStyle = color;
-        drawCtx.globalAlpha = alpha;
-        drawCtx.beginPath();
-        drawCtx.moveTo(center.x, center.y);
-        drawCtx.lineTo(v1.x, v1.y);
-        drawCtx.lineTo(v2.x, v2.y);
-        drawCtx.closePath();
-        drawCtx.fill();
-        
-        drawCtx.strokeStyle = '#ffffff';
-        drawCtx.lineWidth = 1.5 / scale;
-        drawCtx.globalAlpha = alpha * 2;
-        drawCtx.stroke();
+        const { scale, offsetX, offsetY } = getViewport();
+        renderer.drawAll(scale, offsetX, offsetY);
     }
     
     clearPreview() {
+        const renderer = getRenderer();
+        if (renderer) {
+            renderer.clearPreview();
+        }
         this.previewTriangle = null;
-        import('../drawing/renderer.js').then(m => m.drawAll());
     }
 }
 
-// Export both tools
-export const FillHexelTool = FillTriangleTool; // Reuse with mode='hexel' default
+export const FillHexelTool = FillTriangleTool;
