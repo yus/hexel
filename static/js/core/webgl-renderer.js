@@ -21,6 +21,7 @@ export class HexelRenderer {
         this.hexagons = [];
         this.previewPoints = [];
         this.previewLines = [];
+        this.previewMode = false;
         
         // State
         this.gridEnabled = true;
@@ -325,6 +326,12 @@ export class HexelRenderer {
             gl.canvas.width, gl.canvas.height);
         
         gl.drawArrays(gl.POINTS, 0, totalPoints);
+    }
+
+    setPreviewMode(enabled) {
+        this.previewMode = enabled;
+        // You can add visual feedback for preview mode later
+        // For now, just store the state
     }
     
     clearPreview() {
