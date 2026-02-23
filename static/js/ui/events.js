@@ -1,7 +1,5 @@
-import { getViewport, setOffset } from '../core/viewport.js';
-// import { getViewport, zoom, setOffset } from '../core/viewport.js';
-import { drawGrid } from '../core/grid.js';
-import { drawAll } from '../drawing/renderer.js';
+import { getViewport, setOffset, zoom } from '../core/viewport.js';
+import { getRenderer } from '../main.js';
 import { handleToolAction } from '../tools/tool-manager.js';
 import { showZoomIndicator } from './indicators.js';
 
@@ -14,7 +12,7 @@ const dragThreshold = 3;
 const clickDelay = 200;
 
 export function initEvents() {
-    const drawCanvas = document.getElementById('draw-canvas');
+    const drawCanvas = document.getElementById('grid-gl-canvas'); // Now using WebGL canvas
     
     // Mouse events
     drawCanvas.addEventListener('mousedown', onMouseDown);
@@ -44,7 +42,6 @@ function onMouseDown(e) {
     clickStartTime = Date.now();
     clickStartPos = { x: e.clientX, y: e.clientY };
     
-    // Handle tool action
     handleToolAction('onMouseDown', x, y);
 }
 
@@ -66,8 +63,11 @@ function onMouseMove(e) {
         // Pan view
         setOffset(dx, dy);
         const { scale, offsetX, offsetY } = getViewport();
-        drawGrid(scale, offsetX, offsetY, true);
-        drawAll();
+        
+        const renderer = getRenderer();
+        if (renderer) {
+            renderer.drawAll(scale, offsetX, offsetY);
+        }
     } else {
         // Tool hover
         const rect = e.target.getBoundingClientRect();
@@ -82,7 +82,6 @@ function onMouseMove(e) {
 
 function onMouseUp(e) {
     if (!isDragging) {
-        // It was a click!
         const clickDuration = Date.now() - clickStartTime;
         const rect = e.target.getBoundingClientRect();
         const x = e.clientX - rect.left;
@@ -111,8 +110,10 @@ function onWheel(e) {
     zoom(1 + delta, x, y);
     
     const { scale, offsetX, offsetY } = getViewport();
-    drawGrid(scale, offsetX, offsetY, true);
-    drawAll();
+    const renderer = getRenderer();
+    if (renderer) {
+        renderer.drawAll(scale, offsetX, offsetY);
+    }
     showZoomIndicator();
 }
 
@@ -120,7 +121,6 @@ function onTouchStart(e) {
     e.preventDefault();
     
     if (e.touches.length === 2) {
-        // Pinch zoom start
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
         lastDistance = Math.hypot(
@@ -128,7 +128,6 @@ function onTouchStart(e) {
             touch1.clientY - touch2.clientY
         );
     } else {
-        // Single touch - treat as mouse
         const touch = e.touches[0];
         const rect = e.target.getBoundingClientRect();
         const x = touch.clientX - rect.left;
@@ -147,7 +146,6 @@ function onTouchMove(e) {
     e.preventDefault();
     
     if (e.touches.length === 2) {
-        // Pinch zoom
         const touch1 = e.touches[0];
         const touch2 = e.touches[1];
         const distance = Math.hypot(
@@ -164,13 +162,14 @@ function onTouchMove(e) {
             zoom(zoomFactor, centerX, centerY);
             
             const { scale, offsetX, offsetY } = getViewport();
-            drawGrid(scale, offsetX, offsetY, true);
-            drawAll();
+            const renderer = getRenderer();
+            if (renderer) {
+                renderer.drawAll(scale, offsetX, offsetY);
+            }
         }
         
         lastDistance = distance;
     } else if (e.touches.length === 1 && lastX) {
-        // Pan
         const touch = e.touches[0];
         const dx = touch.clientX - lastX;
         const dy = touch.clientY - lastY;
@@ -178,8 +177,10 @@ function onTouchMove(e) {
         setOffset(dx, dy);
         
         const { scale, offsetX, offsetY } = getViewport();
-        drawGrid(scale, offsetX, offsetY, true);
-        drawAll();
+        const renderer = getRenderer();
+        if (renderer) {
+            renderer.drawAll(scale, offsetX, offsetY);
+        }
         
         lastX = touch.clientX;
         lastY = touch.clientY;
@@ -190,7 +191,6 @@ function onTouchEnd(e) {
     e.preventDefault();
     
     if (e.touches.length === 0 && !isDragging) {
-        // It was a tap
         if (e.changedTouches.length > 0) {
             const touch = e.changedTouches[0];
             const rect = e.target.getBoundingClientRect();
@@ -208,6 +208,11 @@ function onTouchEnd(e) {
 }
 
 function onKeyDown(e) {
+    // Ignore if in input/textarea
+    if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
+    
+    const { scale, offsetX, offsetY } = getViewport(); // Get current values
+    
     // Tool shortcuts
     switch(e.key.toLowerCase()) {
         case 'p':
@@ -225,36 +230,70 @@ function onKeyDown(e) {
         case 's':
             import('../tools/tool-manager.js').then(m => m.setTool('select'));
             break;
+        case 'f':
+            import('../tools/tool-manager.js').then(m => m.setTool('fill-triangle'));
+            break;
         case ' ':
-            // Toggle grid
-            import('../core/grid.js').then(m => {
-                gridEnabled = !gridEnabled;
-                const { offsetX, offsetY, scale } = getViewport();
-                drawGrid(scale, offsetX, offsetY, gridEnabled);
-            });
+            e.preventDefault();
+            import('../core/grid.js').then(m => m.toggleGrid());
             break;
         case 'r':
-            // Reset view
-            setOffset(-offsetX, -offsetY);
-            zoom(1 / scale, window.innerWidth/2, window.innerHeight/2);
-            break;
-        // Arrow key handling
-        case 'ArrowLeft':
             e.preventDefault();
-            const { offsetX } = getViewport(); // Get current offset
-            setOffset(panAmount, 0);
+            resetView();
+            break;
+        case 'arrowleft':
+            e.preventDefault();
+            setOffset(20, 0);
+            updateAfterPan();
+            break;
+        case 'arrowright':
+            e.preventDefault();
+            setOffset(-20, 0);
+            updateAfterPan();
+            break;
+        case 'arrowup':
+            e.preventDefault();
+            setOffset(0, 20);
+            updateAfterPan();
+            break;
+        case 'arrowdown':
+            e.preventDefault();
+            setOffset(0, -20);
             updateAfterPan();
             break;
     }
     
-    // Undo/redo with cmd
+    // Undo/Redo with Cmd/Ctrl
     if (e.metaKey || e.ctrlKey) {
-        if (e.key === 'z' && !e.shiftKey) {
-            // Undo
-            import('../drawing/history.js').then(m => m.undo());
-        } else if (e.key === 'z' && e.shiftKey) {
-            // Redo
-            import('../drawing/history.js').then(m => m.redo());
+        switch(e.key.toLowerCase()) {
+            case 'z':
+                e.preventDefault();
+                if (e.shiftKey) {
+                    import('../drawing/history.js').then(m => m.redo());
+                } else {
+                    import('../drawing/history.js').then(m => m.undo());
+                }
+                break;
         }
+    }
+}
+
+function resetView() {
+    const { offsetX, offsetY } = getViewport();
+    setOffset(-offsetX, -offsetY);
+    
+    const centerX = window.innerWidth / 2;
+    const centerY = window.innerHeight / 2;
+    zoom(1 / scale, centerX, centerY);
+    
+    updateAfterPan();
+    import('./messages.js').then(m => m.addMessage('🔄 View reset'));
+}
+
+function updateAfterPan() {
+    const { scale, offsetX, offsetY } = getViewport();
+    const renderer = getRenderer();
+    if (renderer) {
+        renderer.drawAll(scale, offsetX, offsetY);
     }
 }
