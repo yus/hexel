@@ -15,7 +15,7 @@ export function initToolbar() {
     // Grid toggle - using imported function
     document.getElementById('header-grid-toggle').addEventListener('click', () => {
         const newState = toggleGrid();
-        updateGridButton(newState);
+        updateGridState(newState);  // ← FIXED: was updateGridButton
         addMessage(`Grid ${newState ? 'on' : 'off'}`);
     });
     
@@ -26,9 +26,10 @@ export function initToolbar() {
     });
     
     // Initial button state
-    updateGridButton(getGridState());
+    updateGridState(getGridState());  // ← FIXED: was updateGridButton
 }
 
+// This function name was correct
 function updateGridState(enabled) {
     const btn = document.getElementById('header-grid-toggle');
     if (btn) {
@@ -43,5 +44,3 @@ function updateGridState(enabled) {
         statusGrid.textContent = enabled ? 'ON' : 'OFF';
     }
 }
-
-// Make sure grid.js's toggleGrid returns the new state
