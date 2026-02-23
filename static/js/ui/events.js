@@ -27,6 +27,8 @@ export function initEvents() {
     
     // Keyboard events
     document.addEventListener('keydown', onKeyDown);
+    // Add to initEvents
+    console.log('Events initialized on:', drawCanvas);
 }
 
 function onMouseDown(e) {
