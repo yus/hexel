@@ -334,32 +334,44 @@ export class HexelRenderer {
     }
     
     addLine(start, end, color, preview = false) {
-        // Convert hexel coordinates to world coordinates if needed
-        const startX = start.x || (start.q * H_STEP + (start.r % 2 !== 0 ? H_STEP/2 : 0));
-        const startY = start.y || (start.r * V_STEP);
-        const endX = end.x || (end.q * H_STEP + (end.r % 2 !== 0 ? H_STEP/2 : 0));
-        const endY = end.y || (end.r * V_STEP);
+        console.log('📏 Adding line:', {start, end, color});
         
-        const lineData = {
-            start: { x: startX, y: startY },
-            end: { x: endX, y: endY },
-            color: color,
-            q_start: start.q,
-            r_start: start.r,
-            q_end: end.q,
-            r_end: end.r
-        };
+        // Convert hexel to world coordinates
+        const startX = start.q * H_STEP + (start.r % 2 !== 0 ? H_STEP/2 : 0);
+        const startY = start.r * V_STEP;
+        const endX = end.q * H_STEP + (end.r % 2 !== 0 ? H_STEP/2 : 0);
+        const endY = end.r * V_STEP;
         
-        if (preview) {
-            this.previewLines.push(lineData);
-            console.log('👀 Preview line added');
-        } else {
-            this.lines.push(lineData);
-            console.log('📏 Permanent line added, total:', this.lines.length);
+        // Parse color
+        const r = parseInt(color.slice(1,3), 16) / 255;
+        const g = parseInt(color.slice(3,5), 16) / 255;
+        const b = parseInt(color.slice(5,7), 16) / 255;
+        
+        // Instead of storing as line, store as MULTIPLE POINTS
+        const numPoints = 20; // Number of points to draw along the line
+        
+        for (let i = 0; i <= numPoints; i++) {
+            const t = i / numPoints;
+            const x = startX * (1-t) + endX * t;
+            const y = startY * (1-t) + endY * t;
+            
+            // Add directly to points array
+            this.points.push({
+                x, y,
+                r, g, b,
+                size: 3, // Make them visible!
+                preview: false
+            });
         }
         
-        // Trigger redraw
-        this.drawAll(this.currentScale, this.currentOffsetX, this.currentOffsetY);
+        console.log(`✅ Added ${numPoints+1} points to represent line`);
+        
+        // Update buffer immediately
+        this.updatePointBuffer();
+        
+        // Force redraw
+        const { scale, offsetX, offsetY } = getViewport();
+        this.drawAll(scale, offsetX, offsetY);
     }
     
     addHexagon(q, r, color, preview = false) {
@@ -670,12 +682,12 @@ export class HexelRenderer {
         this.previewPoints = [];
         this.previewLines = [];
         this.previewHexagons = [];
-        
+        this.updatePointBuffer();
         // Check if methods exist before calling
-        if (this.updatePointBuffer) this.updatePointBuffer();
+       //  if (this.updatePointBuffer) this.updatePointBuffer();
         if (this.updateHexagonBuffer) this.updateHexagonBuffer(); // Now safe
         
         // Force a redraw
         this.drawAll(this.currentScale, this.currentOffsetX, this.currentOffsetY);
-    }
+    }    
 }
