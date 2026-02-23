@@ -174,23 +174,8 @@ export class HexelRenderer {
             varying float v_preview;
             
             void main() {
-                vec2 coord = gl_PointCoord - vec2(0.5);
-                float dist = length(coord);
-                
-                if (dist > 0.5) discard;
-                
-                // Smooth circle
-                float alpha = 1.0 - smoothstep(0.45, 0.5, dist);
-                
-                // Preview points are dashed
-                if (v_preview > 0.5) {
-                    // Create dash pattern
-                    float dash = mod(gl_PointCoord.x * 10.0, 1.0);
-                    if (dash < 0.5) discard;
-                    alpha *= 0.8;
-                }
-                
-                gl_FragColor = vec4(v_color, alpha * 0.9);
+                // Force visibility for debugging
+                gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0); // Bright red
             }
         `;
         
@@ -447,15 +432,32 @@ export class HexelRenderer {
     }
     
     drawPoints(scale, offsetX, offsetY) {
-        if (this.points.length === 0 && this.previewPoints.length === 0) return;
+        console.log('🎯 Drawing points, count:', this.points.length + this.previewPoints.length);
+        
+        if (this.points.length === 0 && this.previewPoints.length === 0) {
+            console.log('No points to draw');
+            return;
+        }
         
         const gl = this.gl;
         const program = this.programs.point;
+        if (!program) {
+            console.error('Point program not found');
+            return;
+        }
         
         gl.useProgram(program);
+        
+        // Bind point buffer
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.points);
         
-        const stride = 7 * 4; // 7 floats * 4 bytes
+        // Log first point for debugging
+        if (this.points.length > 0) {
+            console.log('First point:', this.points[0]);
+        }
+        
+        // Set up attributes (adjust stride based on your data layout)
+        const stride = 7 * 4; // 7 floats * 4 bytes (x,y,r,g,b,size,preview)
         
         const positionLoc = gl.getAttribLocation(program, 'a_position');
         gl.enableVertexAttribArray(positionLoc);
@@ -473,20 +475,17 @@ export class HexelRenderer {
         gl.enableVertexAttribArray(previewLoc);
         gl.vertexAttribPointer(previewLoc, 1, gl.FLOAT, false, stride, 24);
         
-        // Uniforms
+        // Set uniforms
         gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), 
             gl.canvas.width, gl.canvas.height);
         gl.uniform2f(gl.getUniformLocation(program, 'u_offset'), offsetX, offsetY);
         gl.uniform1f(gl.getUniformLocation(program, 'u_scale'), scale);
         
-        gl.drawArrays(gl.POINTS, 0, this.points.length + this.previewPoints.length);
+        // Draw points
+        const totalPoints = this.points.length + this.previewPoints.length;
+        gl.drawArrays(gl.POINTS, 0, totalPoints);
         
-        console.log('Drawing points, count:', this.points.length + this.previewPoints.length);
-    
-        if (this.points.length === 0 && this.previewPoints.length === 0) {
-            console.log('No points to draw');
-            return;
-        }
+        console.log('✅ Drew', totalPoints, 'points');
     }
 
     // Add this method to your HexelRenderer class
