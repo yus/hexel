@@ -229,17 +229,21 @@ export class HexelRenderer {
     }
     
     addPoint(q, r, color, size, preview = false) {
+        // Convert hexel to world coordinates
         const x = q * H_STEP + (r % 2 !== 0 ? H_STEP/2 : 0);
         const y = r * V_STEP;
         
-        // Use size parameter or default
-        const pointSize = size || POINT_SIZE;
-        
+        // Parse color
         const rColor = parseInt(color.slice(1,3), 16) / 255;
         const gColor = parseInt(color.slice(3,5), 16) / 255;
         const bColor = parseInt(color.slice(5,7), 16) / 255;
         
-        const point = { x, y, r: rColor, g: gColor, b: bColor, size: size/2, preview };
+        const point = { 
+            x, y, 
+            r: rColor, g: gColor, b: bColor, 
+            size: size / 4, // Scale size appropriately
+            preview 
+        };
         
         if (preview) {
             this.previewPoints.push(point);
