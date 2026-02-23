@@ -308,18 +308,28 @@ export class HexelRenderer {
         const gl = this.gl;
         const data = [];
         
-        // Regular points
+        // Regular points (preview flag = 0)
         this.points.forEach(p => {
-            data.push(p.x, p.y, p.r, p.g, p.b, p.size, 0); // 0 = not preview
+            data.push(p.x, p.y, p.r, p.g, p.b, p.size, 0);
         });
         
-        // Preview points
+        // Preview points (preview flag = 1)
         this.previewPoints.forEach(p => {
-            data.push(p.x, p.y, p.r, p.g, p.b, p.size, 1); // 1 = preview
+            data.push(p.x, p.y, p.r, p.g, p.b, p.size, 1);
         });
+        
+        if (data.length === 0) {
+            this.pointCount = 0;
+            return;
+        }
         
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.points);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(data), gl.DYNAMIC_DRAW);
+        
+        // THIS LINE WAS MISSING!
+        this.pointCount = this.points.length + this.previewPoints.length;
+        
+        console.log('Point buffer updated, count:', this.pointCount);
     }
     
     drawAll(scale, offsetX, offsetY) {
