@@ -1,7 +1,7 @@
 // static/js/utils/constants.js
-export const HEXEL_SIZE = 24.0;
+export const HEXEL_SIZE = 24;
 
-export const H_STEP = HEXEL_SIZE * 2.0;
+export const H_STEP = HEXEL_SIZE * 2;
 export const V_STEP = HEXEL_SIZE * 1.73205080757;
 
 export const SQRT3 = 1.73205080757;
@@ -16,5 +16,5 @@ export const GRID_COLOR_B = 0.824;
 export const GRID_COLOR = '#c893d2';  // ← ADD THIS!
 export const DEFAULT_POINT_COLOR = '#ffaa66';
 
-export const GRID_LINE_WIDTH = Math.max(1.0, HEXEL_SIZE / 24.0);
-export const POINT_SIZE = HEXEL_SIZE / 3.0;
+export const GRID_LINE_WIDTH = Math.max(1, HEXEL_SIZE / 24);
+export const POINT_SIZE = HEXEL_SIZE / 3;
