@@ -35,9 +35,10 @@ export class PanTool {
         
         const { scale } = getViewport();
         
-        // Convert screen pixels to world coordinates
-        const worldDx = dx / scale;
-        const worldDy = dy / scale;
+        // Smooth, slow pan that feels like dragging paper
+        const panSpeed = 0.8 / scale; // Even slower for precise control
+        const worldDx = dx * panSpeed;
+        const worldDy = -dy * panSpeed;
         
         setOffset(worldDx, worldDy);
         
