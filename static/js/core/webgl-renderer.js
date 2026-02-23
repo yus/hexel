@@ -364,28 +364,17 @@ export class HexelRenderer {
         gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
     
-    drawPoints(scale, offsetX, offsetY) {
-        // Use the stored values, with fallbacks
-        const scale = this.currentScale ?? 1.0;
-        const offsetX = this.currentOffsetX ?? 0;
-        const offsetY = this.currentOffsetY ?? 0;
+    drawPoints() {
+        // Use the stored values with a DIFFERENT name
+        const currentScale = this.currentScale ?? 1.0;
+        const currentOffsetX = this.currentOffsetX ?? 0;
+        const currentOffsetY = this.currentOffsetY ?? 0;
         
-        const totalPoints = this.points.length + this.previewPoints.length;
-        if (totalPoints === 0) return;
-
-         console.log('🎯 Drawing points at scale:', scale, 'offset:', offsetX, offsetY);
-        
-        // Log first point's screen position
-        if (this.points.length > 0) {
-            const p = this.points[0];
-            const screenX = p.x * scale + offsetX + this.gl.canvas.width/2;
-            const screenY = p.y * scale + offsetY + this.gl.canvas.height/2;
-            console.log('First point screen position:', screenX, screenY);
-            console.log('Canvas size:', this.gl.canvas.width, this.gl.canvas.height);
-        }
+        console.log('🎯 Drawing points at scale:', currentScale, 'offset:', currentOffsetX, currentOffsetY);
         
         const gl = this.gl;
         const program = this.programs.point;
+        if (!program) return;
         
         gl.useProgram(program);
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.points);
@@ -408,11 +397,13 @@ export class HexelRenderer {
         gl.enableVertexAttribArray(previewLoc);
         gl.vertexAttribPointer(previewLoc, 1, gl.FLOAT, false, stride, 24);
         
+        // Use currentScale, not scale
         gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), 
             gl.canvas.width, gl.canvas.height);
-        gl.uniform2f(gl.getUniformLocation(program, 'u_offset'), offsetX, offsetY);
-        gl.uniform1f(gl.getUniformLocation(program, 'u_scale'), scale);
+        gl.uniform2f(gl.getUniformLocation(program, 'u_offset'), currentOffsetX, currentOffsetY);
+        gl.uniform1f(gl.getUniformLocation(program, 'u_scale'), currentScale);
         
+        const totalPoints = this.points.length + this.previewPoints.length;
         gl.drawArrays(gl.POINTS, 0, totalPoints);
     }
 
