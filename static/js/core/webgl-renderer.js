@@ -233,15 +233,18 @@ export class HexelRenderer {
         const x = q * H_STEP + (r % 2 !== 0 ? H_STEP/2 : 0);
         const y = r * V_STEP;
         
+        console.log(`📍 Point at world (${x}, ${y})`); // DEBUG
+        
         // Parse color
         const rColor = parseInt(color.slice(1,3), 16) / 255;
         const gColor = parseInt(color.slice(3,5), 16) / 255;
         const bColor = parseInt(color.slice(5,7), 16) / 255;
         
+        // MAKE POINTS BIGGER! Size is in pixels at screen
         const point = { 
             x, y, 
             r: rColor, g: gColor, b: bColor, 
-            size: size / 4, // Scale size appropriately
+            size: preview ? 12 : 16, // Force big sizes for testing
             preview 
         };
         
