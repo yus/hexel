@@ -354,7 +354,14 @@ export class HexelRenderer {
     
     drawGrid(scale, offsetX, offsetY) {
         console.log('📐 drawGrid CALLED - scale:', scale, 'opacity:', this.gridOpacity, 'enabled:', this.gridEnabled);
+        console.log('🎯 drawGrid called', {scale, offsetX, offsetY, opacity: this.gridOpacity});
+            
         const gl = this.gl;
+        // Test with solid color first
+        gl.clearColor(0, 1, 0, 1); // Green
+        gl.clear(gl.COLOR_BUFFER_BIT);
+        return; // Uncomment to test
+        
         const program = this.programs.grid;
         
         gl.useProgram(program);
