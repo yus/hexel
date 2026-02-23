@@ -61,45 +61,33 @@ export class HexelRenderer {
             uniform float u_scale;
             
             const float HEX_SIZE = 24.0;
-            const float H_STEP = HEX_SIZE * 2.0;
-            const float V_STEP = HEX_SIZE * 1.732; // sqrt(3)
+            const float H_STEP = HEX_SIZE * 1.5;
+            const float V_STEP = HEX_SIZE * 1.732;
             
             void main() {
-                vec2 pos = gl_FragCoord.xy - u_offset;
-                pos /= u_scale;
+                vec2 pos = (gl_FragCoord.xy - u_offset) / u_scale;
                 
-                // Find which hexel we're in
-                float r = floor(pos.y / V_STEP);
-                float rowOffset = mod(r, 2.0) * (H_STEP / 2.0);
-                float q = floor((pos.x - rowOffset) / H_STEP);
+                // Axial coordinates
+                float q = (pos.x * 0.57735 - pos.y / 3.0) / HEX_SIZE;
+                float r = pos.y * 0.66667 / HEX_SIZE;
                 
-                // Center of this hexel
-                float centerX = q * H_STEP + rowOffset + H_STEP/2.0;
-                float centerY = r * V_STEP + V_STEP/2.0;
+                // Round to nearest hex center
+                float qr = round(q);
+                float rr = round(r);
+                float qz = round(-q - r);
                 
-                // Local coordinates within hexel
-                vec2 local = pos - vec2(centerX, centerY);
+                // Reconstruct closest hex center
+                vec2 center;
+                center.x = HEX_SIZE * (qr * 1.5);
+                center.y = HEX_SIZE * (rr * 1.732 + qr * 0.866);
                 
-                // Determine which triangle (0-5)
-                float angle = atan(local.y, local.x);
-                if (angle < 0.0) angle += 2.0 * 3.14159;
-                int triangle = int(floor(angle / 1.0472)); // 60° = 1.0472 rad
+                // Distance to center
+                float dist = distance(pos, center);
                 
-                // Draw triangle boundaries
-                float isLine = 0.0;
-                float distToCenter = length(local);
-                if (distToCenter > HEX_SIZE - 1.0) {
-                    isLine = 1.0; // Hexagon border
-                }
+                // Draw hex borders
+                float border = smoothstep(HEX_SIZE - 1.0, HEX_SIZE, dist);
                 
-                // Triangle edges (from center to vertices)
-                vec2 vertex = vec2(HEX_SIZE * cos(angle), HEX_SIZE * sin(angle));
-                float distToEdge = distance(local, vertex);
-                if (distToEdge < 1.0) {
-                    isLine = 1.0; // Triangle edge
-                }
-                
-                gl_FragColor = vec4(0.784, 0.576, 0.824, isLine * 0.3);
+                gl_FragColor = vec4(0.784, 0.576, 0.824, border * 0.3);
             }
         `;
 
