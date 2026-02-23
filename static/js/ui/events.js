@@ -60,16 +60,13 @@ function onMouseMove(e) {
     }
     
     if (isDragging) {
-        // These values are in screen pixels
-        setOffset(dx, dy); 
-        
+        console.log('Panning:', { dx, dy });
+        setOffset(dx, dy);
         const { scale, offsetX, offsetY } = getViewport();
+        console.log('New offset:', { offsetX, offsetY });
+        
         const renderer = getRenderer();
         if (renderer) {
-            // Store current view state in renderer
-            renderer.currentScale = scale;
-            renderer.currentOffsetX = offsetX;
-            renderer.currentOffsetY = offsetY;
             renderer.drawAll(scale, offsetX, offsetY);
         }
     }
