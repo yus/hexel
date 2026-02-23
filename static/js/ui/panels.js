@@ -24,10 +24,20 @@ function initSettings() {
     const gridOpacity = document.getElementById('grid-opacity');
     const snapToggle = document.getElementById('snap-toggle');
     
-    // In panels.js, update the grid opacity handler
+    // Grid opacity handler
     if (gridOpacity) {
         gridOpacity.addEventListener('input', (e) => {
             const opacity = parseFloat(e.target.value);
+            
+            // Update renderer directly
+            const renderer = getRenderer();
+            if (renderer) {
+                renderer.gridOpacity = opacity;
+                const { scale, offsetX, offsetY } = getViewport();
+                renderer.drawAll(scale, offsetX, offsetY);
+            }
+            
+            // Also update grid.js for compatibility
             import('../core/grid.js').then(m => m.setGridOpacity(opacity));
         });
     }
