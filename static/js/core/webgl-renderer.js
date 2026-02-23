@@ -18,7 +18,13 @@ export class HexelRenderer {
         
         // State
         this.gridEnabled = true;
-        this.gridOpacity = 0.5;
+        this.gridOpacity = 0.3;
+
+        // Force an initial draw
+        setTimeout(() => {
+            this.drawAll(1.0, 0, 0);
+        }, 10);
+        
         this.previewMode = false;
         this.currentScale = 1.0;
         this.currentOffsetX = 0;
