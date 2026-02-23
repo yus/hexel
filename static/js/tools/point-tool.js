@@ -13,6 +13,28 @@ export class PointTool {
     onMouseUp(x, y) {
         // Point tool doesn't need mouse up
     }
+
+    onMouseMove(x, y) {
+        const { scale, offsetX, offsetY } = getViewport();
+        const hexel = screenToHexel(x, y, scale, offsetX, offsetY);
+        
+        // Clear old preview
+        const renderer = getRenderer();
+        if (renderer) {
+            renderer.clearPreview();
+            
+            // Draw preview dot
+            const color = document.querySelector('.color-swatch.active')?.dataset.color || '#ffaa66';
+            const size = parseInt(document.getElementById('size-slider')?.value || '8');
+            
+            renderer.setPreviewMode(true);
+            renderer.addPoint(hexel.q, hexel.r, color, size, true);
+            renderer.setPreviewMode(false);
+            
+            const { scale, offsetX, offsetY } = getViewport();
+            renderer.drawAll(scale, offsetX, offsetY);
+        }
+    }
     
     onClick(x, y) {
         const { scale, offsetX, offsetY } = getViewport();
