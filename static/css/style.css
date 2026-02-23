@@ -70,6 +70,14 @@ body {
     background: transparent;
 }
 
+/* Add to your CSS to ensure visibility */
+#grid-gl-canvas {
+    display: block !important;
+    opacity: 1 !important;
+    background: transparent;
+    z-index: 100;
+}
+
 /* ===== HEADER ===== */
 #main-header {
     position: fixed;
