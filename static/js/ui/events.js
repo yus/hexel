@@ -60,11 +60,11 @@ function onMouseMove(e) {
     }
     
     if (isDragging) {
-        console.log('Panning:', { dx, dy });
+        // Update viewport
         setOffset(dx, dy);
-        const { scale, offsetX, offsetY } = getViewport();
-        console.log('New offset:', { offsetX, offsetY });
         
+        // Get new values and redraw
+        const { scale, offsetX, offsetY } = getViewport();
         const renderer = getRenderer();
         if (renderer) {
             renderer.drawAll(scale, offsetX, offsetY);
