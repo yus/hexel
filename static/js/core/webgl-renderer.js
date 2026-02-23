@@ -431,16 +431,17 @@ export class HexelRenderer {
         gl.enableVertexAttribArray(positionLoc);
         gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
         
-        // CRITICAL: Convert offset from canvas 2D space to WebGL clip space
-        // This makes panning work correctly
-        const webglOffsetX = (offsetX / gl.canvas.width) * 2.0;
-        const webglOffsetY = (offsetY / gl.canvas.height) * 2.0;
+        // Convert offset to WebGL space (critical for panning!)
+        const webglOffsetX = offsetX / gl.canvas.width;
+        const webglOffsetY = offsetY / gl.canvas.height;
         
+        // Set all uniforms
         gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), 
             gl.canvas.width, gl.canvas.height);
         gl.uniform2f(gl.getUniformLocation(program, 'u_offset'), webglOffsetX, webglOffsetY);
         gl.uniform1f(gl.getUniformLocation(program, 'u_scale'), scale);
         gl.uniform1f(gl.getUniformLocation(program, 'u_opacity'), this.gridOpacity);
+        gl.uniform1f(gl.getUniformLocation(program, 'u_mode'), this.gridMode || 0.0);
         
         gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
