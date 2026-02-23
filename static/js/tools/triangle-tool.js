@@ -21,7 +21,7 @@ export class TriangleTool {
         document.body.dataset.tool = '';
         this.clearPreview();
     }
-    
+    /*
     onClick(x, y) {
         const { scale, offsetX, offsetY } = getViewport();
         const hexel = screenToHexel(x, y, scale, offsetX, offsetY);
@@ -45,6 +45,21 @@ export class TriangleTool {
                 renderer.syncFromStorage();
                 renderer.drawAll(scale, offsetX, offsetY);
             }
+        }
+    } */
+
+    onClick(x, y) {
+        const { scale, offsetX, offsetY } = getViewport();
+        const hexel = screenToHexel(x, y, scale, offsetX, offsetY);
+        
+        const triangleIndex = this.getTriangleAtPoint(x, y, hexel, scale, offsetX, offsetY);
+        
+        if (triangleIndex !== -1) {
+            const color = document.querySelector('.color-swatch.active')?.dataset.color || '#ffaa66';
+            
+            // Log instead of trying to render
+            console.log(`Triangle ${triangleIndex} at hexel (${hexel.q}, ${hexel.r})`);
+            addMessage(`△ triangle ${triangleIndex} in hexel (${hexel.q}, ${hexel.r})`);
         }
     }
     
