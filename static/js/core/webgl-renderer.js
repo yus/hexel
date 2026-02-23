@@ -82,7 +82,7 @@ export class HexelRenderer {
                   isLine = 1.0;
               }
               
-              gl_FragColor = vec4(0.784, 0.576, 0.824, isLine * 0.3);
+              gl_FragColor = vec4(0.784, 0.576, 0.824, isLine * u_opacity);
           }
       `;
       
