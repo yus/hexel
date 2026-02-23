@@ -543,46 +543,45 @@ export class HexelRenderer {
     }
     
     drawLines(scale, offsetX, offsetY) {
-        if (this.previewLines.length === 0 && this.lines.length === 0) return;
-        
-        console.log('🎯 Drawing lines, preview:', this.previewLines.length, 'permanent:', this.lines.length);
-        
-        // Combine both preview and permanent lines
         const allLines = [...this.lines, ...this.previewLines];
         
-        // Convert each line to a series of points
-        allLines.forEach(line => {
-            const startX = line.start.x || (line.start.q * H_STEP + (line.start.r % 2 !== 0 ? H_STEP/2 : 0));
-            const startY = line.start.y || (line.start.r * V_STEP);
-            const endX = line.end.x || (line.end.q * H_STEP + (line.end.r % 2 !== 0 ? H_STEP/2 : 0));
-            const endY = line.end.y || (line.end.r * V_STEP);
+        if (allLines.length === 0) {
+            console.log('No lines to draw');
+            return;
+        }
+        
+        console.log(`🔥 DRAWING ${allLines.length} LINES!`);
+        
+        // TEMPORARY: Draw each line as a series of BRIGHT RED points
+        allLines.forEach((line, index) => {
+            // Get coordinates
+            const startX = line.start.x || (line.q_start * H_STEP + (line.r_start % 2 !== 0 ? H_STEP/2 : 0));
+            const startY = line.start.y || (line.r_start * V_STEP);
+            const endX = line.end.x || (line.q_end * H_STEP + (line.r_end % 2 !== 0 ? H_STEP/2 : 0));
+            const endY = line.end.y || (line.r_end * V_STEP);
             
-            const color = line.color || '#ffaa66';
-            const r = parseInt(color.slice(1,3), 16) / 255;
-            const g = parseInt(color.slice(3,5), 16) / 255;
-            const b = parseInt(color.slice(5,7), 16) / 255;
+            console.log(`Line ${index}: (${startX},${startY}) → (${endX},${endY})`);
             
-            // Draw the line as 20 connected points
-            for (let i = 0; i <= 20; i++) {
-                const t = i / 20;
+            // Draw 50 bright red points along the line
+            for (let i = 0; i <= 50; i++) {
+                const t = i / 50;
                 const x = startX * (1-t) + endX * t;
                 const y = startY * (1-t) + endY * t;
                 
-                // Add to preview points for immediate drawing
-                this.previewPoints.push({
+                // Add directly to points with BRIGHT RED color
+                this.points.push({
                     x, y,
-                    r, g, b,
-                    size: 3, // Bigger points for visibility
-                    preview: true
+                    r: 1.0, g: 0.0, b: 0.0, // BRIGHT RED
+                    size: 4,
+                    preview: false
                 });
             }
         });
         
-        // Update point buffer to include these line-points
+        // Update buffer with ALL points (including these new line-points)
         this.updatePointBuffer();
         
-        // Let drawPoints handle the actual rendering
-        console.log('✅ Added', allLines.length, 'lines as points');
+        console.log(`✅ Added ${allLines.length * 50} red points to visualization`);
     }
     
     // Temporary fallback - draw lines as connected points
