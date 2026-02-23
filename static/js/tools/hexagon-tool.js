@@ -21,6 +21,7 @@ export class HexagonTool {
     }
     
     onClick(x, y) {
+        console.log('Hexagon tool click at:', x, y);
         const { scale, offsetX, offsetY } = getViewport();
         const hexel = screenToHexel(x, y, scale, offsetX, offsetY);
         
@@ -43,7 +44,11 @@ export class HexagonTool {
         this.previewHexel = hexel;
         this.drawPreview();
     }
+
+    onMouseDown() {}
     
+    onMouseUp() {}
+        
     drawPreview() {
         this.clearPreview();
         
