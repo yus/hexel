@@ -31,7 +31,7 @@ export function drawGrid(scale, offsetX, offsetY, enabled = gridEnabled) {
 export function toggleGrid() {
     gridEnabled = !gridEnabled;
     
-    import('./viewport.js').then(({ getViewport }) => {
+    import('../core/viewport.js').then(({ getViewport }) => {
         const { scale, offsetX, offsetY } = getViewport();
         drawGrid(scale, offsetX, offsetY, gridEnabled);
     });
@@ -49,7 +49,7 @@ export function toggleGrid() {
 export function setGridOpacity(opacity) {
     gridOpacity = opacity;
     
-    import('./viewport.js').then(({ getViewport }) => {
+    import('../core/viewport.js').then(({ getViewport }) => {
         const { scale, offsetX, offsetY } = getViewport();
         drawGrid(scale, offsetX, offsetY, gridEnabled);
     });
