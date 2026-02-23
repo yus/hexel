@@ -1,5 +1,5 @@
 import { getViewport } from '../core/viewport.js';
-import { H_STEP, V_STEP } from '../utils/constants.js';
+import { HEXEL_SIZE, H_STEP, V_STEP, SQRT3, GRID_COLOR, DEFAULT_POINT_COLOR, GRID_LINE_WIDTH, POINT_SIZE } from '../utils/constants.js';
 
 export class HexelRenderer {
     constructor(gl) {
@@ -53,9 +53,10 @@ export class HexelRenderer {
             uniform float u_scale;
             uniform float u_opacity;
             
-            const float H_STEP = 48.0;
-            const float V_STEP = 41.569;
-            const vec3 GRID_COLOR = vec3(0.784, 0.576, 0.824);
+            const float H_STEP = ${H_STEP}.0;
+            const float V_STEP = ${V_STEP}.0;
+            const float SQRT3 = ${SQRT3};
+            const vec3 GRID_COLOR = vec3(${parseInt(GRID_COLOR.slice(1,3),16)/255}, ${parseInt(GRID_COLOR.slice(3,5),16)/255}, ${parseInt(GRID_COLOR.slice(5,7),16)/255});
             
             float gridLine(float coord, float step, float width) {
                 float gridPos = mod(coord + step/2.0, step) - step/2.0;
@@ -166,6 +167,9 @@ export class HexelRenderer {
         const x = q * H_STEP + (r % 2 !== 0 ? H_STEP/2 : 0);
         const y = r * V_STEP;
         
+        // Use size parameter or default
+        const pointSize = size || POINT_SIZE;
+        
         const rColor = parseInt(color.slice(1,3), 16) / 255;
         const gColor = parseInt(color.slice(3,5), 16) / 255;
         const bColor = parseInt(color.slice(5,7), 16) / 255;
@@ -186,6 +190,9 @@ export class HexelRenderer {
         const startY = start.r * V_STEP;
         const endX = end.q * H_STEP + (end.r % 2 !== 0 ? H_STEP/2 : 0);
         const endY = end.r * V_STEP;
+
+        // Add points with size based on HEXEL_SIZE
+        const pointSize = HEXEL_SIZE / 8;
         
         const r = parseInt(color.slice(1,3), 16) / 255;
         const g = parseInt(color.slice(3,5), 16) / 255;
