@@ -354,8 +354,8 @@ export class HexelRenderer {
         const gl = this.gl;
 
         // TEST 1: Clear with red to prove WebGL works
-        gl.clearColor(1, 0, 0, 1);
-        gl.clear(gl.COLOR_BUFFER_BIT);
+        // gl.clearColor(1, 0, 0, 1);
+        // gl.clear(gl.COLOR_BUFFER_BIT);
         
         const program = this.programs.grid;
         
