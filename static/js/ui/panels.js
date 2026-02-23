@@ -1,3 +1,6 @@
+import { getRenderer } from '../main.js';
+import { getViewport } from '../core/viewport.js';
+
 // Properties panel management
 export function initPanels() {
     updateStats();
