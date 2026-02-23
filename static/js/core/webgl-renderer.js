@@ -62,35 +62,65 @@ export class HexelRenderer {
             uniform vec2 u_resolution;
             uniform vec2 u_offset;
             uniform float u_scale;
+            uniform float u_opacity;
             
             const float HEX_SIZE = 24.0;
             const float H_STEP = HEX_SIZE * 1.5;
-            const float V_STEP = HEX_SIZE * 1.732;
+            const float V_STEP = HEX_SIZE * 1.7320508;
+            
+            // Round function for float
+            float round(float x) {
+                return floor(x + 0.5);
+            }
             
             void main() {
                 vec2 pos = (gl_FragCoord.xy - u_offset) / u_scale;
                 
-                // Axial coordinates
-                float q = (pos.x * 0.57735 - pos.y / 3.0) / HEX_SIZE;
+                // Convert to axial coordinates
+                float q = (pos.x * 0.57735 - pos.y * 0.33333) / HEX_SIZE;
                 float r = pos.y * 0.66667 / HEX_SIZE;
                 
-                // Round to nearest hex center
-                float qr = round(q);
-                float rr = round(r);
-                float qz = round(-q - r);
+                // Round to nearest hex (manual rounding)
+                float qr = floor(q + 0.5);
+                float rr = floor(r + 0.5);
                 
-                // Reconstruct closest hex center
+                // Convert back to world position of nearest hex center
                 vec2 center;
                 center.x = HEX_SIZE * (qr * 1.5);
-                center.y = HEX_SIZE * (rr * 1.732 + qr * 0.866);
+                center.y = HEX_SIZE * (rr * 1.7320508 + qr * 0.8660254);
                 
-                // Distance to center
+                // Distance to hex center
                 float dist = distance(pos, center);
                 
-                // Draw hex borders
-                float border = smoothstep(HEX_SIZE - 1.0, HEX_SIZE, dist);
+                // Hexagon radius
+                float radius = HEX_SIZE;
                 
-                gl_FragColor = vec4(0.784, 0.576, 0.824, border * 0.3);
+                // Draw hex border
+                float border = 0.0;
+                if (dist > radius - 1.5 && dist < radius + 0.5) {
+                    border = 1.0;
+                }
+                
+                // Draw triangle divisions (optional)
+                vec2 toCenter = pos - center;
+                float angle = atan(toCenter.y, toCenter.x);
+                if (angle < 0.0) angle += 6.28319;
+                
+                // 60-degree lines from center
+                float triangleLine = 0.0;
+                for (int i = 0; i < 6; i++) {
+                    float lineAngle = float(i) * 1.0472; // 60° in radians
+                    float angleDiff = abs(angle - lineAngle);
+                    angleDiff = min(angleDiff, 6.28319 - angleDiff);
+                    
+                    if (angleDiff < 0.05 && dist < radius) {
+                        triangleLine = 0.5;
+                    }
+                }
+                
+                float alpha = max(border, triangleLine) * u_opacity;
+                
+                gl_FragColor = vec4(0.784, 0.576, 0.824, alpha);
             }
         `;
 
