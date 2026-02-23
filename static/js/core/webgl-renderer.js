@@ -1,10 +1,5 @@
-// Add these constants at the very top of the file, before the HexelRenderer class
-const HEXEL_SIZE = 24;
-const H_STEP = HEXEL_SIZE * 2;        // 48
-const V_STEP = HEXEL_SIZE * 1.7320508; // ~41.569 (sqrt(3) * size)
-
-// Or import them if they exist in constants.js:
-// import { H_STEP, V_STEP, HEXEL_SIZE } from '../utils/constants.js';
+import { getViewport } from './viewport.js'; // Adjust path as needed
+import { H_STEP, V_STEP, HEXEL_SIZE } from '../utils/constants.js';
 
 // WebGL Renderer - Unified GPU rendering for grid AND elements
 export class HexelRenderer {
@@ -347,31 +342,25 @@ export class HexelRenderer {
         const g = parseInt(color.slice(3,5), 16) / 255;
         const b = parseInt(color.slice(5,7), 16) / 255;
         
-        // Instead of storing as line, store as MULTIPLE POINTS
-        const numPoints = 20; // Number of points to draw along the line
-        
+        // Add points along the line
+        const numPoints = 20;
         for (let i = 0; i <= numPoints; i++) {
             const t = i / numPoints;
             const x = startX * (1-t) + endX * t;
             const y = startY * (1-t) + endY * t;
             
-            // Add directly to points array
             this.points.push({
                 x, y,
                 r, g, b,
-                size: 3, // Make them visible!
+                size: 3,
                 preview: false
             });
         }
         
-        console.log(`✅ Added ${numPoints+1} points to represent line`);
-        
-        // Update buffer immediately
         this.updatePointBuffer();
         
-        // Force redraw
-        const { scale, offsetX, offsetY } = getViewport();
-        this.drawAll(scale, offsetX, offsetY);
+        // Use stored current viewport values
+        this.drawAll(this.currentScale, this.currentOffsetX, this.currentOffsetY);
     }
     
     addHexagon(q, r, color, preview = false) {
