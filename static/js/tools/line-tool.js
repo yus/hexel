@@ -56,13 +56,20 @@ export class LineTool {
         
         const { scale, offsetX, offsetY } = getViewport();
         const endHexel = screenToHexel(x, y, scale, offsetX, offsetY);
+        const color = document.querySelector('.color-swatch.active')?.dataset.color || '#ffaa66';
         
-        // Store in permanent storage
+        // Add to renderer
+        const renderer = getRenderer();
+        if (renderer) {
+            renderer.addLine(this.startHexel, endHexel, color, false);
+        }
+        
+        // Also store in drawing/lines.js for persistence
         import('../drawing/lines.js').then(m => {
             m.addLine({
                 start: this.startHexel,
                 end: endHexel,
-                color: document.querySelector('.color-swatch.active')?.dataset.color || '#ffaa66'
+                color: color
             });
         });
         
@@ -71,10 +78,8 @@ export class LineTool {
         this.isDrawing = false;
         this.startHexel = null;
         
-        const renderer = getRenderer();
         if (renderer) {
             renderer.clearPreview();
-            renderer.drawAll(scale, offsetX, offsetY);
         }
     }
     
