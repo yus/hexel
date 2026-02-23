@@ -328,6 +328,16 @@ export class HexelRenderer {
         gl.drawArrays(gl.POINTS, 0, totalPoints);
     }
 
+    // In webgl-renderer.js, add:
+    drawHexagonOutline(hexel, color, alpha, dashed) {
+        console.log('Drawing hexagon outline:', hexel, color);
+        // For now, just log - implement actual rendering later
+    }
+    
+    drawHexagonCorners(hexel, color, alpha) {
+        console.log('Drawing hexagon corners:', hexel, color);
+    }
+
     setPreviewMode(enabled) {
         this.previewMode = enabled;
         // You can add visual feedback for preview mode later
