@@ -54,6 +54,10 @@ document.addEventListener('DOMContentLoaded', async () => {
 
     // Make renderer globally available for debugging
     window.hexelRenderer = renderer;
+
+    // TEST: Add a visible point at origin
+    renderer.addPoint(0, 0, '#ff0000', 20, false); // Big red point
+    renderer.drawAll(1.0, 0, 0);
     
     // Force a proper initial draw with viewport values
     import('./core/viewport.js').then(({ getViewport }) => {
