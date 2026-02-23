@@ -1,3 +1,6 @@
+import { getViewport } from '../core/viewport.js';
+import { H_STEP, V_STEP, HEXEL_SIZE } from '../utils/constants.js';
+
 // WebGL Renderer - Unified GPU rendering for grid AND elements
 export class HexelRenderer {
     constructor(gl) {
@@ -32,6 +35,9 @@ export class HexelRenderer {
         setTimeout(() => {
             this.drawAll(1.0, 0, 0);
         }, 10);
+
+        // TEST: Add a point at origin
+        this.addPoint(0, 0, '#ffaa66', 8);
     }
     
     initBlending() {
@@ -60,53 +66,76 @@ export class HexelRenderer {
             uniform vec2 u_offset;
             uniform float u_scale;
             uniform float u_opacity;
+            uniform float u_mode; // 0 = both, 1 = horizontal only, 2 = vertical only
             
-            const float TAU = 6.28318530718;
-            const float H_STEP = 48.0;
-            const float V_STEP = 41.569;
-            const vec3 GRID_COLOR = vec3(0.784, 0.576, 0.824);
-            
-            // Unit vectors at 0°, 60°, and 120°
-            const vec2 unit000 = vec2(0.0, 1.0);
-            const vec2 unit060 = vec2(0.8660254, 0.5);
-            const vec2 unit120 = vec2(0.8660254, -0.5);
-            
-            float gridLine(float lineWidth, vec2 pos, vec2 axis) {
-                float projection = dot(pos, axis);
-                float gridPos = mod(projection, 1.0);
-                float dist = min(gridPos, 1.0 - gridPos);
-                return 1.0 - smoothstep(0.0, lineWidth, dist);
-            }
+            const float SIZE = 24.0;
+            const float SQRT3 = 1.73205080757;
             
             void main() {
-                vec2 uv = (gl_FragCoord.xy - u_offset) / u_resolution.xy - 0.5;
-                uv.x *= u_resolution.x / u_resolution.y;
+                // Apply pan and zoom
+                vec2 pos = (gl_FragCoord.xy - u_offset * u_resolution) / u_scale;
                 
-                vec2 pos = uv * 3.0 * u_scale;
+                // Barycentric coordinates for triangle grid
+                float u = pos.x;
+                float v = -0.5 * pos.x + SQRT3/2.0 * pos.y;
+                float w = -0.5 * pos.x - SQRT3/2.0 * pos.y;
                 
-                float lineWidth = 0.08 / u_scale;
+                // Scale to grid size
+                u = u / SIZE;
+                v = v / SIZE;
+                w = w / SIZE;
                 
-                // NOW all variables are declared!
-                float horiz = gridLine(lineWidth, pos, unit000);
-                float diag1 = gridLine(lineWidth, pos, unit120);
-                float diag2 = gridLine(lineWidth, pos, -unit060);
+                // Distance to nearest grid line on each axis
+                float du = abs(u - floor(u + 0.5));
+                float dv = abs(v - floor(v + 0.5));
+                float dw = abs(w - floor(w + 0.5));
                 
-                float horizAlpha = u_opacity;
-                float diagAlpha = u_opacity * 0.7;
+                // Line width adapts to zoom
+                float lineWidth = 0.03 / u_scale;
+                lineWidth = clamp(lineWidth, 0.02, 0.2);
                 
-                float alpha = 0.0;
-                if (horiz > 0.0) {
-                    alpha = horiz * horizAlpha;
-                } else if (diag1 > 0.0 || diag2 > 0.0) {
-                    alpha = max(diag1, diag2) * diagAlpha;
+                // Determine which lines to draw based on mode
+                float grid = 0.0;
+                
+                if (u_mode == 0.0) { // Both
+                    if (du < lineWidth || dv < lineWidth || dw < lineWidth) {
+                        grid = 1.0;
+                    }
+                } else if (u_mode == 1.0) { // Horizontal only (u axis)
+                    if (du < lineWidth) {
+                        grid = 1.0;
+                    }
+                } else if (u_mode == 2.0) { // Vertical only (v and w axes)
+                    if (dv < lineWidth || dw < lineWidth) {
+                        grid = 1.0;
+                    }
                 }
                 
-                // Force minimum visibility for debugging
-                alpha = max(alpha, 0.5);
-                
-                gl_FragColor = vec4(GRID_COLOR, alpha);
+                gl_FragColor = vec4(0.784, 0.576, 0.824, grid * u_opacity);
             }
         `;
+
+        /* const gridFS = `
+            precision highp float;
+            
+            uniform vec2 u_resolution;
+            uniform float u_opacity;
+            
+            void main() {
+                vec2 pos = gl_FragCoord.xy;
+                
+                // Simple 50px grid
+                float xLine = mod(pos.x, 50.0);
+                float yLine = mod(pos.y, 50.0);
+                
+                float isLine = 0.0;
+                if (xLine < 1.0 || yLine < 1.0) {
+                    isLine = 1.0;
+                }
+                
+                gl_FragColor = vec4(0.784, 0.576, 0.824, isLine * u_opacity);
+            }
+        `; */
         
         // === POINT SHADER ===
         const pointVS = `
@@ -140,23 +169,8 @@ export class HexelRenderer {
             varying float v_preview;
             
             void main() {
-                vec2 coord = gl_PointCoord - vec2(0.5);
-                float dist = length(coord);
-                
-                if (dist > 0.5) discard;
-                
-                // Smooth circle
-                float alpha = 1.0 - smoothstep(0.45, 0.5, dist);
-                
-                // Preview points are dashed
-                if (v_preview > 0.5) {
-                    // Create dash pattern
-                    float dash = mod(gl_PointCoord.x * 10.0, 1.0);
-                    if (dash < 0.5) discard;
-                    alpha *= 0.8;
-                }
-                
-                gl_FragColor = vec4(v_color, alpha * 0.9);
+                // Force visibility for debugging
+                gl_FragColor = vec4(1.0, 0.0, 0.0, 1.0); // Bright red
             }
         `;
         
@@ -271,17 +285,7 @@ export class HexelRenderer {
         this.hexagonVertexCount = 0;
     }
     
-    setPreviewMode(enabled) {
-        this.previewMode = enabled;
-    }
-    
-    clearPreview() {
-        this.previewPoints = [];
-        this.previewLines = [];
-        this.previewHexagons = [];
-        this.drawAll(this.currentScale, this.currentOffsetX, this.currentOffsetY);
-    }
-    
+    /*
     addPoint(q, r, color, size, preview = false) {
         // Convert hexel to world coordinates
         const x = q * 48 + (r % 2 !== 0 ? 24 : 0);
@@ -302,12 +306,61 @@ export class HexelRenderer {
         }    
         this.updatePointBuffer(); // <-- THIS IS CRITICAL!
     }
+    */
+    addPoint(q, r, color, size, preview = false) {
+        // Convert hexel to world coordinates using H_STEP and V_STEP
+        const x = q * H_STEP + (r % 2 !== 0 ? H_STEP/2 : 0);
+        const y = r * V_STEP;
+        
+        // Parse color (assuming hex format like "#ffaa66")
+        const rColor = parseInt(color.slice(1,3), 16) / 255;
+        const gColor = parseInt(color.slice(3,5), 16) / 255;
+        const bColor = parseInt(color.slice(5,7), 16) / 255;
+        
+        const point = { x, y, r: rColor, g: gColor, b: bColor, size: size / 4 };
+        
+        if (preview || this.previewMode) {
+            this.previewPoints.push(point);
+        } else {
+            this.points.push(point);
+        }
+        
+        this.updatePointBuffer();
+    }
     
     addLine(start, end, color, preview = false) {
-        // Implementation for lines
-        const target = preview ? this.previewLines : this.lines;
-        target.push({ start, end, color });
-        this.updateLineBuffer();
+        console.log('📏 Adding line:', {start, end, color});
+        
+        // Convert hexel to world coordinates
+        const startX = start.q * H_STEP + (start.r % 2 !== 0 ? H_STEP/2 : 0);
+        const startY = start.r * V_STEP;
+        const endX = end.q * H_STEP + (end.r % 2 !== 0 ? H_STEP/2 : 0);
+        const endY = end.r * V_STEP;
+        
+        // Parse color
+        const r = parseInt(color.slice(1,3), 16) / 255;
+        const g = parseInt(color.slice(3,5), 16) / 255;
+        const b = parseInt(color.slice(5,7), 16) / 255;
+        
+        // Add points along the line
+        const numPoints = 20;
+        for (let i = 0; i <= numPoints; i++) {
+            const t = i / numPoints;
+            const x = startX * (1-t) + endX * t;
+            const y = startY * (1-t) + endY * t;
+            
+            this.points.push({
+                x, y,
+                r, g, b,
+                size: 3,
+                preview: false
+            });
+        }
+        
+        this.updatePointBuffer();
+        
+        // Use stored current viewport values
+        this.drawAll(this.currentScale, this.currentOffsetX, this.currentOffsetY);
     }
     
     addHexagon(q, r, color, preview = false) {
@@ -345,7 +398,7 @@ export class HexelRenderer {
     }
     
     drawAll(scale, offsetX, offsetY) {
-        console.log('drawAll called');
+        // console.log('drawAll called');
         this.currentScale = scale;
         this.currentOffsetX = offsetX;
         this.currentOffsetY = offsetY;
@@ -353,7 +406,7 @@ export class HexelRenderer {
         const gl = this.gl;
         
         gl.viewport(0, 0, gl.canvas.width, gl.canvas.height);
-        gl.clearColor(0, 0, 0, 1);
+        gl.clearColor(0, 0, 0, 0);
         gl.clear(gl.COLOR_BUFFER_BIT);
         
         if (this.gridEnabled) {
@@ -361,53 +414,74 @@ export class HexelRenderer {
         }
         
         this.drawPoints(scale, offsetX, offsetY);
+        this.drawPoints(scale, offsetX, offsetY);
         // Add drawLines, drawHexagons etc
     }
     
     drawGrid(scale, offsetX, offsetY) {
-        console.log('📐 drawGrid CALLED - scale:', scale, 'opacity:', this.gridOpacity, 'enabled:', this.gridEnabled);
-        console.log('🎯 drawGrid called', {scale, offsetX, offsetY, opacity: this.gridOpacity});
-            
         const gl = this.gl;
-        // Test with solid color first
-        console.log('🎯 TEST GRID - drawing magenta');
-    
-        // Simple magenta fill - IGNORES shader completely
-        gl.clearColor(1.0, 0.0, 1.0, 0.25); // Magenta
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        return; // Uncomment to test
-        
         const program = this.programs.grid;
         
         gl.useProgram(program);
         
-        // Set up quad attributes
+        // Quad attributes
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.quad);
         const positionLoc = gl.getAttribLocation(program, 'a_position');
         gl.enableVertexAttribArray(positionLoc);
         gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
         
-        // Set ALL uniforms
+        // Convert offset to WebGL space (critical for panning!)
+        const webglOffsetX = offsetX / gl.canvas.width;
+        const webglOffsetY = offsetY / gl.canvas.height;
+        
+        // Set all uniforms
         gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), 
             gl.canvas.width, gl.canvas.height);
-        gl.uniform2f(gl.getUniformLocation(program, 'u_offset'), offsetX, offsetY);
+        gl.uniform2f(gl.getUniformLocation(program, 'u_offset'), webglOffsetX, webglOffsetY);
         gl.uniform1f(gl.getUniformLocation(program, 'u_scale'), scale);
         gl.uniform1f(gl.getUniformLocation(program, 'u_opacity'), this.gridOpacity);
+        gl.uniform1f(gl.getUniformLocation(program, 'u_mode'), this.gridMode || 0.0);
         
         gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
     
     drawPoints(scale, offsetX, offsetY) {
-        if (this.points.length === 0 && this.previewPoints.length === 0) return;
+        const totalPoints = this.points.length + this.previewPoints.length;
+        if (totalPoints === 0) return;
+        
+        console.log('🎯 Drawing points, count:', totalPoints);
         
         const gl = this.gl;
         const program = this.programs.point;
         
         gl.useProgram(program);
         
-        gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.points);
+        // Prepare data with screen space transformation
+        const transformedData = [];
         
-        const stride = 7 * 4; // 7 floats * 4 bytes
+        const processPoint = (p) => {
+            // Convert world coordinates to screen coordinates
+            const screenX = p.x * scale + offsetX + gl.canvas.width/2;
+            const screenY = p.y * scale + offsetY + gl.canvas.height/2;
+            
+            transformedData.push(
+                screenX, screenY,
+                p.r, p.g, p.b,
+                p.size,
+                p.preview ? 1 : 0
+            );
+        };
+        
+        this.points.forEach(processPoint);
+        this.previewPoints.forEach(processPoint);
+        
+        // Create temporary buffer with transformed coordinates
+        const tempBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, tempBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(transformedData), gl.DYNAMIC_DRAW);
+        
+        // Set up attributes
+        const stride = 7 * 4;
         
         const positionLoc = gl.getAttribLocation(program, 'a_position');
         gl.enableVertexAttribArray(positionLoc);
@@ -425,22 +499,179 @@ export class HexelRenderer {
         gl.enableVertexAttribArray(previewLoc);
         gl.vertexAttribPointer(previewLoc, 1, gl.FLOAT, false, stride, 24);
         
-        // Uniforms
+        // Set uniforms (now identity because we transformed in CPU)
         gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), 
             gl.canvas.width, gl.canvas.height);
-        gl.uniform2f(gl.getUniformLocation(program, 'u_offset'), offsetX, offsetY);
-        gl.uniform1f(gl.getUniformLocation(program, 'u_scale'), scale);
+        gl.uniform2f(gl.getUniformLocation(program, 'u_offset'), 0, 0);
+        gl.uniform1f(gl.getUniformLocation(program, 'u_scale'), 1);
         
-        gl.drawArrays(gl.POINTS, 0, this.points.length + this.previewPoints.length);
+        // Draw
+        gl.drawArrays(gl.POINTS, 0, totalPoints);
         
-        console.log('Drawing points, count:', this.points.length + this.previewPoints.length);
-    
-        if (this.points.length === 0 && this.previewPoints.length === 0) {
-            console.log('No points to draw');
-            return;
-        }
+        // Clean up
+        gl.deleteBuffer(tempBuffer);
+        
+        console.log('✅ Drew', totalPoints, 'points at screen positions');
     }
 
+    /*
+    drawLine(start, end, color, alpha, dashed) {
+        console.log('🎨 Would draw line:', {start, end, color});
+        // Store for later implementation
+        this.pendingLines = this.pendingLines || [];
+        this.pendingLines.push({start, end, color, alpha, dashed});
+
+        // For now, just store line preview data
+        // We'll implement actual WebGL line rendering later
+        this.previewLines.push({
+            start: { x: start.q * H_STEP + (start.r % 2 !== 0 ? H_STEP/2 : 0), 
+                     y: start.r * V_STEP },
+            end: { x: end.q * H_STEP + (end.r % 2 !== 0 ? H_STEP/2 : 0), 
+                   y: end.r * V_STEP },
+            color,
+            alpha,
+            dashed
+        });
+    } */
+
+    drawLine(start, end, color, alpha, dashed = false) {
+        // Convert hexel coordinates to world coordinates
+        const startX = start.q * H_STEP + (start.r % 2 !== 0 ? H_STEP/2 : 0);
+        const startY = start.r * V_STEP;
+        const endX = end.q * H_STEP + (end.r % 2 !== 0 ? H_STEP/2 : 0);
+        const endY = end.r * V_STEP;
+        
+        // Parse color
+        const r = parseInt(color.slice(1,3), 16) / 255;
+        const g = parseInt(color.slice(3,5), 16) / 255;
+        const b = parseInt(color.slice(5,7), 16) / 255;
+        
+        // Store line data for drawing
+        this.previewLines.push({
+            points: [startX, startY, endX, endY],
+            color: [r, g, b],
+            alpha,
+            dashed
+        });
+    }
+    
+    drawLines(scale, offsetX, offsetY) {
+        const allLines = [...this.lines, ...this.previewLines];
+        
+        if (allLines.length === 0) {
+            console.log('No lines to draw');
+            return;
+        }
+        
+        console.log(`🔥 DRAWING ${allLines.length} LINES!`);
+        
+        // TEMPORARY: Draw each line as a series of BRIGHT RED points
+        allLines.forEach((line, index) => {
+            // Get coordinates
+            const startX = line.start.x || (line.q_start * H_STEP + (line.r_start % 2 !== 0 ? H_STEP/2 : 0));
+            const startY = line.start.y || (line.r_start * V_STEP);
+            const endX = line.end.x || (line.q_end * H_STEP + (line.r_end % 2 !== 0 ? H_STEP/2 : 0));
+            const endY = line.end.y || (line.r_end * V_STEP);
+            
+            console.log(`Line ${index}: (${startX},${startY}) → (${endX},${endY})`);
+            
+            // Draw 50 bright red points along the line
+            for (let i = 0; i <= 50; i++) {
+                const t = i / 50;
+                const x = startX * (1-t) + endX * t;
+                const y = startY * (1-t) + endY * t;
+                
+                // Add directly to points with BRIGHT RED color
+                this.points.push({
+                    x, y,
+                    r: 1.0, g: 0.0, b: 0.0, // BRIGHT RED
+                    size: 4,
+                    preview: false
+                });
+            }
+        });
+        
+        // Update buffer with ALL points (including these new line-points)
+        this.updatePointBuffer();
+        
+        console.log(`✅ Added ${allLines.length * 50} red points to visualization`);
+    }
+    
+    // Temporary fallback - draw lines as connected points
+    drawLinesAsPoints() {
+        this.previewLines.forEach(line => {
+            const { points, color, alpha } = line;
+            
+            // Draw start point
+            this.previewPoints.push({
+                x: points[0], y: points[1],
+                r: color[0], g: color[1], b: color[2],
+                size: 2,
+                preview: true
+            });
+            
+            // Draw end point
+            this.previewPoints.push({
+                x: points[2], y: points[3],
+                r: color[0], g: color[1], b: color[2],
+                size: 2,
+                preview: true
+            });
+            
+            // Draw 10 interpolated points along the line
+            for (let i = 1; i < 10; i++) {
+                const t = i / 10;
+                const x = points[0] * (1-t) + points[2] * t;
+                const y = points[1] * (1-t) + points[3] * t;
+                
+                this.previewPoints.push({
+                    x, y,
+                    r: color[0], g: color[1], b: color[2],
+                    size: 1,
+                    preview: true
+                });
+            }
+        });
+        
+        this.updatePointBuffer();
+    }
+    
+    drawHexagonOutline(hexel, color, alpha, dashed) {
+        console.log('🔷 Would draw hexagon outline:', {hexel, color});
+    }
+    
+    drawHexagonCorners(hexel, color, alpha) {
+        console.log('🔶 Would draw hexagon corners:', {hexel, color});
+    }
+    
+    addTriangle(hexel, triangleIndex, color, preview) {
+        console.log('△ Would draw triangle:', {hexel, triangleIndex, color});
+    }
+
+    setPreviewMode(enabled) {
+        this.previewMode = enabled;
+    }
+    
+    clearPreview() {
+        this.previewPoints = [];
+        this.previewLines = [];
+        this.previewHexagons = [];
+        this.drawAll(this.currentScale, this.currentOffsetX, this.currentOffsetY);
+    }
+    
+    syncFromStorage() {
+        import('../drawing/points.js').then(({ points }) => {
+            this.points = [];
+            points.forEach(p => {
+                this.addPoint(p.q, p.r, p.color, p.size);
+            });
+            this.updatePointBuffer();
+            
+            const { scale, offsetX, offsetY } = getViewport();
+            this.drawAll(scale, offsetX, offsetY);
+        });
+    }
+    
     // Add this method to your HexelRenderer class
     clear() {
         console.log('🧹 Clearing renderer data');
@@ -452,12 +683,12 @@ export class HexelRenderer {
         this.previewPoints = [];
         this.previewLines = [];
         this.previewHexagons = [];
-        
+        this.updatePointBuffer();
         // Check if methods exist before calling
-        if (this.updatePointBuffer) this.updatePointBuffer();
+       //  if (this.updatePointBuffer) this.updatePointBuffer();
         if (this.updateHexagonBuffer) this.updateHexagonBuffer(); // Now safe
         
         // Force a redraw
         this.drawAll(this.currentScale, this.currentOffsetX, this.currentOffsetY);
-    }
+    }    
 }
