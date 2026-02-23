@@ -153,7 +153,11 @@ export class TriangleTool {
             console.log('No valid preview triangle');
             return;
         }
-        
+
+        // For now, just log that we would draw a preview
+        console.log('Preview triangle at:', preview.hexel, 'index:', preview.triangle);
+
+        /*
         // Clear any old preview first
         this.clearPreview();
         
@@ -174,6 +178,7 @@ export class TriangleTool {
         
         const { scale, offsetX, offsetY } = getViewport();
         renderer.drawAll(scale, offsetX, offsetY);
+        */
     }
     
     clearPreview() {
