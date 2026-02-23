@@ -41,27 +41,10 @@ export class HexelRenderer {
         // === GRID SHADER (your existing one with debug) ===
         const gridVS = `
             attribute vec2 a_position;
-            uniform vec2 u_resolution;
-            uniform vec2 u_offset;
-            uniform float u_scale;
             
             void main() {
-                // a_position is in clip space (-1 to 1)
-                // We need to transform it to world space with offset and scale
-                
-                // First, convert from clip space to screen pixels
-                vec2 screenPos = (a_position * 0.5 + 0.5) * u_resolution;
-                
-                // Apply pan (offset)
-                screenPos -= u_offset;
-                
-                // Apply zoom (scale)
-                screenPos /= u_scale;
-                
-                // Convert back to clip space
-                vec2 clipPos = (screenPos / u_resolution) * 2.0 - 1.0;
-                
-                gl_Position = vec4(clipPos * vec2(1, -1), 0, 1);
+                // Just pass through - a_position is already in clip space
+                gl_Position = vec4(a_position, 0, 1);
             }
         `;
         
@@ -73,42 +56,38 @@ export class HexelRenderer {
             uniform float u_scale;
             uniform float u_opacity;
             
-            const float TAU = 6.28318530718; // atan(1.0) * 8.0
+            const float TAU = 6.28318530718;
             
-            // Unit vectors at 0°, 60°, and 120°
-            const vec2 unit000 = vec2(0.0, 1.0);      // sin(0), cos(0)
-            const vec2 unit060 = vec2(0.866, 0.5);    // sin(60°), cos(60°)
-            const vec2 unit120 = vec2(0.866, -0.5);   // sin(120°), cos(120°)
+            const vec2 unit000 = vec2(0.0, 1.0);
+            const vec2 unit060 = vec2(0.8660254, 0.5);
+            const vec2 unit120 = vec2(0.8660254, -0.5);
             
             float gridAxis(float lineWidth, vec2 pos, vec2 axis) {
                 float projection = dot(pos, axis);
                 float gridPos = mod(projection, 1.0);
                 float dist = min(gridPos, 1.0 - gridPos);
-                return smoothstep(lineWidth, 0.0, dist);
+                return 1.0 - smoothstep(0.0, lineWidth, dist);
             }
             
             void main() {
-                // Get normalized coordinates with aspect ratio correction
                 vec2 uv = (gl_FragCoord.xy / u_resolution.xy) - 0.5;
                 uv.x *= u_resolution.x / u_resolution.y;
-                uv *= max(u_resolution.x / u_resolution.y, u_resolution.y / u_resolution.x);
                 
                 // Apply pan and zoom
-                vec2 pos = uv * u_scale + (u_offset / u_resolution.xy);
-                pos *= 3.0; // Scale to see more/fewer hexagons
+                vec2 pos = uv * 3.0 * u_scale + (u_offset / u_resolution.xy);
                 
-                float lineWidth = 0.05 / u_scale; // Adjust line width with zoom
+                float lineWidth = 0.08 / u_scale;
                 
-                // Calculate grid intensity for each axis
                 float r = gridAxis(lineWidth, pos, unit000);
                 float g = gridAxis(lineWidth, pos, unit120);
                 float b = gridAxis(lineWidth, pos, -unit060);
                 
-                // Combine with your grid color
-                vec3 GRID_COLOR = vec3(0.784, 0.576, 0.824);
-                float alpha = max(max(r, g), b) * u_opacity;
+                float alpha = max(max(r, g), b);
                 
-                gl_FragColor = vec4(GRID_COLOR, alpha);
+                // Minimum opacity of 0.3 as requested
+                alpha = max(alpha * u_opacity, 0.3);
+                
+                gl_FragColor = vec4(vec3(0.784, 0.576, 0.824), alpha);
             }
         `;
         
@@ -341,32 +320,23 @@ export class HexelRenderer {
     
     drawGrid(scale, offsetX, offsetY) {
         console.log('📐 drawGrid CALLED - scale:', scale, 'opacity:', this.gridOpacity, 'enabled:', this.gridEnabled);
-
-        // If you get here but no grid, add this test:
         const gl = this.gl;
-
-        // TEST 1: Clear with red to prove WebGL works
-        // gl.clearColor(1, 0, 0, 1);
-        // gl.clear(gl.COLOR_BUFFER_BIT);
-        
         const program = this.programs.grid;
         
         gl.useProgram(program);
         
-        // Quad attributes
+        // Set up quad attributes
         gl.bindBuffer(gl.ARRAY_BUFFER, this.buffers.quad);
         const positionLoc = gl.getAttribLocation(program, 'a_position');
         gl.enableVertexAttribArray(positionLoc);
         gl.vertexAttribPointer(positionLoc, 2, gl.FLOAT, false, 0, 0);
         
-        // Uniforms
+        // Set ALL uniforms
         gl.uniform2f(gl.getUniformLocation(program, 'u_resolution'), 
             gl.canvas.width, gl.canvas.height);
         gl.uniform2f(gl.getUniformLocation(program, 'u_offset'), offsetX, offsetY);
         gl.uniform1f(gl.getUniformLocation(program, 'u_scale'), scale);
-        gl.uniform1f(gl.getUniformLocation(program, 'u_time'), performance.now() / 1000);
         gl.uniform1f(gl.getUniformLocation(program, 'u_opacity'), this.gridOpacity);
-        gl.uniform1f(gl.getUniformLocation(program, 'u_debug'), 0.0);
         
         gl.drawArrays(gl.TRIANGLES, 0, 6);
     }
