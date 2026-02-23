@@ -53,7 +53,7 @@ export class HexelRenderer {
             }
         `;
         
-        const gridFS = `
+        /*const gridFS = `
             precision highp float;
             
             uniform vec2 u_resolution;
@@ -105,6 +105,28 @@ export class HexelRenderer {
                 alpha = max(alpha, 0.5);
                 
                 gl_FragColor = vec4(GRID_COLOR, alpha);
+            }
+        `;*/
+
+        const gridFS = `
+            precision highp float;
+            
+            uniform vec2 u_resolution;
+            uniform float u_opacity;
+            
+            void main() {
+                vec2 pos = gl_FragCoord.xy;
+                
+                // Simple 50px grid
+                float xLine = mod(pos.x, 50.0);
+                float yLine = mod(pos.y, 50.0);
+                
+                float isLine = 0.0;
+                if (xLine < 1.0 || yLine < 1.0) {
+                    isLine = 1.0;
+                }
+                
+                gl_FragColor = vec4(0.784, 0.576, 0.824, isLine * u_opacity);
             }
         `;
         
