@@ -18,7 +18,7 @@ export class HexelRenderer {
         
         // State
         this.gridEnabled = true;
-        this.gridOpacity = 0.3;        
+        this.gridOpacity = 1.0;        
         this.previewMode = false;
         this.currentScale = 1.0;
         this.currentOffsetX = 0;
@@ -358,7 +358,7 @@ export class HexelRenderer {
             
         const gl = this.gl;
         // Test with solid color first
-        gl.clearColor(0, 1, 0, 1); // Green
+        gl.clearColor(0, 1, 0, .25); // Green
         gl.clear(gl.COLOR_BUFFER_BIT);
         return; // Uncomment to test
         
