@@ -1,0 +1,20 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base href="/hexel/">
+    <title>Debug</title>
+</head>
+<body>
+    <h1>Debug Mode</h1>
+    <script type="module">
+        try {
+            // Test importing a core file
+            const module = await import('/src/core/UniversalCoordinateMapper.js');
+            document.body.innerHTML += '<p style="color:green">✅ Core module loaded!</p>';
+            console.log('Module:', module);
+        } catch (e) {
+            document.body.innerHTML += '<p style="color:red">❌ Failed: ' + e.message + '</p>';
+        }
+    </script>
+</body>
+</html>
