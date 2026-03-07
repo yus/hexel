@@ -9,7 +9,7 @@
     <script type="module">
         try {
             // Test importing a core file
-            const module = await import('/hexel/src/core/UniversalCoordinateMapper.js');
+            const module = await import('../src/core/UniversalCoordinateMapper.js');
             document.body.innerHTML += '<p style="color:green">✅ Core module loaded!</p>';
             console.log('Module:', module);
         } catch (e) {
