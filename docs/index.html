@@ -553,32 +553,50 @@
     };
 
     // Time update
-    setInterval(() => {
-        document.getElementById('debug-time').innerHTML = new Date().toLocaleTimeString();
-    }, 1000);
+    // Better studio access with retry
+function getStudio() {
+    return window.studio || null;
+}
 
-    // Track mouse
-    document.addEventListener('mousemove', (e) => {
-        window.debug.updateMouse(e.clientX, e.clientY);
+// Retry getting studio every second until available
+const studioInterval = setInterval(() => {
+    if (window.studio) {
+        window.debug.log('✅ Studio connected!');
+        clearInterval(studioInterval);
+    }
+}, 1000);
+
+// Update mouse with better error handling
+document.addEventListener('mousemove', (e) => {
+    window.debug.updateMouse(e.clientX, e.clientY);
     
-        if (window.studio?.mapper) {
-            const rect = window.studio.canvas.getBoundingClientRect();
-            const x = e.clientX - rect.left;
-            const y = e.clientY - rect.top;
+    const studio = getStudio();
+    if (studio?.mapper) {
+        const rect = studio.canvas.getBoundingClientRect();
+        const x = e.clientX - rect.left;
+        const y = e.clientY - rect.top;
         
-            if (x >= 0 && x <= window.studio.canvas.width && y >= 0 && y <= window.studio.canvas.height) {
-                const grid = window.studio.mapper.screenToGrid(x, y);
+        if (x >= 0 && x <= studio.canvas.width && y >= 0 && y <= studio.canvas.height) {
+            try {
+                const grid = studio.mapper.screenToGrid(x, y);
                 window.debug.updateGrid(grid.x, grid.y);
-            
-                const vertex = window.studio.mapper.screenToVertex(x, y, 30);
+                
+                const vertex = studio.mapper.screenToVertex(x, y, 30);
                 if (vertex) {
                     window.debug.updateHexel(vertex.q, vertex.r);
                 } else {
                     window.debug.updateHexel('--', '--');
                 }
+            } catch (e) {
+                window.debug.log(`⚠️ Error: ${e.message}`);
             }
         }
-    });
+    } else {
+        // Update with placeholder
+        window.debug.updateGrid('--', '--');
+        window.debug.updateHexel('--', '--');
+    }
+});
 
     window.debug.log('🐞 Debug panel ready');
     window.debug.log('📍 Move mouse to see coordinates');
