@@ -130,24 +130,71 @@ class HexelStudio {
         this.drawElements(ctx);
     }
     
-    drawGrid(ctx) {
-        // Simple grid for now — will be replaced with proper WebGL shader
-        ctx.strokeStyle = '#b388ff';
-        ctx.lineWidth = 0.5;
-        ctx.globalAlpha = 0.2;
-        
-        // Draw a few lines to show grid is working
-        const centerX = this.canvas.width / 2 + this.mapper.offsetX;
-        const centerY = this.canvas.height / 2 + this.mapper.offsetY;
-        
-        ctx.beginPath();
-        for (let i = -10; i <= 10; i++) {
-            const y = centerY + i * 40 * this.mapper.scale;
-            ctx.moveTo(0, y);
-            ctx.lineTo(this.canvas.width, y);
-        }
-        ctx.stroke();
+drawGrid(ctx) {
+    const mapper = this.mapper;
+    const width = this.canvas.width;
+    const height = this.canvas.height;
+    
+    const centerX = width/2 + mapper.offsetX;
+    const centerY = height/2 + mapper.offsetY;
+    
+    const scaledH = mapper.hStep * mapper.scale;
+    const scaledV = mapper.vStep * mapper.scale;
+    
+    // Calculate visible range
+    const cols = Math.ceil(width / scaledH) + 10;
+    const rows = Math.ceil(height / scaledV) + 10;
+    
+    const startCol = -Math.floor(cols / 2) - 2;
+    const startRow = -Math.floor(rows / 2) - 2;
+    
+    ctx.strokeStyle = '#b388ff';
+    ctx.lineWidth = Math.max(0.5, 1.0 / Math.sqrt(mapper.scale));
+    ctx.globalAlpha = 0.25;
+    
+    // Horizontal lines
+    ctx.beginPath();
+    for (let r = startRow; r <= startRow + rows + 4; r++) {
+        const y = centerY + r * scaledV;
+        ctx.moveTo(0, y);
+        ctx.lineTo(width, y);
     }
+    ctx.stroke();
+    
+    // +60° diagonals
+    ctx.beginPath();
+    for (let r = startRow - 3; r <= startRow + rows + 7; r++) {
+        for (let c = startCol - 3; c <= startCol + cols + 7; c++) {
+            const x = centerX + c * scaledH;
+            const y = centerY + r * scaledV;
+            const xOffset = (r % 2 === 0) ? 0 : scaledH / 2;
+            
+            const extend = Math.max(width, height);
+            ctx.moveTo(x + xOffset - extend, y - extend * 1.732);
+            ctx.lineTo(x + xOffset + extend, y + extend * 1.732);
+        }
+    }
+    ctx.stroke();
+    
+    // -60° diagonals
+    ctx.beginPath();
+    for (let r = startRow - 3; r <= startRow + rows + 7; r++) {
+        for (let c = startCol - 3; c <= startCol + cols + 7; c++) {
+            const x = centerX + c * scaledH;
+            const y = centerY + r * scaledV;
+            const xOffset = (r % 2 === 0) ? 0 : scaledH / 2;
+            
+            const extend = Math.max(width, height);
+            ctx.moveTo(x + xOffset - extend, y + extend * 1.732);
+            ctx.lineTo(x + xOffset + extend, y - extend * 1.732);
+        }
+    }
+    ctx.stroke();
+    
+    ctx.globalAlpha = 1.0;
+    
+    window.debug?.log(`🎯 Grid drawn: ${cols}x${rows} cells, scale=${mapper.scale.toFixed(2)}`);
+}
     
     drawElements(ctx) {
         // Draw points
