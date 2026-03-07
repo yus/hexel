@@ -1,0 +1,25 @@
+<!DOCTYPE html>
+<html>
+<head><base href="/hexel/"></head>
+<body>
+    <h1>📡 FETCH TEST</h1>
+    <pre id="out"></pre>
+    <script>
+        const out = document.getElementById('out');
+        
+        async function testFetch(path) {
+            try {
+                const r = await fetch(path);
+                out.innerHTML += `\n${path}: ${r.status} ${r.statusText}`;
+                if (r.ok) out.innerHTML += ` (${r.headers.get('content-length')} bytes)`;
+            } catch (e) {
+                out.innerHTML += `\n${path}: ❌ ${e.message}`;
+            }
+        }
+        
+        testFetch('/src/core/UniversalCoordinateMapper.js');
+        testFetch('/src/main.js');
+        testFetch('/index.html');
+    </script>
+</body>
+</html>
