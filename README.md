@@ -4,7 +4,7 @@ Hexel Studio & "hexel" term is a foundation for a big data computing on reach UI
 
 This is yet an initial alpha version. 
 
-⚡ Please be careful with zooming this prototype ⚠️ 
+⚡ Please be careful with zooming this prototype (JS version ) ⚠️ 
 
 And in a fleeting times it has made for a future highload UI tester and creative tool for enthusiasts. My own view that is good utility for applying my best ideas multiplied for an effective AIs triggering bringed this approach wide forward, still hold my hope everyday. 🍥 ✨
 
