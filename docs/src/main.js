@@ -84,7 +84,11 @@ class HexelStudio {
         window.studio = this;
     
         console.log('✨ HEXEL STUDIO ready!');
-        window.debug?.log('✅ Studio instance attached to window');
+            // Force a debug notification
+        if (window.debug) {
+            window.debug.log('✅ Studio attached to window');
+            window.debug.testMapper(); // This will now work
+        }
     }
     
     resizeCanvas() {
