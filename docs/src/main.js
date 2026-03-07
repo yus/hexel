@@ -26,22 +26,28 @@ import { EventManager } from '/hexel/src/ui/events.js';
 class HexelStudio {
     constructor() {
         console.log('🍥 HEXEL STUDIO initializing...');
+        console.log('1️⃣ Constructor started');
+        window.debug?.log('1️⃣ Constructor started');
         
         // Get canvas
         this.canvas = document.getElementById('main-canvas');
+        console.log('2️⃣ Canvas:', this.canvas ? '✅' : '❌');
         if (!this.canvas) {
             console.error('Canvas not found!');
             return;
         }
         
         // Set canvas size
+        console.log('3️⃣ Creating mapper...');
         this.resizeCanvas();
         window.addEventListener('resize', () => this.resizeCanvas());
         
         // Core systems
         this.mapper = new UniversalCoordinateMapper(this.canvas);
+        console.log('4️⃣ Mapper created:', this.mapper ? '✅' : '❌');
         
         // Storage
+        console.log('5️⃣ Creating stores...');
         this.stores = {
             points: new PointStore(),
             edges: new EdgeStore(),
@@ -54,10 +60,12 @@ class HexelStudio {
         );
         
         // Lighthouse chip
+        console.log('6️⃣ Creating chip...');
         this.chip = new HexelChip(1000); // Tick every second
         this.startChip();
         
         // Create all tools
+        console.log('8️⃣ Creating tool manager...');
         this.tools = this.createTools();
         
         // Tool manager
@@ -68,6 +76,7 @@ class HexelStudio {
         this.toolManager.setTool('pan');
         
         // UI Components
+        console.log('9️⃣ Creating UI...');
         this.ui = {
             palette: new ToolPalette(this.toolManager),
             status: new StatusBar(this.toolManager, this.mapper, this.chip, this.stores),
@@ -75,14 +84,20 @@ class HexelStudio {
         };
         
         // Event manager
+        console.log('🔟 Creating events...');
         this.events = new EventManager(this.canvas, this.toolManager, this.mapper);
         
         // Start render loop
+        console.log('1️⃣1️⃣ Starting animation...');
         this.animate();
-    
+
+        // THIS IS THE CRITICAL LINE
+        console.log('1️⃣2️⃣ Setting window.studio...');
         // Make studio globally accessible
         window.studio = this;
-    
+
+        console.log('1️⃣3️⃣ window.studio set:', window.studio ? '✅' : '❌');
+        
         console.log('✨ HEXEL STUDIO ready!');
             // Force a debug notification
         if (window.debug) {
