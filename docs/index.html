@@ -576,13 +576,16 @@ function getStudio() {
     return window.studio || null;
 }
 
-// Retry getting studio every second until available
-const studioInterval = setInterval(() => {
+// Aggressive studio retry
+(function waitForStudio() {
     if (window.studio) {
         window.debug.log('✅ Studio connected!');
-        clearInterval(studioInterval);
+        window.debug.testMapper(); // Test immediately
+    } else {
+        window.debug.log('⏳ Waiting for studio...');
+        setTimeout(waitForStudio, 500);
     }
-}, 1000);
+})();
 
 // Update mouse with better error handling
 document.addEventListener('mousemove', (e) => {
