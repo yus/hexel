@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <base href="/hexel/">
+    <title>Test</title>
+</head>
+<body>
+    <h1>✅ If you see this, HTML works</h1>
+    <div id="test"></div>
+    <script>
+        document.getElementById('test').innerHTML = '✅ JavaScript works';
+    </script>
+    <script type="module">
+        import { sayHello } from '/src/main.js';
+        // If this fails, module path is wrong
+    </script>
+</body>
+</html>
