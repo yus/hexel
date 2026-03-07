@@ -79,8 +79,12 @@ class HexelStudio {
         
         // Start render loop
         this.animate();
-        
+    
+        // Make studio globally accessible
+        window.studio = this;
+    
         console.log('✨ HEXEL STUDIO ready!');
+        window.debug?.log('✅ Studio instance attached to window');
     }
     
     resizeCanvas() {
