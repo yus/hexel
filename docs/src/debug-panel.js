@@ -77,13 +77,30 @@ window.addEventListener('error', function(e) {
     window.debug.log(`🔥 ${e.message} at ${e.filename}:${e.lineno}`);
 });
 
-// Override console
-const originalConsole = console.log;
+// Override console ✅ FIXED — no infinite loop
+const originalLog = console.log;
 console.log = function(...args) {
-    originalConsole(...args);
-    window.debug.log(args.map(a => 
-        typeof a === 'object' ? JSON.stringify(a).slice(0,100) : String(a)
-    ).join(' '));
+    // Call original first
+    originalLog.apply(console, args);
+    
+    // Then add to debug panel (but don't call console.log again!)
+    const el = document.getElementById('debug-log');
+    if (el && window.debug && window.debug.history) {
+        const msg = args.map(a => 
+            typeof a === 'object' ? JSON.stringify(a).slice(0,100) : String(a)
+        ).join(' ');
+        
+        const timestamp = new Date().toLocaleTimeString();
+        const entry = `[${timestamp}] ${msg}`;
+        
+        window.debug.history.push(entry);
+        if (window.debug.history.length > 500) window.debug.history.shift();
+        
+        el.innerHTML = window.debug.history.map(l => 
+            `<div style="border-bottom:1px solid #2a2a38; padding:2px;">${l}</div>`
+        ).join('');
+        el.scrollTop = el.scrollHeight;
+    }
 };
 
 // Time update
