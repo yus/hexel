@@ -1,0 +1,27 @@
+<!DOCTYPE html>
+<html>
+<head><base href="/hexel/"></head>
+<body>
+    <h1>🔍 Module Chain Debug</h1>
+    <div id="output"></div>
+    <script>
+        const out = document.getElementById('output');
+        
+        async function loadModule(path, name) {
+            try {
+                const module = await import(path);
+                out.innerHTML += `<p style="color:green">✅ ${name} loaded</p>`;
+                return module;
+            } catch (e) {
+                out.innerHTML += `<p style="color:red">❌ ${name}: ${e.message}</p>`;
+            }
+        }
+        
+        // Load your app's dependency chain
+        await loadModule('/src/core/UniversalCoordinateMapper.js', 'Mapper');
+        await loadModule('/src/core/HexelChip.js', 'Chip');
+        await loadModule('/src/tools/ToolManager.js', 'ToolManager');
+        await loadModule('/src/main.js', 'Main App');
+    </script>
+</body>
+</html>
