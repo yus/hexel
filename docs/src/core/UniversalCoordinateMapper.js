@@ -43,4 +43,17 @@ export class UniversalCoordinateMapper {
         this.offsetX = offsetX;
         this.offsetY = offsetY;
     }
+
+    // Add at the end of the class
+    getDebugInfo() {
+        return {
+            offsetX: this.offsetX,
+            offsetY: this.offsetY,
+            scale: this.scale,
+            hStep: this.hStep,
+            vStep: this.vStep,
+            canvasWidth: this.canvas?.width,
+            canvasHeight: this.canvas?.height
+        };
+    }   
 }
