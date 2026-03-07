@@ -1,14 +1,14 @@
 // src/main.js
-import { UniversalCoordinateMapper } from './core/UniversalCoordinateMapper.js';
-import { PointStore, EdgeStore, FaceStore, CompositeStore } from './core/stores.js';
-import { HexelChip } from './core/HexelChip.js';
-import { ToolManager } from './tools/ToolManager.js';
-import { VertexBrush, EdgeBrush, FaceBrush } from './tools/element-brushes.js';
-import { HexelPointBrush, HexelShapeBrush, HexelFillBrush } from './tools/hexel-brushes.js';
-import { SelectTool, PanTool } from './tools/ui-tools.js';
-import { ToolPalette } from './ui/ToolPalette.js';
-import { StatusBar } from './ui/StatusBar.js';
-import { PropertyPanel } from './ui/PropertyPanel.js';
+import { UniversalCoordinateMapper } from '/hexel/src/core/UniversalCoordinateMapper.js';
+import { PointStore, EdgeStore, FaceStore, CompositeStore } from '/hexel/src/core/stores.js';
+import { HexelChip } from '/hexel/src/core/HexelChip.js';
+import { ToolManager } from '/hexel/src/tools/ToolManager.js';
+import { VertexBrush, EdgeBrush, FaceBrush } from '/hexel/src/tools/element-brushes.js';
+import { HexelPointBrush, HexelShapeBrush, HexelFillBrush } from '/hexel/src/tools/hexel-brushes.js';
+import { SelectTool, PanTool } from '/hexel/src/tools/ui-tools.js';
+import { ToolPalette } from '/hexel/src/ui/ToolPalette.js';
+import { StatusBar } from '/hexel/src/ui/StatusBar.js';
+import { PropertyPanel } from '/hexel/src/ui/PropertyPanel.js';
 
 class HexelStudio {
     constructor() {
