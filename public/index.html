@@ -430,7 +430,12 @@
     <canvas id="main-canvas"></canvas>
 
     <!-- UI JavaScript here -->
-
+    <script>
+        console.log('✅ HTML loaded');
+        window.onerror = function(msg, url, line) {
+            alert('JS Error: ' + msg + ' at line ' + line);
+        };
+    </script>
     <script type="module" src="/src/main.js"></script>
 </body>
 </html>
