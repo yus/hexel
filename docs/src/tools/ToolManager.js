@@ -53,20 +53,23 @@ export class ToolManager {
             console.warn(`Tool "${toolName}" not found`);
             return false;
         }
-
-        // Deactivate current tool
-        if (this.currentTool) {
+    
+        // Deactivate current tool safely
+        if (this.currentTool && typeof this.currentTool.deactivate === 'function') {
             this.currentTool.deactivate();
         }
-
-        // Activate new tool
+    
+        // Activate new tool safely
         this.currentTool = this.tools[toolName];
         this.currentToolName = toolName;
-        this.currentTool.activate();
-
+    
+        if (typeof this.currentTool.activate === 'function') {
+            this.currentTool.activate();
+        }
+    
         // Notify UI
         this.notifyListeners('onToolChange', toolName);
-
+    
         return true;
     }
 
