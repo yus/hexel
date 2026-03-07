@@ -485,6 +485,7 @@
             <button onclick="window.debug.clear()" style="pointer-events: auto;">🗑️ Clear</button>
             <button onclick="window.debug.copy()" style="pointer-events: auto;">📋 Copy</button>
             <button onclick="window.debug.testGrid()" style="pointer-events: auto;">🔲 Test Grid</button>
+            <button onclick="window.debug.testMapper()" style="pointer-events: auto;">📐 Test Mapper</button>
         </div>
     </div>
 
@@ -529,6 +530,23 @@
                 if (window.studio.render) window.studio.render();
             } else {
                 this.log('❌ Studio not ready');
+            }
+        },
+
+        testMapper: function() {
+            const studio = getStudio();
+            if (studio?.mapper) {
+                const info = studio.mapper.getDebugInfo?.() || {
+                    offsetX: studio.mapper.offsetX,
+                    offsetY: studio.mapper.offsetY,
+                    scale: studio.mapper.scale
+                };
+                this.log(`📐 Mapper: offset=(${info.offsetX},${info.offsetY}) scale=${info.scale}`);
+        
+                // Force a redraw to test
+                if (studio.render) studio.render();
+            } else {
+                this.log('❌ Mapper not available');
             }
         },
     
