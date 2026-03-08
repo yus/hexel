@@ -32,6 +32,17 @@ export class PropertyPanel {
     }
 
     getToolProperties() {
+        // 🔥 SINGLE GUARD — protects everything!
+        if (!this.mapper) {
+            console.warn('PropertyPanel: mapper not available');
+            return {
+                icon: '⚠️',
+                name: 'Loading...',
+                description: 'Waiting for grid mapper',
+                settings: []
+            };
+        }
+        
         const tool = this.tools.currentToolName;
 
         switch(tool) {
