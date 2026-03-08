@@ -22,6 +22,14 @@ export class HexelPointBrush {
         });
     }
 
+    add(q, r) {
+        return {
+            vertexColor: '#ff6b6b', // Reddish
+            edgeColor: '#ff9f1c',   // Orange
+            faceColor: '#b388ff'     // Purple
+        };
+    }
+    
     // Interpret chip pattern for a given grid point
     interpretPattern(centerQ, centerR) {
         const elements = [];
