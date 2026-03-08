@@ -58,7 +58,7 @@ export class HexelPointBrush {
         this.batch = [];
         this.batchTimeout = null;
     }
-}
+    /////////////////////!
     
 
     // Single click — place pattern at vertex
