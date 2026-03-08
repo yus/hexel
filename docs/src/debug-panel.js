@@ -12,22 +12,25 @@ window.debug = {
     enabled: DEBUG_CONFIG.enabled,
     
     // Main log method - optimized
+    // In debug-panel.js
     log: function(msg) {
         if (!this.enabled) return;
-        
+    
+        // Skip repetitive grid messages (just these 2 lines)
+        if (msg.includes('Grid drawn') && this.lastGridMsg === msg) return;
+        this.lastGridMsg = msg;
+    
         const timestamp = DEBUG_CONFIG.showTimestamps ? 
             `[${new Date().toLocaleTimeString()}] ` : '';
         const entry = `${timestamp}${msg}`;
-        
+    
         this.history.push(entry);
         if (this.history.length > DEBUG_CONFIG.maxLines) {
             this.history.shift();
         }
-        
-        // Always log to console
+    
         console.log(entry);
-        
-        // Throttle DOM updates (max 60fps)
+    
         if (!this._updatePending) {
             this._updatePending = true;
             requestAnimationFrame(() => {
