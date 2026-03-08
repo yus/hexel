@@ -138,7 +138,14 @@ class HexelStudio {
     }
     
     animate() {
+        // Use requestAnimationFrame but throttle heavy operations
+        if (this.lastRender && Date.now() - this.lastRender < 16) {
+            requestAnimationFrame(() => this.animate());
+            return; // Skip if less than 16ms (60fps)
+        }
+    
         this.render();
+        this.lastRender = Date.now();
         requestAnimationFrame(() => this.animate());
     }
     
