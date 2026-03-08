@@ -1,34 +1,62 @@
-// debug-panel.js — SINGLE CLEAN VERSION
+// debug-panel.js - Complete with toggle, disable, and performance
 
-// Create debug namespace
+const DEBUG_CONFIG = {
+    enabled: true,        // Master switch
+    maxLines: 200,        // Keep performance smooth
+    showTimestamps: true,
+    collapsed: false
+};
+
 window.debug = {
     history: [],
+    enabled: DEBUG_CONFIG.enabled,
     
+    // Main log method - optimized
     log: function(msg) {
-        const timestamp = new Date().toLocaleTimeString();
-        const entry = `[${timestamp}] ${msg}`;
+        if (!this.enabled) return;
+        
+        const timestamp = DEBUG_CONFIG.showTimestamps ? 
+            `[${new Date().toLocaleTimeString()}] ` : '';
+        const entry = `${timestamp}${msg}`;
         
         this.history.push(entry);
-        if (this.history.length > 500) this.history.shift();
+        if (this.history.length > DEBUG_CONFIG.maxLines) {
+            this.history.shift();
+        }
         
+        // Always log to console
         console.log(entry);
         
-        const el = document.getElementById('debug-log');
-        if (el) {
-            el.innerHTML = this.history.map(l => 
-                `<div style="border-bottom:1px solid #2a2a38; padding:2px;">${l}</div>`
-            ).join('');
-            el.scrollTop = el.scrollHeight;
+        // Throttle DOM updates (max 60fps)
+        if (!this._updatePending) {
+            this._updatePending = true;
+            requestAnimationFrame(() => {
+                this._updateDisplay();
+                this._updatePending = false;
+            });
         }
     },
     
+    // Separate display update
+    _updateDisplay: function() {
+        const el = document.getElementById('debug-log');
+        if (!el) return;
+        
+        // Use innerHTML once, not per line
+        el.innerHTML = this.history.map(l => 
+            `<div style="border-bottom:1px solid #2a2a38; padding:2px; font-size:10px;">${l}</div>`
+        ).join('');
+        el.scrollTop = el.scrollHeight;
+    },
+    
+    // Clear logs
     clear: function() {
         this.history = [];
-        const el = document.getElementById('debug-log');
-        if (el) el.innerHTML = '';
+        this._updateDisplay();
         this.log('🐞 Debug cleared');
     },
     
+    // Copy to clipboard
     copy: function() {
         const text = this.history.join('\n');
         navigator.clipboard?.writeText(text).then(() => {
@@ -36,10 +64,39 @@ window.debug = {
         });
     },
     
+    // Toggle panel visibility
+    toggle: function() {
+        const panel = document.getElementById('debug-panel');
+        const content = document.getElementById('debug-content');
+        if (panel && content) {
+            const isCollapsed = content.style.display === 'none';
+            content.style.display = isCollapsed ? 'block' : 'none';
+            panel.style.height = isCollapsed ? 'auto' : '40px';
+            this.log(`🔽 Panel ${isCollapsed ? 'expanded' : 'collapsed'}`);
+        }
+    },
+    
+    // Disable debug completely
+    disable: function() {
+        this.enabled = false;
+        const panel = document.getElementById('debug-panel');
+        if (panel) panel.style.display = 'none';
+        console.log('🔇 Debug disabled');
+    },
+    
+    // Enable debug
+    enable: function() {
+        this.enabled = true;
+        const panel = document.getElementById('debug-panel');
+        if (panel) panel.style.display = 'block';
+        this.log('🔊 Debug enabled');
+    },
+    
+    // Test grid/mapper
     testGrid: function() {
         if (window.studio?.mapper) {
             const m = window.studio.mapper;
-            this.log(`📍 offsetX: ${m.offsetX}, offsetY: ${m.offsetY}, scale: ${m.scale}`);
+            this.log(`📍 offsetX: ${m.offsetX.toFixed(2)}, offsetY: ${m.offsetY.toFixed(2)}, scale: ${m.scale}`);
             if (window.studio.render) window.studio.render();
         } else {
             this.log('❌ Studio not ready');
@@ -49,13 +106,13 @@ window.debug = {
     testMapper: function() {
         if (window.studio?.mapper) {
             const m = window.studio.mapper;
-            this.log(`📐 Mapper: offset=(${m.offsetX},${m.offsetY}) scale=${m.scale}`);
-            if (window.studio.render) window.studio.render();
+            this.log(`📐 Mapper: offset=(${m.offsetX.toFixed(2)},${m.offsetY.toFixed(2)}) scale=${m.scale}`);
         } else {
             this.log('❌ Mapper not available');
         }
     },
     
+    // Update mouse display
     updateMouse: function(x, y) {
         const el = document.getElementById('debug-mouse');
         if (el) el.innerHTML = `${Math.round(x)},${Math.round(y)}`;
@@ -72,45 +129,11 @@ window.debug = {
     }
 };
 
-window.debug.toggle = function() {
-    const content = document.getElementById('debug-content');
-    const isVisible = content.style.display !== 'none';
-    content.style.display = isVisible ? 'none' : 'block';
-};
-
-window.debug.disable = function() {
-    document.getElementById('debug-panel').style.display = 'none';
-};
-
-// Capture errors
-window.addEventListener('error', function(e) {
-    window.debug.log(`🔥 ${e.message} at ${e.filename}:${e.lineno}`);
-});
-
-// Override console ✅ FIXED — no infinite loop
-const originalLog = console.log;
+// Override console with care (no infinite loops)
+const originalConsole = console.log;
 console.log = function(...args) {
-    // Call original first
-    originalLog.apply(console, args);
-    
-    // Then add to debug panel (but don't call console.log again!)
-    const el = document.getElementById('debug-log');
-    if (el && window.debug && window.debug.history) {
-        const msg = args.map(a => 
-            typeof a === 'object' ? JSON.stringify(a).slice(0,100) : String(a)
-        ).join(' ');
-        
-        const timestamp = new Date().toLocaleTimeString();
-        const entry = `[${timestamp}] ${msg}`;
-        
-        window.debug.history.push(entry);
-        if (window.debug.history.length > 500) window.debug.history.shift();
-        
-        el.innerHTML = window.debug.history.map(l => 
-            `<div style="border-bottom:1px solid #2a2a38; padding:2px;">${l}</div>`
-        ).join('');
-        el.scrollTop = el.scrollHeight;
-    }
+    originalConsole.apply(console, args);
+    // Don't call debug.log here - let debug.log call console.log
 };
 
 // Time update
@@ -130,8 +153,13 @@ setInterval(() => {
     }
 })();
 
-// Mouse tracking
+// Mouse tracking with throttling
+let lastMouseUpdate = 0;
 document.addEventListener('mousemove', (e) => {
+    const now = Date.now();
+    if (now - lastMouseUpdate < 50) return; // Throttle to 20fps
+    lastMouseUpdate = now;
+    
     window.debug.updateMouse(e.clientX, e.clientY);
     
     if (window.studio?.mapper) {
@@ -147,7 +175,7 @@ document.addEventListener('mousemove', (e) => {
                 const vertex = window.studio.mapper.screenToVertex(x, y, 30);
                 window.debug.updateHexel(vertex ? vertex.q : '--', vertex ? vertex.r : '--');
             } catch (e) {
-                window.debug.log(`⚠️ ${e.message}`);
+                // Silent fail
             }
         }
     } else {
