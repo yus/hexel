@@ -112,81 +112,82 @@ export class PanTool {
     // Wheel zoom (optional enhancement)
     // In PanTool.js
 
-onWheel(e, x, y) {
-    e.preventDefault();
+     onWheel(e, x, y) {
+         e.preventDefault();
     
-    // Handle pinch gesture (touch events with scale)
-    if (e.scale) {
-        // Safari pinch gesture
-        const delta = e.scale > 1 ? 1.1 : 0.9;
-        this.applyZoom(delta, x, y);
-    } 
-    // Handle mouse wheel
-    else if (e.deltaY) {
-        const delta = e.deltaY > 0 ? 0.9 : 1.1;
-        this.applyZoom(delta, x, y);
-    }
-}
+        // Handle pinch gesture (touch events with scale)
+        if (e.scale) {
+            // Safari pinch gesture
+            const delta = e.scale > 1 ? 1.1 : 0.9;
+            this.applyZoom(delta, x, y);
+        } 
+        // Handle mouse wheel
+        else if (e.deltaY) {
+            const delta = e.deltaY > 0 ? 0.9 : 1.1;
+            this.applyZoom(delta, x, y);
+        }
+     }
 
-// Handle touch pinch events
-onTouchPinch(e) {
-    e.preventDefault();
+     // Handle touch pinch events
+     onTouchPinch(e) {
+        e.preventDefault();
     
-    if (e.touches.length !== 2) return;
+        if (e.touches.length !== 2) return;
     
-    const touch1 = e.touches[0];
-    const touch2 = e.touches[1];
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
     
-    // Calculate current distance
-    const currentDist = Math.hypot(
-        touch1.clientX - touch2.clientX,
-        touch1.clientY - touch2.clientY
-    );
+        // Calculate current distance
+        const currentDist = Math.hypot(
+            touch1.clientX - touch2.clientX,
+            touch1.clientY - touch2.clientY
+        );
     
-    // Store initial distance on first move
-    if (!this.pinchStartDist) {
+        // Store initial distance on first move
+        if (!this.pinchStartDist) {
+            this.pinchStartDist = currentDist;
+             return;
+        }
+    
+        // Calculate zoom factor based on distance change
+        const zoomFactor = currentDist / this.pinchStartDist;
+    
+        // Get pinch center point
+        const centerX = (touch1.clientX + touch2.clientX) / 2;
+        const centerY = (touch1.clientY + touch2.clientY) / 2;
+    
+        // Apply zoom
+        this.applyZoom(zoomFactor, centerX, centerY);
+    
+        // Update for next move
         this.pinchStartDist = currentDist;
-        return;
     }
-    
-    // Calculate zoom factor based on distance change
-    const zoomFactor = currentDist / this.pinchStartDist;
-    
-    // Get pinch center point
-    const centerX = (touch1.clientX + touch2.clientX) / 2;
-    const centerY = (touch1.clientY + touch2.clientY) / 2;
-    
-    // Apply zoom
-    this.applyZoom(zoomFactor, centerX, centerY);
-    
-    // Update for next move
-    this.pinchStartDist = currentDist;
-}
 
-// Unified zoom method
-applyZoom(factor, screenX, screenY) {
-    if (!this.mapper) return;
+    // Unified zoom method
+    applyZoom(factor, screenX, screenY) {
+        if (!this.mapper) return;
     
-    // Convert screen to world coordinates before zoom
-    const rect = this.mapper.canvas.getBoundingClientRect();
-    const canvasX = screenX - rect.left;
-    const canvasY = screenY - rect.top;
+        // Convert screen to world coordinates before zoom
+        const rect = this.mapper.canvas.getBoundingClientRect();
+        const canvasX = screenX - rect.left;
+        const canvasY = screenY - rect.top;
     
-    const worldX = (canvasX - (this.mapper.canvas.width/2 + this.mapper.offsetX)) / 
+        const worldX = (canvasX - (this.mapper.canvas.width/2 + this.mapper.offsetX)) / 
                    (this.mapper.hStep * this.mapper.scale);
-    const worldY = (canvasY - (this.mapper.canvas.height/2 + this.mapper.offsetY)) / 
+        const worldY = (canvasY - (this.mapper.canvas.height/2 + this.mapper.offsetY)) / 
                    (this.mapper.vStep * this.mapper.scale);
     
-    // Apply zoom with limits
-    this.mapper.scale *= factor;
-    this.mapper.scale = Math.max(0.2, Math.min(5, this.mapper.scale));
+        // Apply zoom with limits
+        this.mapper.scale *= factor;
+        this.mapper.scale = Math.max(0.2, Math.min(5, this.mapper.scale));
     
-    // Adjust offset to zoom toward cursor
-    this.mapper.offsetX = canvasX - this.mapper.canvas.width/2 - 
+        // Adjust offset to zoom toward cursor
+        this.mapper.offsetX = canvasX - this.mapper.canvas.width/2 - 
                          worldX * this.mapper.hStep * this.mapper.scale;
-    this.mapper.offsetY = canvasY - this.mapper.canvas.height/2 - 
+        this.mapper.offsetY = canvasY - this.mapper.canvas.height/2 - 
                          worldY * this.mapper.vStep * this.mapper.scale;
     
-    // Trigger render
-    window.studio?.render();
+        // Trigger render
+        window.studio?.render();
+    }
 }
