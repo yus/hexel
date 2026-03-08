@@ -20,74 +20,46 @@ export class HexelPointBrush {
         this.chip.subscribe((pattern) => {
             this.currentPattern = pattern;
         });
+        this.batch = [];
+        this.batchSize = 100;
+        this.batchTimeout = null;
     }
 
     add(q, r) {
-        return {
-            vertexColor: '#ff6b6b', // Reddish
-            edgeColor: '#ff9f1c',   // Orange
-            faceColor: '#b388ff'     // Purple
-        };
+        // Don't push immediately — batch for WebGL
+        this.batch.push({ q, r, type: 'point', color: '#ff6b6b' });
+        
+        if (this.batch.length >= this.batchSize) {
+            this.flushBatch();
+        } else if (!this.batchTimeout) {
+            // Flush after 16ms (next frame)
+            this.batchTimeout = setTimeout(() => this.flushBatch(), 16);
+        }
     }
     
-    // Interpret chip pattern for a given grid point
-    interpretPattern(centerQ, centerR) {
-        const elements = [];
-        const { activeFaces, vertexMask } = this.currentPattern;
-
-        // 1. Add center vertex if mask includes bit 0
-        if (vertexMask & 0b0000001) {
-            elements.push({
-                type: 'vertex',
-                q: centerQ,
-                r: centerR,
-                color: '#ffaa66',
-                size: 6
-            });
-        }
-
-        // 2. Add faces and their edges based on activeFaces
-        const neighbors = this.getNeighbors(centerQ, centerR);
-
-        activeFaces.forEach(faceIndex => {
-            // Add the face itself
-            elements.push({
-                type: 'face',
-                centerQ, centerR,
-                faceIndex,
-                color: '#96ceb4',
-                opacity: 0.3
-            });
-
-            // Add the two edges of this face
-            const v1 = neighbors[faceIndex];
-            const v2 = neighbors[(faceIndex + 1) % 6];
-
-            // Edge from center to v1
-            if (vertexMask & (1 << 1)) { // Check if vertex A should be connected
-                elements.push({
-                    type: 'edge',
-                    q1: centerQ, r1: centerR,
-                    q2: v1.q, r2: v1.r,
-                    color: '#4ecdc4',
-                    width: 2
-                });
-            }
-
-            // Edge from v1 to v2 (perimeter edge)
-            if (vertexMask & (1 << 2)) { // Check if perimeter should be drawn
-                elements.push({
-                    type: 'edge',
-                    q1: v1.q, r1: v1.r,
-                    q2: v2.q, r2: v2.r,
-                    color: '#4ecdc4',
-                    width: 2
-                });
-            }
+    flushBatch() {
+        if (this.batch.length === 0) return;
+        
+        // Convert batch to WebGL-friendly format
+        const vertices = this.batch.map(p => ({
+            position: this.mapper.vertexToScreen(p.q, p.r),
+            color: p.color,
+            size: 6
+        }));
+        
+        // Send to WebGL renderer
+        window.webglRenderer?.addPoints(vertices);
+        
+        // Also update stores for persistence
+        this.batch.forEach(p => {
+            this.store.points.add(p.q, p.r, { color: p.color });
         });
-
-        return elements;
+        
+        this.batch = [];
+        this.batchTimeout = null;
     }
+}
+    
 
     // Single click — place pattern at vertex
     onClick(screenX, screenY) {
