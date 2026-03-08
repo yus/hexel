@@ -451,6 +451,10 @@
         <div style="display: flex; justify-content: space-between; margin-bottom: 8px;">
             <span style="color: #b388ff;">🐞 DEBUG CONSOLE</span>
             <span style="color: #4ecdc4;" id="debug-time">--:--:--</span>
+            <div>
+                <button onclick="window.debug.toggle()" style="pointer-events: auto;">🔻</button>
+                <button onclick="window.debug.disable()" style="pointer-events: auto;">🫧</button>
+            </div>
         </div>
         <div id="debug-log" style="
             background: #00000040;
