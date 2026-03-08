@@ -184,44 +184,44 @@ class HexelStudio {
             ctx.fill();
         });
     
-    // Draw edges (middle)
-    ctx.globalAlpha = 1.0;
-    ctx.lineWidth = 2;
-    this.stores.edges.getAll().forEach(edge => {
-        const p1 = this.mapper.vertexToScreen(edge.q1, edge.r1);
-        const p2 = this.mapper.vertexToScreen(edge.q2, edge.r2);
+        // Draw edges (middle)
+        ctx.globalAlpha = 1.0;
+        ctx.lineWidth = 2;
+        this.stores.edges.getAll().forEach(edge => {
+            const p1 = this.mapper.vertexToScreen(edge.q1, edge.r1);
+            const p2 = this.mapper.vertexToScreen(edge.q2, edge.r2);
         
-        ctx.strokeStyle = edge.color || '#4ecdc4';
-        ctx.beginPath();
-        ctx.moveTo(p1.x, p1.y);
-        ctx.lineTo(p2.x, p2.y);
-        ctx.stroke();
-    });
+            ctx.strokeStyle = edge.color || '#4ecdc4';
+            ctx.beginPath();
+            ctx.moveTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.stroke();
+        });
     
-    // Draw points last (foreground)
-    this.stores.points.getAll().forEach(point => {
-        const p = this.mapper.vertexToScreen(point.q, point.r);
+        // Draw points last (foreground)
+        this.stores.points.getAll().forEach(point => {
+            const p = this.mapper.vertexToScreen(point.q, point.r);
         
-        ctx.fillStyle = point.color || '#ffaa66';
-        ctx.shadowColor = '#ffffff';
-        ctx.shadowBlur = 8;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, (point.size || 6) * Math.sqrt(this.mapper.scale), 0, 2 * Math.PI);
-        ctx.fill();
+            ctx.fillStyle = point.color || '#ffaa66';
+            ctx.shadowColor = '#ffffff';
+            ctx.shadowBlur = 8;
+            ctx.beginPath();
+            ctx.arc(p.x, p.y, (point.size || 6) * Math.sqrt(this.mapper.scale), 0, 2 * Math.PI);
+            ctx.fill();
         
-        // Reset shadow
-        ctx.shadowBlur = 0;
-    });
+            // Reset shadow
+            ctx.shadowBlur = 0;
+        });
     
-    // Reset alpha
-    ctx.globalAlpha = 1.0;
-}
+        // Reset alpha
+        ctx.globalAlpha = 1.0;
+    }
 
-// Helper for neighbors
-getNeighbors(q, r) {
-    const dirs = [[1,0], [1,-1], [0,-1], [-1,0], [-1,1], [0,1]];
-    return dirs.map(([dq, dr]) => ({ q: q + dq, r: r + dr }));
-}
+    // Helper for neighbors
+    getNeighbors(q, r) {
+       const dirs = [[1,0], [1,-1], [0,-1], [-1,0], [-1,1], [0,1]];
+       return dirs.map(([dq, dr]) => ({ q: q + dq, r: r + dr }));
+    }
     
 drawGrid(ctx) {
     const mapper = this.mapper;
