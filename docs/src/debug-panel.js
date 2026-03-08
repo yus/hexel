@@ -68,11 +68,24 @@ window.debug = {
     toggle: function() {
         const panel = document.getElementById('debug-panel');
         const content = document.getElementById('debug-content');
-        if (panel && content) {
-            const isCollapsed = content.style.display === 'none';
-            content.style.display = isCollapsed ? 'block' : 'none';
-            panel.style.height = isCollapsed ? 'auto' : '40px';
-            this.log(`🔽 Panel ${isCollapsed ? 'expanded' : 'collapsed'}`);
+        const toggleBtn = document.getElementById('debug-toggle-btn');
+    
+        if (!panel || !content) return;
+    
+        const isCollapsed = content.style.display === 'none';
+    
+        if (isCollapsed) {
+            // Expand
+            content.style.display = 'block';
+            panel.style.height = 'auto';
+            toggleBtn.innerHTML = '🔻';
+            this.log('🔻 Debug expanded');
+        } else {
+            // Collapse
+            content.style.display = 'none';
+            panel.style.height = '40px';
+            toggleBtn.innerHTML = '🔺';
+            this.log('🔺 Debug collapsed');
         }
     },
     
@@ -81,7 +94,7 @@ window.debug = {
         this.enabled = false;
         const panel = document.getElementById('debug-panel');
         if (panel) panel.style.display = 'none';
-        console.log('🔇 Debug disabled');
+        console.log('❄️ Debug disabled');
     },
     
     // Enable debug
@@ -89,7 +102,7 @@ window.debug = {
         this.enabled = true;
         const panel = document.getElementById('debug-panel');
         if (panel) panel.style.display = 'block';
-        this.log('🔊 Debug enabled');
+        this.log('🫧 Debug enabled');
     },
     
     // Test grid/mapper
