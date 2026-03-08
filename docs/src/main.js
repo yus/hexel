@@ -149,16 +149,79 @@ class HexelStudio {
         requestAnimationFrame(() => this.animate());
     }
     
+    // In main.js - optimized render method
+
     render() {
         const ctx = this.canvas.getContext('2d');
-        ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
-        
-        // Draw grid (temporary simple grid)
+    
+        // Clear with background color
+        ctx.fillStyle = '#0a0a0f';
+        ctx.fillRect(0, 0, this.canvas.width, this.canvas.height);
+    
+        // === DRAW GRID (batched) ===
         this.drawGrid(ctx);
+    
+        // === DRAW ALL ELEMENTS (batched by type) ===
+    
+        // Draw faces first (background)
+        ctx.globalAlpha = 0.3;
+        this.stores.faces.getAll().forEach(face => {
+            const center = this.mapper.vertexToScreen(face.centerQ, face.centerR);
+            // Get the three vertices of this face
+            const neighbors = this.getNeighbors(face.centerQ, face.centerR);
+            const v1 = neighbors[face.faceIndex];
+            const v2 = neighbors[(face.faceIndex + 1) % 6];
         
-        // Draw all stored elements
-        this.drawElements(ctx);
-    }
+            const p1 = this.mapper.vertexToScreen(v1.q, v1.r);
+            const p2 = this.mapper.vertexToScreen(v2.q, v2.r);
+        
+            ctx.fillStyle = face.color || '#96ceb4';
+            ctx.beginPath();
+            ctx.moveTo(center.x, center.y);
+            ctx.lineTo(p1.x, p1.y);
+            ctx.lineTo(p2.x, p2.y);
+            ctx.closePath();
+            ctx.fill();
+        });
+    
+    // Draw edges (middle)
+    ctx.globalAlpha = 1.0;
+    ctx.lineWidth = 2;
+    this.stores.edges.getAll().forEach(edge => {
+        const p1 = this.mapper.vertexToScreen(edge.q1, edge.r1);
+        const p2 = this.mapper.vertexToScreen(edge.q2, edge.r2);
+        
+        ctx.strokeStyle = edge.color || '#4ecdc4';
+        ctx.beginPath();
+        ctx.moveTo(p1.x, p1.y);
+        ctx.lineTo(p2.x, p2.y);
+        ctx.stroke();
+    });
+    
+    // Draw points last (foreground)
+    this.stores.points.getAll().forEach(point => {
+        const p = this.mapper.vertexToScreen(point.q, point.r);
+        
+        ctx.fillStyle = point.color || '#ffaa66';
+        ctx.shadowColor = '#ffffff';
+        ctx.shadowBlur = 8;
+        ctx.beginPath();
+        ctx.arc(p.x, p.y, (point.size || 6) * Math.sqrt(this.mapper.scale), 0, 2 * Math.PI);
+        ctx.fill();
+        
+        // Reset shadow
+        ctx.shadowBlur = 0;
+    });
+    
+    // Reset alpha
+    ctx.globalAlpha = 1.0;
+}
+
+// Helper for neighbors
+getNeighbors(q, r) {
+    const dirs = [[1,0], [1,-1], [0,-1], [-1,0], [-1,1], [0,1]];
+    return dirs.map(([dq, dr]) => ({ q: q + dq, r: r + dr }));
+}
     
 drawGrid(ctx) {
     const mapper = this.mapper;
