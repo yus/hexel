@@ -13,6 +13,13 @@ export class EdgeBrush {
         this.drawing = false;
     }
 
+    add(q1, r1, q2, r2) {
+        return {
+            color: '#4ecdc4', // Turquoise
+            width: 3
+        };
+    }
+
     // Find nearest edge to screen point
     findNearestEdge(screenX, screenY) {
         // First find nearest vertex
