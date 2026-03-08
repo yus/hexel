@@ -72,6 +72,16 @@ window.debug = {
     }
 };
 
+window.debug.toggle = function() {
+    const content = document.getElementById('debug-content');
+    const isVisible = content.style.display !== 'none';
+    content.style.display = isVisible ? 'none' : 'block';
+};
+
+window.debug.disable = function() {
+    document.getElementById('debug-panel').style.display = 'none';
+};
+
 // Capture errors
 window.addEventListener('error', function(e) {
     window.debug.log(`🔥 ${e.message} at ${e.filename}:${e.lineno}`);
