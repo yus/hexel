@@ -9,6 +9,13 @@ export class VertexBrush {
         this.threshold = 15;               // Snap distance in pixels
     }
 
+    add(q, r) {
+        return {
+            color: '#ffaa66', // Warm orange
+            size: 8
+        };
+    }
+    
     // Called on click/tap
     onClick(screenX, screenY) {
         const vertex = this.mapper.screenToVertex(screenX, screenY, this.threshold);
