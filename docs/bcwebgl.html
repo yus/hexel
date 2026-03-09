@@ -90,13 +90,9 @@
         }
     `;
 
-    // --- fragment shader with adaptive anti-aliasing ---
+    // --- fragment shader with proper screen-space hairline rendering ---
     const fsSource = `
         precision highp float;
-        
-        #ifdef GL_OES_standard_derivatives
-        #extension GL_OES_standard_derivatives : enable
-        #endif
         
         varying vec2 vUv;
         
@@ -144,19 +140,19 @@
             
             float minDist = min(min(d0, d1), d2);
             
-            // --- Adaptive anti-aliasing width calculation ---
-            float pixelSize;
+            // --- CRITICAL FIX: Convert world-space distance to screen-space pixels ---
+            // Calculate how much world position changes per pixel
+            vec2 worldPerPixel = vec2(2.0 * uScale / uResolution.x, 2.0 * uScale / uResolution.y);
             
-            #ifdef GL_OES_standard_derivatives
-            // If derivatives are available, use them for perfect pixel mapping
-            pixelSize = fwidth(minDist) * 1.5;
-            #else
-            // Fallback: estimate based on screen resolution and scale
-            pixelSize = 2.0 / (uScale * min(uResolution.x, uResolution.y)) * 2.5;
-            #endif
+            // Approximate how much minDist changes per pixel based on world-space derivatives
+            // The barycentric coordinates change at rate ~1.0 per world unit (since cell size is ~1)
+            float deriv = length(worldPerPixel) * 1.5;  // 1.5 accounts for triangle orientation
             
-            // grid line: 0 on line, 1 elsewhere
-            float line = smoothstep(0.0, uLineWidth * pixelSize, minDist);
+            // Fixed pixel width - always 1.0 pixel wide lines
+            float pixelWidth = uLineWidth * deriv;
+            
+            // Smoothstep with fixed pixel width - lines stay exactly 1 pixel wide at any zoom
+            float line = smoothstep(0.0, pixelWidth, minDist);
             
             // subtle pattern based on integer cell
             float pattern = fract(iu * 0.7 + iv * 0.4);
@@ -232,6 +228,7 @@
     function updateUniforms() {
         gl.uniform2f(uOffset, offsetX, offsetY);
         gl.uniform1f(uScale, scale);
+        gl.uniform1f(uLineWidth, 1.0);  // Exactly 1 pixel wide lines
         gl.uniform2f(uResolution, canvas.width, canvas.height);
         draw();
     }
