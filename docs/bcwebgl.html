@@ -65,6 +65,17 @@
                 return;
             }
 
+            // In the uniforms section, add back uResolution
+            const uResolution = gl.getUniformLocation(program, 'uResolution');
+            
+            // In updateUniforms function
+            function updateUniforms() {
+                gl.uniform2f(uOffset, offsetX, offsetY);
+                gl.uniform1f(uScale, scale);
+                gl.uniform2f(uResolution, canvas.width, canvas.height);
+                draw();
+            }
+            
             // --- fullscreen quad geometry ---
             const vertices = new Float32Array([
                 -1, -1,  0, 0,
@@ -90,14 +101,14 @@
                 }
             `;
 
-            // --- fragment shader: barycentric grid without derivatives ---
-            // Anti-aliasing is achieved via smoothstep with a fixed pixel footprint
-            // approximated by scaling factor based on zoom level.
-            // --- fragment shader: barycentric grid with analytic anti-aliasing ---
-            // Uses derivatives for pixel-perfect, stable hairlines at any zoom.
+            // --- fragment shader with adaptive anti-aliasing ---
+            // Uses derivatives if available, falls back to improved screen-space estimation
             const fsSource = `
-                #extension GL_OES_standard_derivatives : enable
                 precision highp float;
+                
+                #ifdef GL_OES_standard_derivatives
+                #extension GL_OES_standard_derivatives : enable
+                #endif
                 
                 varying vec2 vUv;
                 
@@ -106,60 +117,75 @@
                 uniform vec3  uColorA;
                 uniform vec3  uColorB;
                 uniform vec3  uEdgeColor;
-                uniform float uLineWidth; // Desired line width in pixels (e.g., 1.0)
+                uniform float uLineWidth;
+                uniform vec2  uResolution;
                 
                 void main() {
-                    // World position (same as before)
+                    // World position on plane z=0
                     vec2 p = (vUv * 2.0 - 1.0) * uScale + uOffset;
                     
-                    // Equilateral triangle basis (same)
-                    const float halfSqrt3 = 0.86602540378;
+                    // equilateral triangle basis
+                    const float halfSqrt3 = 0.86602540378;  // √3/2
                     
-                    // Transform to lattice coordinates (same)
-                    float fu = p.x - p.y * (0.5 / halfSqrt3);
-                    float fv = p.y / halfSqrt3;
+                    // transform to lattice coordinates
+                    float fu = p.x - p.y * (0.5 / halfSqrt3);   // = x - 0.57735*y
+                    float fv = p.y / halfSqrt3;                 // = y / 0.866
                     
-                    // Get fractional parts for barycentric calculation (same)
+                    // integer cell and barycentric weights
                     float iu = floor(fu);
                     float iv = floor(fv);
                     float u_frac = fu - iu;
                     float v_frac = fv - iv;
                     
-                    // Barycentric coordinates (same)
+                    // barycentric coordinates (two triangles per rhombus)
                     vec3 bary;
                     if (u_frac + v_frac < 1.0) {
+                        // lower triangle
                         bary = vec3(1.0 - u_frac - v_frac, u_frac, v_frac);
                     } else {
+                        // upper triangle (complement)
                         float u2 = 1.0 - u_frac;
                         float v2 = 1.0 - v_frac;
                         bary = vec3(1.0 - u2 - v2, u2, v2);
                     }
                     
-                    // Calculate the minimum distance to any triangle edge (in barycentric space)
-                    float minDist = min(bary.x, min(bary.y, bary.z));
+                    // distance to edges (barycentric coordinates themselves)
+                    float d0 = bary.x;
+                    float d1 = bary.y;
+                    float d2 = bary.z;
                     
-                    // --- KEY FIX: Screen-space derivative for anti-aliasing ---
-                    // This calculates how much 'minDist' changes per pixel.
-                    // It's the secret to stable, resolution-independent grid lines.
-                    float deriv = fwidth(minDist);
+                    float minDist = min(min(d0, d1), d2);
                     
-                    // The line width in barycentric space is now expressed as a function
-                    // of the desired screen pixel width and the local derivative.
-                    // 'uLineWidth' is now your target hairline thickness in pixels (e.g., 1.2).
-                    float pixelWidth = uLineWidth * deriv;
+                    // --- Adaptive anti-aliasing width calculation ---
+                    float pixelSize;
                     
-                    // Apply a smoothstep for anti-aliasing. The line is drawn where minDist is near 0.
-                    // The factor 0.5 centers the line on the edge.
-                    float line = smoothstep(0.0, pixelWidth, minDist);
+                    #ifdef GL_OES_standard_derivatives
+                    // If derivatives are available, use them for perfect pixel mapping
+                    pixelSize = fwidth(minDist) * 1.5;
+                    #else
+                    // Fallback: improved screen-space estimation
+                    // Calculate screen-space derivative based on position change
+                    vec2 screenPos = vUv * uResolution;
+                    vec2 dx = dFdx(screenPos);
+                    vec2 dy = dFdy(screenPos);
+                    float screenScale = length(dx + dy) * 0.5;
+                    pixelSize = 1.5 / (uScale * max(uResolution.x, uResolution.y)) * screenScale * 3.0;
+                    #endif
                     
-                    // --- Visual styling (you can keep your enhancements) ---
+                    // grid line: 0 on line, 1 elsewhere
+                    float line = smoothstep(0.0, uLineWidth * pixelSize, minDist);
+                    
+                    // subtle pattern based on integer cell
                     float pattern = fract(iu * 0.7 + iv * 0.4);
                     vec3 baseColor = mix(uColorA, uColorB, pattern * 0.4);
                     
+                    // faint glow near incenter
                     float incenterDist = length(bary - vec3(1.0/3.0));
                     float glow = exp(-incenterDist * 8.0) * 0.25;
                     
                     vec3 finalColor = mix(baseColor + glow * uColorB, uEdgeColor, line);
+                    
+                    // gamma
                     finalColor = pow(finalColor, vec3(1.0/2.2));
                     
                     gl_FragColor = vec4(finalColor, 1.0);
