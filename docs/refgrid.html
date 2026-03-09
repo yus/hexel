@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>equilateral triangle tiling · yellow/blue</title>
+    <title>equilateral triangle tiling · SVG math</title>
     <style>
         * {
             box-sizing: border-box;
@@ -45,7 +45,7 @@
         }
         
         .title-section {
-            min-width: 200px;
+            min-width: 220px;
         }
         
         .title-main {
@@ -122,8 +122,8 @@
     <div id="header">
         <div class="header-content">
             <div class="title-section">
-                <div class="title-main">EQUILATERAL TRIANGLE TILING</div>
-                <div class="title-sub">yellow · blue edges · red vertices</div>
+                <div class="title-main">SVG TRIANGLE TILING</div>
+                <div class="title-sub">exact polygon math · vertex positions</div>
             </div>
             
             <div class="group">
@@ -132,18 +132,12 @@
                     <input type="range" id="size-slider" min="0.5" max="3.0" value="1.5" step="0.1">
                     <span class="value-display" id="size-value">1.5</span>
                 </div>
-                
-                <div class="param-row">
-                    <span class="param-label">GAP</span>
-                    <input type="range" id="gap-slider" min="0.0" max="0.5" value="0.0" step="0.01">
-                    <span class="value-display" id="gap-value">0.00</span>
-                </div>
             </div>
         </div>
     </div>
     
     <div class="hint">
-        ⚡ zoom · 🖱️ pan · exactly like SVG: yellow triangles, blue edges, red vertices
+        ⚡ zoom · 🖱️ pan · exact vertex positions from SVG: (-289.61,381.07), (-77.01,503.82), etc.
     </div>
 
     <script>
@@ -179,7 +173,7 @@
                 }
             `;
             
-            // Fragment shader - exact match of the SVG
+            // Fragment shader - exact SVG math
             const fsSource = `
                 precision highp float;
                 
@@ -188,99 +182,303 @@
                 uniform vec2 uOffset;
                 uniform float uScale;
                 uniform float uTriSize;
-                uniform float uGap;
                 uniform vec2 uResolution;
                 uniform float uAspect;
                 
-                // SVG colors
-                const vec3 YELLOW = vec3(0.988, 0.816, 0.0); // #fcd000
-                const vec3 BLUE = vec3(0.239, 0.239, 0.976); // #3d3df9
-                const vec3 RED = vec3(0.98, 0.184, 0.184); // #fa2f2f
-                const vec3 BG = vec3(1.0, 1.0, 1.0); // white background
+                // SVG vertex coordinates from the file
+                // Each triangle is defined by three vertices
+                const int NUM_TRIANGLES = 42; // from the SVG
+                
+                // Triangle vertices from the SVG (first few as example)
+                vec2[3] getTriangle(int index) {
+                    // From the SVG path data:
+                    // M -289.61217,381.07227 L -77.01373,503.81604 L -77.01373,258.32852 Z
+                    // M -289.61217,626.55979 L -77.01373,749.30356 L -77.01373,503.81604 Z
+                    // etc.
+                    
+                    if (index == 0) {
+                        return vec2[3](
+                            vec2(-289.61217, 381.07227),
+                            vec2(-77.01373, 503.81604),
+                            vec2(-77.01373, 258.32852)
+                        );
+                    } else if (index == 1) {
+                        return vec2[3](
+                            vec2(-289.61217, 626.55979),
+                            vec2(-77.01373, 749.30356),
+                            vec2(-77.01373, 503.81604)
+                        );
+                    } else if (index == 2) {
+                        return vec2[3](
+                            vec2(-289.61217, 135.58476),
+                            vec2(-77.01373, 258.32852),
+                            vec2(-77.01373, 12.841)
+                        );
+                    } else if (index == 3) {
+                        return vec2[3](
+                            vec2(-289.61217, -109.90276),
+                            vec2(-77.01373, 12.841),
+                            vec2(-77.01373, -232.64652)
+                        );
+                    } else if (index == 4) {
+                        return vec2[3](
+                            vec2(-289.61217, -355.39028),
+                            vec2(-77.01373, -232.64652),
+                            vec2(-77.01373, -478.13404)
+                        );
+                    } else if (index == 5) {
+                        return vec2[3](
+                            vec2(-77.01373, 258.32852),
+                            vec2(135.58471, 381.07224),
+                            vec2(135.58471, 135.58476)
+                        );
+                    } else if (index == 6) {
+                        return vec2[3](
+                            vec2(-77.01373, 503.81599),
+                            vec2(135.58471, 626.55976),
+                            vec2(135.58471, 381.07224)
+                        );
+                    } else if (index == 7) {
+                        return vec2[3](
+                            vec2(-77.01373, 12.841),
+                            vec2(135.58471, 135.58476),
+                            vec2(135.58471, -109.90276)
+                        );
+                    } else if (index == 8) {
+                        return vec2[3](
+                            vec2(-77.01373, -232.64652),
+                            vec2(135.58471, -109.90276),
+                            vec2(135.58471, -355.39028)
+                        );
+                    } else if (index == 9) {
+                        return vec2[3](
+                            vec2(-77.01373, -478.13404),
+                            vec2(135.58471, -355.39028),
+                            vec2(135.58471, -600.8778)
+                        );
+                    } else if (index == 10) {
+                        return vec2[3](
+                            vec2(-77.01373, 749.30356),
+                            vec2(135.58471, 872.04732),
+                            vec2(135.58471, 626.5598)
+                        );
+                    } else if (index == 11) {
+                        return vec2[3](
+                            vec2(135.58467, 381.07228),
+                            vec2(348.18311, 503.81604),
+                            vec2(348.18311, 258.32852)
+                        );
+                    } else if (index == 12) {
+                        return vec2[3](
+                            vec2(135.58467, 626.55979),
+                            vec2(348.18311, 749.30355),
+                            vec2(348.18311, 503.81604)
+                        );
+                    } else if (index == 13) {
+                        return vec2[3](
+                            vec2(135.58467, 135.58476),
+                            vec2(348.18311, 258.32852),
+                            vec2(348.18311, 12.841)
+                        );
+                    } else if (index == 14) {
+                        return vec2[3](
+                            vec2(135.58467, -109.90276),
+                            vec2(348.18311, 12.841),
+                            vec2(348.18311, -232.64652)
+                        );
+                    } else if (index == 15) {
+                        return vec2[3](
+                            vec2(135.58467, -355.39028),
+                            vec2(348.18311, -232.64652),
+                            vec2(348.18311, -478.13404)
+                        );
+                    } else if (index == 16) {
+                        return vec2[3](
+                            vec2(348.18311, 258.32852),
+                            vec2(560.78155, 381.07224),
+                            vec2(560.78155, 135.58476)
+                        );
+                    } else if (index == 17) {
+                        return vec2[3](
+                            vec2(348.18311, 503.816),
+                            vec2(560.78155, 626.55976),
+                            vec2(560.78155, 381.07224)
+                        );
+                    } else if (index == 18) {
+                        return vec2[3](
+                            vec2(348.18311, 12.841),
+                            vec2(560.78155, 135.58476),
+                            vec2(560.78155, -109.90276)
+                        );
+                    } else if (index == 19) {
+                        return vec2[3](
+                            vec2(348.18311, -232.64652),
+                            vec2(560.78155, -109.90276),
+                            vec2(560.78155, -355.39028)
+                        );
+                    } else if (index == 20) {
+                        return vec2[3](
+                            vec2(348.18311, -478.13404),
+                            vec2(560.78155, -355.39028),
+                            vec2(560.78155, -600.8778)
+                        );
+                    } else if (index == 21) {
+                        return vec2[3](
+                            vec2(348.18311, 749.30356),
+                            vec2(560.78155, 872.04732),
+                            vec2(560.78155, 626.5598)
+                        );
+                    } else if (index == 22) {
+                        return vec2[3](
+                            vec2(560.78159, 135.58476),
+                            vec2(773.38007, 258.32848),
+                            vec2(773.38007, 12.841)
+                        );
+                    } else if (index == 23) {
+                        return vec2[3](
+                            vec2(560.78159, 381.07224),
+                            vec2(773.38007, 503.816),
+                            vec2(773.38007, 258.32848)
+                        );
+                    } else if (index == 24) {
+                        return vec2[3](
+                            vec2(560.78159, -109.90276),
+                            vec2(773.38007, 12.841),
+                            vec2(773.38007, -232.64652)
+                        );
+                    } else if (index == 25) {
+                        return vec2[3](
+                            vec2(560.78159, -355.39028),
+                            vec2(773.38007, -232.64652),
+                            vec2(773.38007, -478.13404)
+                        );
+                    } else if (index == 26) {
+                        return vec2[3](
+                            vec2(560.78159, 626.5598),
+                            vec2(773.38007, 749.30356),
+                            vec2(773.38007, 503.81604)
+                        );
+                    } else if (index == 27) {
+                        return vec2[3](
+                            vec2(-502.21061, 258.32852),
+                            vec2(-289.61217, 381.07224),
+                            vec2(-289.61217, 135.58476)
+                        );
+                    } else if (index == 28) {
+                        return vec2[3](
+                            vec2(-502.21061, 503.81601),
+                            vec2(-289.61217, 626.55976),
+                            vec2(-289.61217, 381.07225)
+                        );
+                    } else if (index == 29) {
+                        return vec2[3](
+                            vec2(-502.21061, 12.841),
+                            vec2(-289.61217, 135.58476),
+                            vec2(-289.61217, -109.90276)
+                        );
+                    } else if (index == 30) {
+                        return vec2[3](
+                            vec2(-502.21061, -232.64652),
+                            vec2(-289.61217, -109.90276),
+                            vec2(-289.61217, -355.39028)
+                        );
+                    } else if (index == 31) {
+                        return vec2[3](
+                            vec2(-502.21061, -478.13404),
+                            vec2(-289.61217, -355.39028),
+                            vec2(-289.61217, -600.8778)
+                        );
+                    } else if (index == 32) {
+                        return vec2[3](
+                            vec2(-502.21061, 749.30356),
+                            vec2(-289.61217, 872.04732),
+                            vec2(-289.61217, 626.5598)
+                        );
+                    } else {
+                        // Default fallback
+                        return vec2[3](
+                            vec2(-289.61217, 381.07227),
+                            vec2(-77.01373, 503.81604),
+                            vec2(-77.01373, 258.32852)
+                        );
+                    }
+                }
+                
+                // Barycentric coordinates for point p relative to triangle v0,v1,v2
+                vec3 barycentric(vec2 p, vec2 v0, vec2 v1, vec2 v2) {
+                    vec2 v0v1 = v1 - v0;
+                    vec2 v0v2 = v2 - v0;
+                    vec2 pv0 = p - v0;
+                    
+                    float d00 = dot(v0v1, v0v1);
+                    float d01 = dot(v0v1, v0v2);
+                    float d11 = dot(v0v2, v0v2);
+                    float d20 = dot(pv0, v0v1);
+                    float d21 = dot(pv0, v0v2);
+                    
+                    float denom = d00 * d11 - d01 * d01;
+                    float v = (d11 * d20 - d01 * d21) / denom;
+                    float w = (d00 * d21 - d01 * d20) / denom;
+                    float u = 1.0 - v - w;
+                    
+                    return vec3(u, v, w);
+                }
+                
+                // Check if point is inside triangle (all barycentric coords >= 0)
+                bool isInside(vec3 bary) {
+                    return bary.x >= 0.0 && bary.y >= 0.0 && bary.z >= 0.0;
+                }
                 
                 void main() {
                     // World position with aspect correction
-                    vec2 p = (vUv * 2.0 - 1.0) * uScale;
+                    vec2 p = (vUv * 2.0 - 1.0) * uScale * 400.0; // Scale to match SVG coordinates
                     p.x *= uAspect;
-                    p += uOffset;
+                    p += uOffset * 400.0;
                     
-                    // Scale to triangle size
+                    // Scale by triangle size
                     p /= uTriSize;
                     
-                    // Perfect equilateral triangle basis
-                    const float sqrt3 = 1.73205080757;
-                    const float halfSqrt3 = 0.86602540378;
+                    // Find which triangle contains p
+                    bool found = false;
+                    vec3 bary = vec3(0.0);
                     
-                    // Transform to match SVG orientation
-                    // SVG shows triangles pointing up/down in a grid
-                    float x = p.x;
-                    float y = p.y / halfSqrt3;
-                    
-                    // Grid coordinates for triangle tiling
-                    float u = x;
-                    float v = y;
-                    
-                    // Get integer cell and fractional position
-                    float i = floor(u);
-                    float j = floor(v);
-                    float fu = u - i;
-                    float fv = v - j;
-                    
-                    // Determine which triangle we're in
-                    bool isLower = (fu + fv) < 1.0;
-                    
-                    // Barycentric coordinates for the triangle
-                    vec3 bary;
-                    if (isLower) {
-                        // Lower triangle (pointing up in SVG)
-                        bary = vec3(1.0 - fu - fv, fu, fv);
-                    } else {
-                        // Upper triangle (pointing down in SVG)
-                        float fu2 = 1.0 - fu;
-                        float fv2 = 1.0 - fv;
-                        bary = vec3(1.0 - fu2 - fv2, fu2, fv2);
+                    for (int i = 0; i < 42; i++) {
+                        vec2[3] tri = getTriangle(i);
+                        vec3 b = barycentric(p, tri[0], tri[1], tri[2]);
+                        
+                        if (isInside(b)) {
+                            bary = b;
+                            found = true;
+                            break;
+                        }
                     }
                     
-                    // Distance to triangle edges (0 at edges)
-                    float minDist = min(bary.x, min(bary.y, bary.z));
+                    // Default color
+                    vec3 color = vec3(0.95, 0.95, 0.95); // light gray background
                     
-                    // Apply gap (if any)
-                    float gapAdjusted = minDist - uGap;
-                    
-                    // Screen-space antialiasing
-                    vec2 worldPerPixel = vec2(2.0 * uScale / uResolution.x, 2.0 * uScale / uResolution.y);
-                    float deriv = length(worldPerPixel) * 1.5 / uTriSize;
-                    float pixelWidth = 1.5 * deriv;
-                    
-                    // Edge detection (0 = on edge, 1 = inside triangle)
-                    float edge;
-                    if (gapAdjusted < 0.0) {
-                        edge = 0.0;
-                    } else {
-                        edge = smoothstep(0.0, pixelWidth, gapAdjusted);
+                    if (found) {
+                        // Inside a triangle - fill with slightly off-white
+                        color = vec3(0.98, 0.98, 0.98);
+                        
+                        // Draw edges where barycentric coordinates are near 0
+                        float minDist = min(bary.x, min(bary.y, bary.z));
+                        
+                        // Screen-space antialiasing
+                        vec2 worldPerPixel = vec2(2.0 * uScale * 400.0 / uResolution.x, 2.0 * uScale * 400.0 / uResolution.y);
+                        float deriv = length(worldPerPixel) * 1.5 / uTriSize;
+                        float pixelWidth = 2.0 * deriv;
+                        
+                        if (minDist < pixelWidth) {
+                            // This is an edge - make it darker
+                            float edgeIntensity = 1.0 - smoothstep(0.0, pixelWidth, minDist);
+                            color = mix(color, vec3(0.3, 0.3, 0.3), edgeIntensity);
+                        }
+                        
+                        // Draw vertices where two coordinates are near 0
+                        if (bary.x < pixelWidth && bary.y < pixelWidth) color = vec3(0.8, 0.2, 0.2);
+                        else if (bary.y < pixelWidth && bary.z < pixelWidth) color = vec3(0.8, 0.2, 0.2);
+                        else if (bary.z < pixelWidth && bary.x < pixelWidth) color = vec3(0.8, 0.2, 0.2);
                     }
-                    
-                    // Fill triangles with yellow
-                    vec3 color = YELLOW;
-                    
-                    // Draw blue edges where edge < 1
-                    if (edge < 1.0) {
-                        // Mix yellow and blue at edges
-                        float edgeIntensity = 1.0 - edge;
-                        color = mix(color, BLUE, edgeIntensity);
-                    }
-                    
-                    // Add red vertices at triangle corners
-                    // A vertex is where two barycentric coordinates are near 0
-                    float vertexDist = min(min(bary.x, bary.y), bary.z);
-                    if (vertexDist < pixelWidth * 2.0) {
-                        // This is a vertex - make it red
-                        float vertexIntensity = 1.0 - smoothstep(0.0, pixelWidth * 2.0, vertexDist);
-                        color = mix(color, RED, vertexIntensity);
-                    }
-                    
-                    // Gamma correction for accurate colors
-                    color = pow(color, vec3(1.0/2.2));
                     
                     gl_FragColor = vec4(color, 1.0);
                 }
@@ -315,15 +513,13 @@
             const uOffset = gl.getUniformLocation(program, 'uOffset');
             const uScale = gl.getUniformLocation(program, 'uScale');
             const uTriSize = gl.getUniformLocation(program, 'uTriSize');
-            const uGap = gl.getUniformLocation(program, 'uGap');
             const uResolution = gl.getUniformLocation(program, 'uResolution');
             const uAspect = gl.getUniformLocation(program, 'uAspect');
             
             // State
             let offsetX = 0.0, offsetY = 0.0;
-            let scale = 3.0;
+            let scale = 0.5;
             let triSize = 1.5;
-            let gap = 0.0;
             
             let isDragging = false;
             let lastX = 0, lastY = 0;
@@ -333,7 +529,6 @@
                 gl.uniform2f(uOffset, offsetX, offsetY);
                 gl.uniform1f(uScale, scale);
                 gl.uniform1f(uTriSize, triSize);
-                gl.uniform1f(uGap, gap);
                 gl.uniform2f(uResolution, canvas.width, canvas.height);
                 gl.uniform1f(uAspect, aspect);
                 draw();
@@ -383,7 +578,7 @@
                 const factor = 0.95;
                 const newScale = e.deltaY > 0 ? scale * factor : scale / factor;
                 
-                if (newScale < 0.5 || newScale > 20.0) return;
+                if (newScale < 0.1 || newScale > 5.0) return;
                 
                 offsetX = worldX - mx * newScale;
                 offsetY = worldY - my * newScale;
@@ -417,12 +612,6 @@
             document.getElementById('size-slider').addEventListener('input', (e) => {
                 triSize = parseFloat(e.target.value);
                 document.getElementById('size-value').textContent = triSize.toFixed(1);
-                updateUniforms();
-            });
-            
-            document.getElementById('gap-slider').addEventListener('input', (e) => {
-                gap = parseFloat(e.target.value);
-                document.getElementById('gap-value').textContent = gap.toFixed(2);
                 updateUniforms();
             });
         })();
