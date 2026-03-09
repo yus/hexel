@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>infinite barycentric grid · pure WebGL 1.0</title>
+    <title>infinite barycentric grid · fixed WebGL 1.0</title>
     <style>
         body {
             margin: 0;
@@ -46,10 +46,9 @@
     </style>
 </head>
 <body>
-    <div id="info">△ INFINITE BARYCENTRIC GRID · PURE WEBGL 1.0</div>
+    <div id="info">△ BARYCENTRIC GRID · PURE WEBGL 1.0 (FIXED)</div>
     <div id="controls-note">🖱️ drag to pan · ⚡ scroll to zoom</div>
 
-    <!-- WebGL boilerplate: no libraries, minimal DOM, full screen -->
     <script>
         (function() {
             "use strict";
@@ -60,7 +59,6 @@
             canvas.style.height = '100%';
             document.body.appendChild(canvas);
 
-            // handle pixel ratio for crisp rendering, but keep performance high
             const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
             if (!gl) {
                 document.body.innerHTML = '<h2 style="color:#fff;">WebGL not supported</h2>';
@@ -68,7 +66,6 @@
             }
 
             // --- fullscreen quad geometry (two triangles covering NDC) ---
-            // vertices: position (x,y) and uv (u,v) – we only need position, but uv helps for derivatives
             const vertices = new Float32Array([
                 -1, -1,  0, 0,
                  1, -1,  1, 0,
@@ -82,7 +79,7 @@
             gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
             gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
 
-            // --- vertex shader (minimal: pass through position + uv) ---
+            // --- vertex shader (pass through uv) ---
             const vsSource = `
                 attribute vec2 aPos;
                 attribute vec2 aUv;
@@ -93,109 +90,93 @@
                 }
             `;
 
-            // --- fragment shader: barycentric grid algorithm ---
-            // all grid logic is here. infinite & performance oriented:
-            // - no branching inside grid lines (smoothstep based)
-            // - 2x2 pixel derivatives for anti‑aliasing
-            // - simple basis transform for equilateral triangles
-            // - uniforms for pan (offset) and zoom (scale)
+            // --- fragment shader: barycentric grid, manual derivatives ---
+            // WebGL 1.0 does NOT have fwidth, but we have dFdx/dFdy via extension.
+            // We enable the extension and compute our own fwidth equivalent.
             const fsSource = `
+                #extension GL_OES_standard_derivatives : enable
                 precision highp float;
                 
                 varying vec2 vUv;
                 
-                uniform vec2  uOffset;      // pan (world space offset)
-                uniform float uScale;        // zoom (world space scale factor)
+                uniform vec2  uOffset;      // pan
+                uniform float uScale;        // zoom
+                uniform vec3  uColorA;
+                uniform vec3  uColorB;
+                uniform vec3  uEdgeColor;
+                uniform float uLineWidth;
                 
-                // grid appearance
-                uniform vec3  uColorA;       // dark background
-                uniform vec3  uColorB;       // light accent
-                uniform vec3  uEdgeColor;    // almost black lines
-                uniform float uLineWidth;     // base line width in barycentric space
-                
-                // helper: smooth threshold with automatic derivative
-                float gridLine(float x, float w, float deriv) {
-                    float d = fwidth(x) * w;
-                    return smoothstep(0.0, d, abs(x));
+                // manual fwidth: max of absolute derivatives in x and y
+                float fwidth_manual(float v) {
+                    return abs(dFdx(v)) + abs(dFdy(v));  // common approximation
                 }
                 
                 void main() {
-                    // world position on plane z=0 (infinite grid)
-                    // map uv from [0,1] to [-scale, scale] and add offset
+                    // world position on plane z=0
                     vec2 p = (vUv * 2.0 - 1.0) * uScale + uOffset;
                     
-                    // ---- barycentric lattice for equilateral triangles ----
-                    // basis vectors:  e1 = (1, 0),  e2 = (0.5, √3/2)
-                    const float sqrt3 = 1.73205080757;
+                    // equilateral triangle basis
                     const float halfSqrt3 = 0.86602540378;  // √3/2
                     
-                    // transform to lattice coordinates (u, v) where p = u*e1 + v*e2
-                    // inverse matrix: [1, -0.5/0.866; 0, 1/0.866]
-                    float invDet = 1.0 / halfSqrt3;  // ≈ 1.1547
-                    
-                    // lattice coordinates (floating point)
+                    // transform to lattice coordinates
                     float fu = p.x - p.y * (0.5 / halfSqrt3);   // = x - 0.57735*y
                     float fv = p.y / halfSqrt3;                 // = y / 0.866
                     
-                    // integer cell and barycentric weights inside rhombus
+                    // integer cell and barycentric weights
                     float iu = floor(fu);
                     float iv = floor(fv);
                     float u_frac = fu - iu;
                     float v_frac = fv - iv;
                     
-                    // barycentric coordinates relative to the two triangles in the rhombus
+                    // barycentric coordinates (two triangles per rhombus)
                     vec3 bary;
                     if (u_frac + v_frac < 1.0) {
-                        // lower triangle (A: (iu, iv), B: (iu+1, iv), C: (iu, iv+1))
+                        // lower triangle
                         bary = vec3(1.0 - u_frac - v_frac, u_frac, v_frac);
                     } else {
-                        // upper triangle (D: (iu+1, iv+1), C: (iu, iv+1), B: (iu+1, iv))
-                        // use complementary coordinates
+                        // upper triangle (complement)
                         float u2 = 1.0 - u_frac;
                         float v2 = 1.0 - v_frac;
                         bary = vec3(1.0 - u2 - v2, u2, v2);
                     }
                     
-                    // distance to the three edges (barycentric coordinate values)
+                    // distance to edges (barycentric coordinates themselves)
                     float d0 = bary.x;
                     float d1 = bary.y;
                     float d2 = bary.z;
                     
-                    // the edge is hit when any coordinate approaches 0
                     float minDist = min(min(d0, d1), d2);
                     
-                    // estimate pixel derivative for anti‑aliasing
-                    float deriv = fwidth(minDist) * 1.5;   // tweak factor for crispness
+                    // manual anti-aliasing width using derivatives
+                    float deriv = fwidth_manual(minDist) * 1.8;  // widened slightly
                     
-                    // grid intensity: 0 on lines, 1 elsewhere
+                    // grid line: 0 on line, 1 elsewhere (smoothstep)
                     float line = smoothstep(0.0, uLineWidth * deriv, minDist);
                     
-                    // ---- color modulation ----
-                    // subtle variation based on integer cell (makes triangles pop)
+                    // subtle pattern based on integer cell
                     float pattern = fract(iu * 0.7 + iv * 0.4);
                     vec3 baseColor = mix(uColorA, uColorB, pattern * 0.4);
                     
-                    // add a faint glow near incenter (bary ≈ 1/3) for depth
+                    // faint glow near incenter
                     float incenterDist = length(bary - vec3(1.0/3.0));
                     float glow = exp(-incenterDist * 8.0) * 0.25;
                     
                     vec3 finalColor = mix(baseColor + glow * uColorB, uEdgeColor, line);
                     
-                    // subtle gamma
+                    // gamma
                     finalColor = pow(finalColor, vec3(1.0/2.2));
                     
                     gl_FragColor = vec4(finalColor, 1.0);
                 }
             `;
 
-            // --- compile shaders and link program ---
+            // --- compile shader with extension enabled ---
             function compileShader(gl, source, type) {
                 const shader = gl.createShader(type);
                 gl.shaderSource(shader, source);
                 gl.compileShader(shader);
                 if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
                     console.error(gl.getShaderInfoLog(shader));
-                    gl.deleteShader(shader);
                     return null;
                 }
                 return shader;
@@ -214,18 +195,16 @@
 
             gl.useProgram(program);
 
-            // --- attributes and uniforms locations ---
+            // --- attributes & uniforms ---
             const aPos = gl.getAttribLocation(program, 'aPos');
             const aUv = gl.getAttribLocation(program, 'aUv');
 
             gl.enableVertexAttribArray(aPos);
             gl.enableVertexAttribArray(aUv);
 
-            // stride: 4 floats per vertex (2 pos + 2 uv) = 16 bytes
             gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 16, 0);
             gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, 16, 8);
 
-            // uniforms
             const uOffset = gl.getUniformLocation(program, 'uOffset');
             const uScale = gl.getUniformLocation(program, 'uScale');
             const uColorA = gl.getUniformLocation(program, 'uColorA');
@@ -233,29 +212,26 @@
             const uEdgeColor = gl.getUniformLocation(program, 'uEdgeColor');
             const uLineWidth = gl.getUniformLocation(program, 'uLineWidth');
 
-            // set static colors once
-            gl.uniform3f(uColorA, 0.15, 0.17, 0.22);      // dark slate
-            gl.uniform3f(uColorB, 0.75, 0.85, 1.0);       // ice blue
-            gl.uniform3f(uEdgeColor, 0.04, 0.04, 0.05);    // near black
-            gl.uniform1f(uLineWidth, 0.12);                // line width in barycentric space
+            gl.uniform3f(uColorA, 0.15, 0.17, 0.22);
+            gl.uniform3f(uColorB, 0.75, 0.85, 1.0);
+            gl.uniform3f(uEdgeColor, 0.04, 0.04, 0.05);
+            gl.uniform1f(uLineWidth, 0.12);
 
-            // --- interaction state (infinite pan/zoom) ---
+            // --- interaction state ---
             let offsetX = 0.0, offsetY = 0.0;
-            let scale = 2.0;                // initial zoom level (world units visible)
-            
-            // mouse drag state
+            let scale = 2.5;                // initial zoom
             let isDragging = false;
             let lastMouseX = 0, lastMouseY = 0;
 
-            // update uniform based on current offset/scale
             function updateUniforms() {
                 gl.uniform2f(uOffset, offsetX, offsetY);
                 gl.uniform1f(uScale, scale);
+                draw(); // immediate redraw
             }
 
-            // --- event handlers: drag to pan, wheel to zoom ---
+            // --- mouse pan ---
             canvas.addEventListener('mousedown', (e) => {
-                if (e.button === 0) { // left button
+                if (e.button === 0) {
                     isDragging = true;
                     lastMouseX = e.clientX;
                     lastMouseY = e.clientY;
@@ -269,10 +245,8 @@
                 const dx = e.clientX - lastMouseX;
                 const dy = e.clientY - lastMouseY;
                 
-                // convert delta to world space offset (dependent on current scale)
-                // screen width maps to 2*scale units
                 const worldDeltaX = (dx / canvas.clientWidth) * (2.0 * scale);
-                const worldDeltaY = -(dy / canvas.clientHeight) * (2.0 * scale); // y inverted
+                const worldDeltaY = -(dy / canvas.clientHeight) * (2.0 * scale);
                 
                 offsetX -= worldDeltaX;
                 offsetY -= worldDeltaY;
@@ -290,27 +264,22 @@
                 }
             });
 
-            // zoom with mouse wheel (relative to mouse position for natural feel)
+            // --- wheel zoom (cursor-anchored) ---
             canvas.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 
-                // mouse position in normalized device coordinates [-1,1]
                 const rect = canvas.getBoundingClientRect();
                 const mx = ((e.clientX - rect.left) / rect.width) * 2.0 - 1.0;
-                const my = -(((e.clientY - rect.top) / rect.height) * 2.0 - 1.0); // flip Y
+                const my = -(((e.clientY - rect.top) / rect.height) * 2.0 - 1.0);
                 
-                // world position under mouse before zoom
                 const worldX = mx * scale + offsetX;
                 const worldY = my * scale + offsetY;
                 
-                // zoom factor (delta mode)
                 const zoomFactor = 0.95;
                 const newScale = e.deltaY > 0 ? scale * zoomFactor : scale / zoomFactor;
                 
-                // clamp scale to avoid extreme values (but keep infinite feel)
                 if (newScale < 0.2 || newScale > 20.0) return;
                 
-                // adjust offset so world point under mouse stays fixed
                 offsetX = worldX - mx * newScale;
                 offsetY = worldY - my * newScale;
                 scale = newScale;
@@ -318,50 +287,35 @@
                 updateUniforms();
             }, { passive: false });
 
-            // prevent default drag selection
             canvas.addEventListener('dragstart', (e) => e.preventDefault());
 
-            // --- resize handler ---
+            // --- resize ---
             function resizeCanvas() {
-                const width = window.innerWidth;
-                const height = window.innerHeight;
-                
-                canvas.width = width;
-                canvas.height = height;
-                gl.viewport(0, 0, width, height);
-                
-                // trigger redraw
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                gl.viewport(0, 0, canvas.width, canvas.height);
                 draw();
             }
             window.addEventListener('resize', resizeCanvas);
-            resizeCanvas(); // initial call
+            resizeCanvas();
 
-            // --- draw loop (single frame, but we re-render on events) ---
+            // --- draw loop ---
             function draw() {
-                gl.clearColor(0.0, 0.0, 0.0, 1.0);
                 gl.clear(gl.COLOR_BUFFER_BIT);
                 gl.drawArrays(gl.TRIANGLES, 0, 6);
             }
 
-            // initial uniform update and draw
+            // initial offset to show interesting region
+            offsetX = 1.5;
+            offsetY = -1.0;
             updateUniforms();
-            draw();
 
-            // redraw whenever uniforms change (events already call draw after update)
-            // but we also need to redraw on regular basis if we want animations – 
-            // not needed for static grid. however we add a simple animation-free loop
-            // just to be safe if any resize triggers.
-            function redrawLoop() {
+            // continuous redraw (handles resize without event)
+            function loop() {
                 draw();
-                requestAnimationFrame(redrawLoop);
+                requestAnimationFrame(loop);
             }
-            redrawLoop(); // continuous redraw (no extra cost, just swaps buffers)
-
-            // small fix: ensure offset starts at a nice value to see structure
-            offsetX = 1.2;
-            offsetY = -0.8;
-            scale = 2.5;
-            updateUniforms();
+            loop();
         })();
     </script>
 </body>
