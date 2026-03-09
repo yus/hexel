@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>hexagon mosaic · star of david central</title>
+    <title>pure barycentric grid · 60°</title>
     <style>
         * {
             box-sizing: border-box;
@@ -23,7 +23,7 @@
             top: 0;
             left: 0;
             width: 100%;
-            height: 160px;
+            height: 140px;
             background: rgba(18, 20, 26, 0.96);
             backdrop-filter: blur(12px);
             border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -37,69 +37,47 @@
         
         .header-content {
             display: flex;
-            align-items: flex-start;
-            gap: 30px;
+            align-items: center;
+            gap: 40px;
             width: 100%;
-            max-width: 1600px;
+            max-width: 1200px;
             margin: 0 auto;
         }
         
         .title-section {
-            min-width: 160px;
-            padding-top: 4px;
+            min-width: 140px;
         }
         
         .title-main {
-            font-size: 15px;
+            font-size: 16px;
             font-weight: 500;
             color: white;
         }
         
-        .star-badge {
-            display: flex;
-            gap: 4px;
-            font-size: 12px;
-            color: #ffd966;
-            margin-top: 4px;
+        .title-sub {
+            font-size: 10px;
+            color: #8a92a6;
+            margin-top: 2px;
         }
         
         .group {
             display: flex;
-            flex-direction: column;
-            gap: 10px;
-            padding: 8px 16px;
+            gap: 30px;
+            padding: 0 20px;
             border-left: 1px solid rgba(255, 255, 255, 0.1);
-            min-width: 200px;
-        }
-        
-        .group-header {
-            font-size: 10px;
-            font-weight: 600;
-            color: #b8c0d8;
-            text-transform: uppercase;
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
         }
         
         .param-row {
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            height: 28px;
+            gap: 12px;
         }
         
         .param-label {
             font-size: 10px;
             color: #b0b8d0;
             text-transform: uppercase;
-            min-width: 70px;
-        }
-        
-        .slider-row {
-            display: flex;
-            align-items: center;
-            gap: 8px;
+            min-width: 45px;
         }
         
         input[type=range] {
@@ -117,67 +95,13 @@
             text-align: center;
         }
         
-        .number-input {
-            width: 65px;
-            background: rgba(0, 0, 0, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-            color: white;
-            font-size: 10px;
-            padding: 5px 4px;
-            border-radius: 0;
-            font-family: monospace;
-            text-align: center;
-        }
-        
-        .reset-btn {
-            background: rgba(255, 255, 255, 0.1);
-            border: none;
-            color: #b0b8d0;
-            font-size: 16px;
-            padding: 0px 4px 2px 4px;
-            border-radius: 2px;
-            cursor: pointer;
-            vertical-align: middle;
-        }
-        
-        .color-row {
-            display: flex;
-            align-items: center;
-            gap: 12px;
-        }
-        
-        .color-picker {
-            width: 20px;
-            height: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            cursor: pointer;
-        }
-        
-        .color-picker.star { background: #ffd966; }  // gold for star
-        .color-picker.tri1 { background: #ff7f7f; }  // red for up triangles
-        .color-picker.tri2 { background: #7fbfff; }  // blue for down triangles
-        .color-picker.bg { background: #16181f; }
-        
-        .checkbox-item {
-            display: flex;
-            align-items: center;
-            gap: 6px;
-        }
-        
-        .checkbox-item label {
-            font-size: 9px;
-            color: #b0b8d0;
-            text-transform: uppercase;
-            cursor: pointer;
-        }
-        
         canvas {
             display: block;
             position: fixed;
-            top: 160px;
+            top: 140px;
             left: 0;
             width: 100%;
-            height: calc(100vh - 160px);
+            height: calc(100vh - 140px);
         }
         
         .hint {
@@ -185,7 +109,7 @@
             bottom: 20px;
             right: 20px;
             color: #98a0b5;
-            font-size: 9px;
+            font-size: 10px;
             background: rgba(10, 12, 18, 0.7);
             backdrop-filter: blur(8px);
             padding: 8px 16px;
@@ -198,77 +122,28 @@
     <div id="header">
         <div class="header-content">
             <div class="title-section">
-                <div class="title-main">HEXAGON MOSAIC</div>
-                <div class="star-badge">✡︎ STAR OF DAVID ✡︎</div>
+                <div class="title-main">BARYCENTRIC GRID</div>
+                <div class="title-sub">60° · equilateral triangles</div>
             </div>
             
-            <!-- GROUP 1: HEXAGON PARAMETERS -->
             <div class="group">
-                <div class="group-header">
-                    HEXAGON
-                    <button class="reset-btn" id="reset-hex">↺</button>
-                </div>
                 <div class="param-row">
                     <span class="param-label">SIZE</span>
-                    <div class="slider-row">
-                        <input type="range" id="size-slider" min="0.5" max="3.0" value="1.5" step="0.1">
-                        <input type="number" id="size-input" class="number-input" min="0.5" max="3.0" step="0.1" value="1.5">
-                        <span class="value-display" id="size-value">1.5</span>
-                    </div>
+                    <input type="range" id="size-slider" min="0.5" max="3.0" value="1.5" step="0.1">
+                    <span class="value-display" id="size-value">1.5</span>
                 </div>
+                
                 <div class="param-row">
-                    <span class="param-label">STRETCH</span>
-                    <div class="slider-row">
-                        <input type="range" id="stretch-slider" min="0.5" max="1.5" value="1.0" step="0.01">
-                        <span class="value-display" id="stretch-value">1.00</span>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- GROUP 2: STAR PARAMETERS -->
-            <div class="group">
-                <div class="group-header">
-                    STAR
-                    <button class="reset-btn" id="reset-star">↺</button>
-                </div>
-                <div class="param-row">
-                    <span class="param-label">ROTATE</span>
-                    <div class="slider-row">
-                        <input type="range" id="rotate-slider" min="0" max="360" value="0" step="1">
-                        <span class="value-display" id="rotate-value">0°</span>
-                    </div>
-                </div>
-                <div class="param-row">
-                    <span class="param-label">THICKNESS</span>
-                    <div class="slider-row">
-                        <input type="range" id="thick-slider" min="0.5" max="3.0" value="1.5" step="0.1">
-                        <span class="value-display" id="thick-value">1.5</span>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- GROUP 3: COLORS -->
-            <div class="group">
-                <div class="group-header">
-                    COLORS
-                    <button class="reset-btn" id="reset-colors">↺</button>
-                </div>
-                <div class="color-row">
-                    <div class="color-picker star" id="color-star"></div>
-                    <div class="color-picker tri1" id="color-tri1"></div>
-                    <div class="color-picker tri2" id="color-tri2"></div>
-                    <div class="color-picker bg" id="color-bg"></div>
-                </div>
-                <div class="checkbox-item">
-                    <input type="checkbox" id="show-star" checked>
-                    <label for="show-star">HIGHLIGHT STAR</label>
+                    <span class="param-label">LINE</span>
+                    <input type="range" id="line-slider" min="0.3" max="2.0" value="0.8" step="0.05">
+                    <span class="value-display" id="line-value">0.80</span>
                 </div>
             </div>
         </div>
     </div>
     
     <div class="hint">
-        <kbd>ALT</kbd>+drag rotate · hexagons → triangles → star of david at center
+        ⚡ zoom · 🖱️ pan · barycentric coordinates at each point
     </div>
 
     <script>
@@ -304,7 +179,7 @@
                 }
             `;
             
-            // Fragment shader - hexagons built from triangles, revealing Star of David
+            // Fragment shader - pure barycentric grid
             const fsSource = `
                 precision highp float;
                 
@@ -312,36 +187,10 @@
                 
                 uniform vec2 uOffset;
                 uniform float uScale;
-                uniform float uRotate;           // Global rotation
-                uniform float uHexSize;           // Size of hexagons
-                uniform float uStretch;           // Vertical stretch
-                uniform float uStarThickness;      // Thickness of star arms
-                uniform bool uShowStar;
-                
-                uniform vec3 uColorStar;
-                uniform vec3 uColorTri1;           // Up-pointing triangles
-                uniform vec3 uColorTri2;           // Down-pointing triangles
-                uniform vec3 uColorBg;
-                
+                uniform float uCellSize;
+                uniform float uLineWidth;
                 uniform vec2 uResolution;
                 uniform float uAspect;
-                
-                // Rotate point
-                vec2 rotate(vec2 p, float angle) {
-                    float s = sin(angle);
-                    float c = cos(angle);
-                    return vec2(p.x * c - p.y * s, p.x * s + p.y * c);
-                }
-                
-                // Distance to line segment
-                float distToSegment(vec2 p, vec2 a, vec2 b) {
-                    vec2 ab = b - a;
-                    vec2 ap = p - a;
-                    float t = dot(ap, ab) / dot(ab, ab);
-                    t = clamp(t, 0.0, 1.0);
-                    vec2 closest = a + ab * t;
-                    return length(p - closest);
-                }
                 
                 void main() {
                     // World position
@@ -349,128 +198,64 @@
                     p.x *= uAspect;
                     p += uOffset;
                     
-                    // Apply rotation
-                    p = rotate(p, uRotate * 3.14159 / 180.0);
+                    // Scale by cell size
+                    p /= uCellSize;
                     
-                    // Apply stretch (for subtle variations)
-                    p.y *= uStretch;
+                    // Barycentric coordinates for equilateral triangle grid
+                    const float sqrt3 = 1.7320508;
+                    const float halfSqrt3 = 0.8660254;
                     
-                    // Scale to hexagon size
-                    p /= uHexSize;
+                    // Three axes at 0°, 60°, and 120°
+                    // Convert to barycentric-like coordinates
+                    float u = p.x;
+                    float v = (p.y / halfSqrt3) + (p.x * 0.5);
+                    float w = -u - v;
                     
-                    // Convert to hex grid coordinates (axial)
-                    float sqrt3 = 1.73205;
-                    float x = p.x;
-                    float y = p.y;
+                    // Get fractional parts
+                    float fu = fract(u);
+                    float fv = fract(v);
+                    float fw = fract(w);
                     
-                    // Axial coordinates
-                    float q = (x * 0.866 - y * 0.5) / 0.866;
-                    float r = y / 0.866;
+                    // Distance to each set of grid lines
+                    float du = min(fu, 1.0 - fu);
+                    float dv = min(fv, 1.0 - fv);
+                    float dw = min(fw, 1.0 - fw);
                     
-                    // Find nearest hex center
-                    float q_round = floor(q + 0.5);
-                    float r_round = floor(r + 0.5);
-                    float s_round = -q_round - r_round;
+                    // Scale to 0-1 range (0 = on line, 0.5 = center of triangle)
+                    float d1 = du * 2.0;
+                    float d2 = dv * 2.0;
+                    float d3 = dw * 2.0;
                     
-                    // Center of current hexagon
-                    vec2 center = vec2(
-                        q_round + r_round * 0.5,
-                        r_round * 0.866
-                    ) * 2.0;
+                    // The minimum distance to any edge
+                    float minDist = min(min(d1, d2), d3);
                     
-                    // Point relative to hex center
-                    vec2 local = p - center;
+                    // Screen-space antialiasing
+                    vec2 worldPerPixel = vec2(2.0 * uScale / uResolution.x, 2.0 * uScale / uResolution.y);
+                    float deriv = length(worldPerPixel) * 1.5 / uCellSize;
+                    float pixelWidth = uLineWidth * deriv;
                     
-                    // Convert to polar for triangle detection
-                    float angle = atan(local.y, local.x);
-                    float radius = length(local);
+                    // Grid line intensity (0 = line, 1 = background)
+                    float grid = smoothstep(0.0, pixelWidth, minDist);
                     
-                    // Each hexagon is made of 6 triangles (30° to 90°, etc)
-                    // Normalize angle to 0-60° sector
-                    float sector = floor(angle / 3.14159 * 3.0 + 6.5) - 6.0;
-                    float sectorAngle = angle - sector * 3.14159 / 3.0;
+                    // Color based on barycentric coordinates
+                    vec3 color1 = vec3(0.2, 0.25, 0.3);  // dark
+                    vec3 color2 = vec3(0.8, 0.85, 0.95); // light
                     
-                    // Distance to hexagon edges (for grid)
-                    float hexDist = abs(radius * cos(sectorAngle) - 1.0);
+                    // Mix colors based on position in triangle
+                    float pattern = sin(fu * 20.0) * 0.1 + 0.5;
+                    vec3 baseColor = mix(color1, color2, pattern);
                     
-                    // Determine triangle orientation within hexagon
-                    // Even/odd sectors determine if triangle points up or down
-                    bool isUpTriangle = (mod(sector, 2.0) == 0.0);
+                    // Add subtle triangle center glow
+                    float centerDist = length(vec3(d1, d2, d3) - vec3(0.5));
+                    float glow = exp(-centerDist * 4.0) * 0.2;
                     
-                    // Base color from triangle orientation
-                    vec3 triColor = isUpTriangle ? uColorTri1 : uColorTri2;
+                    // Final color with grid lines
+                    vec3 finalColor = mix(vec3(0.05, 0.05, 0.08), baseColor + glow, grid);
                     
-                    // Start with background
-                    vec3 color = uColorBg;
+                    // Gamma correction
+                    finalColor = pow(finalColor, vec3(1.0/2.2));
                     
-                    // Fill hexagon with triangles
-                    if (radius < 1.0) {
-                        color = triColor * 0.7;  // Fill triangles
-                        
-                        // Add subtle gradient based on distance from center
-                        color *= (1.0 - radius * 0.3);
-                    }
-                    
-                    // STAR OF DAVID - emerges at center hexagon (where center is near origin)
-                    if (uShowStar && length(center) < 0.1) {
-                        // Draw the Star of David (two overlapping triangles)
-                        
-                        // Big triangle pointing up
-                        vec2 v1_up = vec2(0.0, 1.0);
-                        vec2 v2_up = vec2(-0.866, -0.5);
-                        vec2 v3_up = vec2(0.866, -0.5);
-                        
-                        // Big triangle pointing down
-                        vec2 v1_down = vec2(0.0, -1.0);
-                        vec2 v2_down = vec2(-0.866, 0.5);
-                        vec2 v3_down = vec2(0.866, 0.5);
-                        
-                        // Scale by star thickness
-                        float scale = uStarThickness * 0.8;
-                        
-                        // Check distance to each triangle edge
-                        float d1 = distToSegment(local, v1_up * scale, v2_up * scale);
-                        float d2 = distToSegment(local, v2_up * scale, v3_up * scale);
-                        float d3 = distToSegment(local, v3_up * scale, v1_up * scale);
-                        
-                        float d4 = distToSegment(local, v1_down * scale, v2_down * scale);
-                        float d5 = distToSegment(local, v2_down * scale, v3_down * scale);
-                        float d6 = distToSegment(local, v3_down * scale, v1_down * scale);
-                        
-                        float minDist = min(min(min(d1, d2), min(d3, d4)), min(d5, d6));
-                        
-                        // Anti-aliased lines
-                        vec2 worldPerPixel = vec2(2.0 * uScale / uResolution.x, 2.0 * uScale / uResolution.y);
-                        float deriv = length(worldPerPixel) * 2.0;
-                        float lineWidth = 0.1 * deriv;
-                        
-                        if (minDist < lineWidth) {
-                            color = mix(color, uColorStar, 0.9);
-                        }
-                        
-                        // Also add bright dots at intersection points
-                        float intersectDist = min(
-                            length(local - vec2(0.0, 0.0)),  // center
-                            min(
-                                length(local - v1_up * scale * 0.5),
-                                length(local - v1_down * scale * 0.5)
-                            )
-                        );
-                        
-                        if (intersectDist < lineWidth * 2.0) {
-                            color = uColorStar;
-                        }
-                    }
-                    
-                    // Add grid lines at hexagon boundaries
-                    if (hexDist < 0.05) {
-                        color = mix(color, vec3(0.1, 0.1, 0.15), 0.8);
-                    }
-                    
-                    // Gamma
-                    color = pow(color, vec3(1.0/2.2));
-                    
-                    gl_FragColor = vec4(color, 1.0);
+                    gl_FragColor = vec4(finalColor, 1.0);
                 }
             `;
             
@@ -502,119 +287,59 @@
             // Uniforms
             const uOffset = gl.getUniformLocation(program, 'uOffset');
             const uScale = gl.getUniformLocation(program, 'uScale');
-            const uRotate = gl.getUniformLocation(program, 'uRotate');
-            const uHexSize = gl.getUniformLocation(program, 'uHexSize');
-            const uStretch = gl.getUniformLocation(program, 'uStretch');
-            const uStarThickness = gl.getUniformLocation(program, 'uStarThickness');
-            const uShowStar = gl.getUniformLocation(program, 'uShowStar');
-            const uColorStar = gl.getUniformLocation(program, 'uColorStar');
-            const uColorTri1 = gl.getUniformLocation(program, 'uColorTri1');
-            const uColorTri2 = gl.getUniformLocation(program, 'uColorTri2');
-            const uColorBg = gl.getUniformLocation(program, 'uColorBg');
+            const uCellSize = gl.getUniformLocation(program, 'uCellSize');
+            const uLineWidth = gl.getUniformLocation(program, 'uLineWidth');
             const uResolution = gl.getUniformLocation(program, 'uResolution');
             const uAspect = gl.getUniformLocation(program, 'uAspect');
-            
-            // Default colors
-            const defaultColors = {
-                star: [1.0, 0.85, 0.4],    // gold
-                tri1: [1.0, 0.5, 0.5],      // red
-                tri2: [0.5, 0.75, 1.0],     // blue
-                bg: [0.086, 0.094, 0.122]   // dark
-            };
-            
-            gl.uniform3f(uColorStar, defaultColors.star[0], defaultColors.star[1], defaultColors.star[2]);
-            gl.uniform3f(uColorTri1, defaultColors.tri1[0], defaultColors.tri1[1], defaultColors.tri1[2]);
-            gl.uniform3f(uColorTri2, defaultColors.tri2[0], defaultColors.tri2[1], defaultColors.tri2[2]);
-            gl.uniform3f(uColorBg, defaultColors.bg[0], defaultColors.bg[1], defaultColors.bg[2]);
             
             // State
             let offsetX = 0.0, offsetY = 0.0;
             let scale = 3.0;
-            let rotate = 0.0;
-            let hexSize = 1.5;
-            let stretch = 1.0;
-            let starThickness = 1.5;
-            let showStar = true;
+            let cellSize = 1.5;
+            let lineWidth = 0.8;
             
             let isDragging = false;
             let lastX = 0, lastY = 0;
-            let isAltDown = false;
             
             function updateUniforms() {
                 const aspect = canvas.width / canvas.height;
                 gl.uniform2f(uOffset, offsetX, offsetY);
                 gl.uniform1f(uScale, scale);
-                gl.uniform1f(uRotate, rotate);
-                gl.uniform1f(uHexSize, hexSize);
-                gl.uniform1f(uStretch, stretch);
-                gl.uniform1f(uStarThickness, starThickness);
-                gl.uniform1i(uShowStar, showStar ? 1 : 0);
+                gl.uniform1f(uCellSize, cellSize);
+                gl.uniform1f(uLineWidth, lineWidth);
                 gl.uniform2f(uResolution, canvas.width, canvas.height);
                 gl.uniform1f(uAspect, aspect);
                 draw();
             }
             
-            // Keyboard
-            window.addEventListener('keydown', (e) => {
-                if (e.key === 'Alt') {
-                    isAltDown = true;
-                    canvas.style.cursor = 'grab';
-                }
-            });
-            
-            window.addEventListener('keyup', (e) => {
-                if (e.key === 'Alt') {
-                    isAltDown = false;
-                    canvas.style.cursor = 'default';
-                }
-            });
-            
-            // Mouse events
+            // Mouse events for pan
             canvas.addEventListener('mousedown', (e) => {
                 if (e.button === 0) {
                     isDragging = true;
                     lastX = e.clientX;
                     lastY = e.clientY;
-                    
-                    if (isAltDown) {
-                        canvas.style.cursor = 'grabbing';
-                    } else {
-                        canvas.style.cursor = 'grabbing';
-                    }
+                    canvas.style.cursor = 'grabbing';
                 }
             });
             
             window.addEventListener('mousemove', (e) => {
                 if (!isDragging) return;
                 
-                if (isAltDown) {
-                    // Rotation mode
-                    const dx = e.clientX - lastX;
-                    rotate = (rotate + dx * 0.5) % 360.0;
-                    document.getElementById('rotate-value').textContent = Math.round(rotate) + '°';
-                    document.getElementById('rotate-slider').value = rotate;
-                    updateUniforms();
-                    
-                    lastX = e.clientX;
-                    lastY = e.clientY;
-                } else {
-                    // Pan mode
-                    const dx = e.clientX - lastX;
-                    const dy = e.clientY - lastY;
-                    
-                    offsetX -= (dx / canvas.width) * (2.0 * scale);
-                    offsetY += (dy / canvas.height) * (2.0 * scale);
-                    
-                    lastX = e.clientX;
-                    lastY = e.clientY;
-                    
-                    updateUniforms();
-                }
+                const dx = e.clientX - lastX;
+                const dy = e.clientY - lastY;
+                
+                offsetX -= (dx / canvas.width) * (2.0 * scale);
+                offsetY += (dy / canvas.height) * (2.0 * scale);
+                
+                lastX = e.clientX;
+                lastY = e.clientY;
+                
+                updateUniforms();
             });
             
             window.addEventListener('mouseup', () => {
                 isDragging = false;
-                canvas.style.cursor = isAltDown ? 'grab' : 'default';
+                canvas.style.cursor = 'default';
             });
             
             // Wheel zoom
@@ -643,7 +368,7 @@
             // Resize
             function resize() {
                 canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight - 160;
+                canvas.height = window.innerHeight - 140;
                 gl.viewport(0, 0, canvas.width, canvas.height);
                 updateUniforms();
             }
@@ -662,93 +387,16 @@
             loop();
             
             // UI Controls
-            const sizeSlider = document.getElementById('size-slider');
-            const sizeInput = document.getElementById('size-input');
-            const sizeValue = document.getElementById('size-value');
-            
-            function updateSize(val) {
-                hexSize = val;
-                sizeValue.textContent = val.toFixed(1);
-                sizeSlider.value = val;
-                sizeInput.value = val.toFixed(1);
-                updateUniforms();
-            }
-            
-            sizeSlider.addEventListener('input', (e) => updateSize(parseFloat(e.target.value)));
-            sizeInput.addEventListener('change', (e) => {
-                let val = parseFloat(e.target.value);
-                val = Math.min(3.0, Math.max(0.5, val));
-                updateSize(val);
-            });
-            
-            document.getElementById('stretch-slider').addEventListener('input', (e) => {
-                stretch = parseFloat(e.target.value);
-                document.getElementById('stretch-value').textContent = stretch.toFixed(2);
+            document.getElementById('size-slider').addEventListener('input', (e) => {
+                cellSize = parseFloat(e.target.value);
+                document.getElementById('size-value').textContent = cellSize.toFixed(1);
                 updateUniforms();
             });
             
-            document.getElementById('rotate-slider').addEventListener('input', (e) => {
-                rotate = parseFloat(e.target.value);
-                document.getElementById('rotate-value').textContent = Math.round(rotate) + '°';
+            document.getElementById('line-slider').addEventListener('input', (e) => {
+                lineWidth = parseFloat(e.target.value);
+                document.getElementById('line-value').textContent = lineWidth.toFixed(2);
                 updateUniforms();
-            });
-            
-            document.getElementById('thick-slider').addEventListener('input', (e) => {
-                starThickness = parseFloat(e.target.value);
-                document.getElementById('thick-value').textContent = starThickness.toFixed(1);
-                updateUniforms();
-            });
-            
-            document.getElementById('show-star').addEventListener('change', (e) => {
-                showStar = e.target.checked;
-                updateUniforms();
-            });
-            
-            document.getElementById('reset-hex').addEventListener('click', () => {
-                updateSize(1.5);
-                stretch = 1.0;
-                document.getElementById('stretch-slider').value = 1.0;
-                document.getElementById('stretch-value').textContent = '1.00';
-                updateUniforms();
-            });
-            
-            document.getElementById('reset-star').addEventListener('click', () => {
-                rotate = 0.0;
-                document.getElementById('rotate-value').textContent = '0°';
-                document.getElementById('rotate-slider').value = 0;
-                starThickness = 1.5;
-                document.getElementById('thick-value').textContent = '1.5';
-                document.getElementById('thick-slider').value = 1.5;
-                updateUniforms();
-            });
-            
-            document.getElementById('reset-colors').addEventListener('click', () => {
-                gl.uniform3f(uColorStar, defaultColors.star[0], defaultColors.star[1], defaultColors.star[2]);
-                gl.uniform3f(uColorTri1, defaultColors.tri1[0], defaultColors.tri1[1], defaultColors.tri1[2]);
-                gl.uniform3f(uColorTri2, defaultColors.tri2[0], defaultColors.tri2[1], defaultColors.tri2[2]);
-                gl.uniform3f(uColorBg, defaultColors.bg[0], defaultColors.bg[1], defaultColors.bg[2]);
-                draw();
-            });
-            
-            // Color pickers
-            document.getElementById('color-star').addEventListener('click', () => {
-                gl.uniform3f(uColorStar, 1.0, 0.9, 0.5); // brighter gold
-                draw();
-            });
-            
-            document.getElementById('color-tri1').addEventListener('click', () => {
-                gl.uniform3f(uColorTri1, 1.0, 0.6, 0.6); // lighter red
-                draw();
-            });
-            
-            document.getElementById('color-tri2').addEventListener('click', () => {
-                gl.uniform3f(uColorTri2, 0.6, 0.8, 1.0); // lighter blue
-                draw();
-            });
-            
-            document.getElementById('color-bg').addEventListener('click', () => {
-                gl.uniform3f(uColorBg, 0.12, 0.14, 0.18); // slightly lighter bg
-                draw();
             });
         })();
     </script>
