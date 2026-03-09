@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>infinite barycentric grid · fixed WebGL 1.0</title>
+    <title>infinite barycentric grid · no extensions</title>
     <style>
         body {
             margin: 0;
@@ -46,7 +46,7 @@
     </style>
 </head>
 <body>
-    <div id="info">△ BARYCENTRIC GRID · PURE WEBGL 1.0 (FIXED)</div>
+    <div id="info">△ BARYCENTRIC GRID · PURE WEBGL 1.0 (NO EXT)</div>
     <div id="controls-note">🖱️ drag to pan · ⚡ scroll to zoom</div>
 
     <script>
@@ -65,7 +65,7 @@
                 return;
             }
 
-            // --- fullscreen quad geometry (two triangles covering NDC) ---
+            // --- fullscreen quad geometry ---
             const vertices = new Float32Array([
                 -1, -1,  0, 0,
                  1, -1,  1, 0,
@@ -79,7 +79,7 @@
             gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
             gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
 
-            // --- vertex shader (pass through uv) ---
+            // --- vertex shader ---
             const vsSource = `
                 attribute vec2 aPos;
                 attribute vec2 aUv;
@@ -90,11 +90,10 @@
                 }
             `;
 
-            // --- fragment shader: barycentric grid, manual derivatives ---
-            // WebGL 1.0 does NOT have fwidth, but we have dFdx/dFdy via extension.
-            // We enable the extension and compute our own fwidth equivalent.
+            // --- fragment shader: barycentric grid without derivatives ---
+            // Anti-aliasing is achieved via smoothstep with a fixed pixel footprint
+            // approximated by scaling factor based on zoom level.
             const fsSource = `
-                #extension GL_OES_standard_derivatives : enable
                 precision highp float;
                 
                 varying vec2 vUv;
@@ -105,11 +104,7 @@
                 uniform vec3  uColorB;
                 uniform vec3  uEdgeColor;
                 uniform float uLineWidth;
-                
-                // manual fwidth: max of absolute derivatives in x and y
-                float fwidth_manual(float v) {
-                    return abs(dFdx(v)) + abs(dFdy(v));  // common approximation
-                }
+                uniform vec2  uResolution;   // screen resolution for pixel size estimation
                 
                 void main() {
                     // world position on plane z=0
@@ -147,11 +142,14 @@
                     
                     float minDist = min(min(d0, d1), d2);
                     
-                    // manual anti-aliasing width using derivatives
-                    float deriv = fwidth_manual(minDist) * 1.8;  // widened slightly
+                    // Estimate pixel size in barycentric space.
+                    // Since we don't have derivatives, we approximate based on screen resolution and scale.
+                    // The barycentric space is scaled by ~1.0/cellSize, and screen maps to 2*uScale world units.
+                    // A rough approximation: barycentric derivative ~ (1.0 / (uScale * uResolution.x)) * constant
+                    float pixelSize = 2.0 / (uScale * min(uResolution.x, uResolution.y)) * 2.5;  // tuned constant
                     
-                    // grid line: 0 on line, 1 elsewhere (smoothstep)
-                    float line = smoothstep(0.0, uLineWidth * deriv, minDist);
+                    // grid line: 0 on line, 1 elsewhere
+                    float line = smoothstep(0.0, uLineWidth * pixelSize, minDist);
                     
                     // subtle pattern based on integer cell
                     float pattern = fract(iu * 0.7 + iv * 0.4);
@@ -170,7 +168,7 @@
                 }
             `;
 
-            // --- compile shader with extension enabled ---
+            // --- compile shader ---
             function compileShader(gl, source, type) {
                 const shader = gl.createShader(type);
                 gl.shaderSource(shader, source);
@@ -211,22 +209,24 @@
             const uColorB = gl.getUniformLocation(program, 'uColorB');
             const uEdgeColor = gl.getUniformLocation(program, 'uEdgeColor');
             const uLineWidth = gl.getUniformLocation(program, 'uLineWidth');
+            const uResolution = gl.getUniformLocation(program, 'uResolution');
 
             gl.uniform3f(uColorA, 0.15, 0.17, 0.22);
             gl.uniform3f(uColorB, 0.75, 0.85, 1.0);
             gl.uniform3f(uEdgeColor, 0.04, 0.04, 0.05);
-            gl.uniform1f(uLineWidth, 0.12);
+            gl.uniform1f(uLineWidth, 0.15);  // slightly wider for stability
 
             // --- interaction state ---
-            let offsetX = 0.0, offsetY = 0.0;
-            let scale = 2.5;                // initial zoom
+            let offsetX = 1.5, offsetY = -1.0;
+            let scale = 2.8;
             let isDragging = false;
             let lastMouseX = 0, lastMouseY = 0;
 
             function updateUniforms() {
                 gl.uniform2f(uOffset, offsetX, offsetY);
                 gl.uniform1f(uScale, scale);
-                draw(); // immediate redraw
+                gl.uniform2f(uResolution, canvas.width, canvas.height);
+                draw();
             }
 
             // --- mouse pan ---
@@ -278,7 +278,7 @@
                 const zoomFactor = 0.95;
                 const newScale = e.deltaY > 0 ? scale * zoomFactor : scale / zoomFactor;
                 
-                if (newScale < 0.2 || newScale > 20.0) return;
+                if (newScale < 0.25 || newScale > 18.0) return;
                 
                 offsetX = worldX - mx * newScale;
                 offsetY = worldY - my * newScale;
@@ -294,7 +294,7 @@
                 canvas.width = window.innerWidth;
                 canvas.height = window.innerHeight;
                 gl.viewport(0, 0, canvas.width, canvas.height);
-                draw();
+                updateUniforms();
             }
             window.addEventListener('resize', resizeCanvas);
             resizeCanvas();
@@ -305,12 +305,6 @@
                 gl.drawArrays(gl.TRIANGLES, 0, 6);
             }
 
-            // initial offset to show interesting region
-            offsetX = 1.5;
-            offsetY = -1.0;
-            updateUniforms();
-
-            // continuous redraw (handles resize without event)
             function loop() {
                 draw();
                 requestAnimationFrame(loop);
