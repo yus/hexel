@@ -93,8 +93,9 @@
             // --- fragment shader: barycentric grid without derivatives ---
             // Anti-aliasing is achieved via smoothstep with a fixed pixel footprint
             // approximated by scaling factor based on zoom level.
+            // --- fragment shader: barycentric grid with analytic anti-aliasing ---
             // Uses derivatives for pixel-perfect, stable hairlines at any zoom.
-            const string fsSource = `
+            const fsSource = `
                 #extension GL_OES_standard_derivatives : enable
                 precision highp float;
                 
