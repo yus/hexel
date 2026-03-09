@@ -3,262 +3,296 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>⚡ BARYCENTRIC ∞ · 2px HAIRLINES · ZOOM OPTIMIZED</title>
+    <title>✨ SPHERICAL {3,6} · BARYCENTRIC GIZMO · SCHLÄFLI</title>
     <style>
         * {
+            margin: 0;
+            padding: 0;
             box-sizing: border-box;
             user-select: none;
-            -webkit-tap-highlight-color: transparent;
         }
         body {
-            margin: 0;
+            background: #0a0c1a;
             overflow: hidden;
-            background: #0a0c14;
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', monospace;
-            font-weight: 500;
-            font-size: 12px;
+            font-family: 'SF Mono', 'Inter', monospace;
         }
         canvas {
             display: block;
             width: 100vw;
             height: 100vh;
-            background: radial-gradient(circle at 50% 50%, #141824, #0a0c14);
+            background: radial-gradient(circle at 30% 30%, #1a1f35, #0a0c1a);
         }
-        /* Ultra-compact glass panel */
-        #panel {
+        #info {
             position: fixed;
-            bottom: 16px;
+            bottom: 24px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(10, 15, 25, 0.85);
-            backdrop-filter: blur(12px) saturate(180%);
-            -webkit-backdrop-filter: blur(12px) saturate(180%);
-            border: 0.5px solid rgba(255, 255, 255, 0.15);
-            border-radius: 40px;
-            padding: 6px 16px;
-            display: flex;
-            gap: 20px;
-            align-items: center;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 200, 255, 0.2) inset;
-            z-index: 100;
+            background: rgba(10, 15, 30, 0.7);
+            backdrop-filter: blur(10px);
+            -webkit-backdrop-filter: blur(10px);
+            border: 1px solid rgba(100, 180, 255, 0.3);
+            border-radius: 60px;
+            padding: 12px 28px;
             color: #eef;
-            font-size: 13px;
-            letter-spacing: 0.3px;
+            font-size: 15px;
+            letter-spacing: 1px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5), 0 0 30px rgba(70, 130, 255, 0.3);
+            z-index: 100;
             white-space: nowrap;
         }
-        #panel .badge {
-            background: linear-gradient(135deg, #2a3f5f, #1a2a40);
-            padding: 4px 12px;
-            border-radius: 30px;
-            font-weight: 700;
+        #info .symbol {
             color: #9cf;
-            border: 0.5px solid #4af;
-            font-size: 12px;
-            text-shadow: 0 0 5px #4af8;
+            font-weight: 700;
+            margin-right: 12px;
+            text-shadow: 0 0 10px #6af;
         }
-        #panel .ctrl {
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        #panel .ctrl label {
-            opacity: 0.7;
-            font-size: 10px;
-            text-transform: uppercase;
-            letter-spacing: 0.8px;
-            font-weight: 600;
-        }
-        #panel .ctrl input[type=range] {
-            width: 80px;
-            height: 4px;
-            background: rgba(255,255,255,0.1);
-            border-radius: 4px;
-            -webkit-appearance: none;
-        }
-        #panel .ctrl input[type=range]::-webkit-slider-thumb {
-            -webkit-appearance: none;
-            width: 14px;
-            height: 14px;
-            background: white;
-            border-radius: 14px;
-            box-shadow: 0 0 10px #4af;
-            border: 2px solid #4af;
-            cursor: pointer;
-        }
-        #panel .ctrl span {
-            min-width: 40px;
-            text-align: center;
-            font-family: monospace;
-            font-size: 12px;
-            color: #bfe;
-        }
-        #panel .perf {
-            background: rgba(0, 200, 100, 0.2);
-            border-radius: 30px;
-            padding: 4px 14px;
-            color: #9fe;
-            border: 0.5px solid #2e8;
-            font-weight: 600;
-            display: flex;
-            align-items: center;
-            gap: 8px;
-        }
-        #panel .perf .value {
-            color: white;
-            background: rgba(0,0,0,0.3);
-            padding: 2px 8px;
-            border-radius: 20px;
-            font-size: 12px;
+        #info .param {
+            margin: 0 12px;
+            color: #bfa;
         }
         #status {
             position: fixed;
-            top: 16px;
-            right: 16px;
-            background: rgba(0, 0, 0, 0.5);
-            backdrop-filter: blur(8px);
-            border-radius: 30px;
-            padding: 6px 16px;
-            font-family: monospace;
+            top: 24px;
+            right: 24px;
+            background: rgba(0,0,0,0.4);
+            backdrop-filter: blur(5px);
+            border-radius: 40px;
+            padding: 8px 18px;
+            color: #9f9;
+            border: 1px solid #4a8;
             font-size: 13px;
-            color: #afa;
-            border: 0.5px solid #4a8;
+            font-family: monospace;
             z-index: 100;
-            letter-spacing: 0.5px;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.5);
         }
-        #hint {
+        #controls {
             position: fixed;
-            top: 16px;
-            left: 16px;
-            background: rgba(30, 30, 40, 0.6);
-            backdrop-filter: blur(8px);
-            border-radius: 30px;
-            padding: 4px 14px;
-            font-size: 11px;
-            color: #acf;
-            border: 0.5px solid #57c;
+            top: 24px;
+            left: 24px;
+            background: rgba(20, 25, 45, 0.7);
+            backdrop-filter: blur(10px);
+            border-radius: 40px;
+            padding: 10px 22px;
+            display: flex;
+            gap: 24px;
+            border: 1px solid rgba(255,255,255,0.15);
+            color: white;
+            font-size: 13px;
             z-index: 100;
         }
-        @media (max-width: 700px) {
-            #panel { gap: 10px; padding: 4px 12px; }
-            #panel .ctrl input[type=range] { width: 50px; }
+        #controls .slider {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        #controls input {
+            width: 100px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid #357;
+            border-radius: 20px;
+            height: 6px;
+            -webkit-appearance: none;
+        }
+        #controls input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 16px;
+            border: 2px solid #6af;
+            box-shadow: 0 0 15px #6af;
+            cursor: pointer;
+        }
+        #controls span {
+            min-width: 40px;
+            color: #adf;
         }
     </style>
 </head>
 <body>
-    <div id="hint">🖱️ drag · ⚡ scroll · ∞ procedural grid</div>
-    <div id="status">⚡ <span id="fps">60</span> fps · <span id="tri">∞</span> triangles</div>
+    <div id="status">⚡ 60 fps · {3,6} spherical tiling</div>
     
-    <div id="panel">
-        <div class="badge">BARYCENTRIC ∞</div>
-        <div class="ctrl">
-            <label>SIZE</label>
-            <input type="range" id="size" min="0.8" max="2.5" step="0.01" value="1.5">
-            <span id="sizeVal">1.50</span>
+    <div id="controls">
+        <div class="slider">
+            <label>TESSELATION</label>
+            <input type="range" id="tess" min="0.3" max="2.0" step="0.01" value="1.0">
+            <span id="tessVal">1.00</span>
         </div>
-        <div class="ctrl">
-            <label>GAP</label>
-            <input type="range" id="gap" min="0.0" max="0.15" step="0.002" value="0.06">
-            <span id="gapVal">0.060</span>
-        </div>
-        <div class="ctrl">
+        <div class="slider">
             <label>LINE</label>
-            <input type="range" id="line" min="1.0" max="3.0" step="0.1" value="2.0">
+            <input type="range" id="line" min="0.5" max="3.0" step="0.1" value="2.0">
             <span id="lineVal">2.0</span>
-        </div>
-        <div class="perf">
-            <span>🔋 ZOOM</span>
-            <span class="value" id="zoomLevel">1.0x</span>
         </div>
     </div>
 
-    <!-- VERTEX SHADER: fullscreen quad -->
-    <script type="x-shader/x-vertex" id="vs">
+    <div id="info">
+        <span class="symbol">{3,6}</span> SPHERICAL BARYCENTRIC GIZMO 
+        <span class="param">⟁ 6 triangles per vertex</span>
+        <span class="param">⭔ 60° angles</span>
+    </div>
+
+    <script id="vs" type="x-shader/x-vertex">
         attribute vec2 aPos;
-        varying vec2 vWorldPos;
+        varying vec3 vRayDir;
         
         uniform vec2 uResolution;
-        uniform vec2 uPan;
-        uniform float uZoom;
+        uniform float uTime;
         
         void main() {
             gl_Position = vec4(aPos, 0.0, 1.0);
+            
+            // Generate ray direction for spherical mapping
             vec2 uv = aPos * 0.5 + 0.5;
-            vec2 pixelPos = uv * uResolution;
-            vec2 worldPos = (pixelPos - uPan) / uZoom;
-            vWorldPos = worldPos;
+            vec2 xy = uv * 2.0 - 1.0;
+            xy.x *= uResolution.x / uResolution.y; // aspect ratio
+            
+            // Map to sphere (stereographic projection style)
+            float r2 = xy.x * xy.x + xy.y * xy.y;
+            vec3 dir;
+            if (r2 < 1.0) {
+                // Project onto sphere
+                dir = vec3(xy * 2.0, 1.0 - r2) / (1.0 + r2);
+            } else {
+                // Fallback
+                dir = normalize(vec3(xy, 1.0));
+            }
+            
+            vRayDir = normalize(dir);
         }
     </script>
 
-    <!-- FRAGMENT SHADER: infinite barycentric grid -->
-    <script type="x-shader/x-fragment" id="fs">
+    <script id="fs" type="x-shader/x-fragment">
         precision highp float;
         
-        varying vec2 vWorldPos;
+        varying vec3 vRayDir;
         
-        uniform float uSize;
-        uniform float uGap;
-        uniform float uLine;
         uniform float uTime;
-        uniform float uZoom;
+        uniform float uTess;
+        uniform float uLine;
         uniform vec2 uResolution;
         
-        const mat2 rot = mat2(0.86602540378, -0.5, 0.5, 0.86602540378);
+        // Rotate around Y axis for animation
+        vec3 rotateY(vec3 v, float angle) {
+            float ca = cos(angle);
+            float sa = sin(angle);
+            return vec3(ca * v.x + sa * v.z, v.y, -sa * v.x + ca * v.z);
+        }
         
-        float hash(vec2 p) {
-            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        // Rotate around X axis
+        vec3 rotateX(vec3 v, float angle) {
+            float ca = cos(angle);
+            float sa = sin(angle);
+            return vec3(v.x, ca * v.y - sa * v.z, sa * v.y + ca * v.z);
+        }
+        
+        // Barycentric coordinates on spherical triangle
+        vec3 sphericalBarycentric(vec3 p, float tess) {
+            // Scale by tessellation factor
+            p *= tess;
+            
+            // Generate hexagonal grid on sphere using {3,6} tiling
+            // We'll use an icosahedral approach but with 6 triangles per vertex
+            
+            // Convert to spherical coordinates
+            float theta = atan(p.z, p.x);
+            float phi = asin(p.y);
+            
+            // Map to hexagonal tiling on sphere
+            // This is a {3,6} tiling - triangles, 6 around each vertex
+            
+            // Create 6 sectors around equator
+            float sector = floor((theta + 3.14159) / 1.04719755); // 60°
+            float sectorAngle = sector * 1.04719755;
+            
+            // Rotate into first sector
+            float c = cos(sectorAngle);
+            float s = sin(sectorAngle);
+            vec3 pRot = vec3(c * p.x - s * p.z, p.y, s * p.x + c * p.z);
+            
+            // Project onto tangent plane for barycentric calculation
+            float r = length(pRot);
+            vec3 norm = pRot / r;
+            
+            // Stereographic projection to plane
+            float x = norm.x / (1.0 + norm.y);
+            float z = norm.z / (1.0 + norm.y);
+            
+            // Now in equilateral triangle coordinates
+            float sqrt3 = 1.7320508;
+            
+            // Barycentric distances to triangle edges
+            float d1 = (z + 0.5) * 1.5;  // bottom edge
+            float d2 = (x * 0.8660254 - z * 0.5 + 0.5) * 1.5;  // left edge
+            float d3 = (-x * 0.8660254 - z * 0.5 + 0.5) * 1.5; // right edge
+            
+            vec3 bary = vec3(d1, d2, d3);
+            
+            // Normalize
+            bary = max(bary, 0.0);
+            float sum = bary.x + bary.y + bary.z;
+            if (sum > 0.0) {
+                bary /= sum;
+            } else {
+                bary = vec3(0.333);
+            }
+            
+            return bary;
+        }
+        
+        // HSV to RGB for vibrant colors
+        vec3 hsv2rgb(vec3 c) {
+            vec4 K = vec4(1.0, 2.0 / 3.0, 1.0 / 3.0, 3.0);
+            vec3 p = abs(fract(vec3(c.x) + K.xyz) * 6.0 - K.www);
+            return c.z * mix(K.xxx, clamp(p - K.xxx, 0.0, 1.0), c.y);
         }
         
         void main() {
-            vec2 p = rot * vWorldPos / uSize;
+            // Rotate ray direction for animation
+            vec3 dir = vRayDir;
+            dir = rotateY(dir, uTime * 0.2);
+            dir = rotateX(dir, sin(uTime * 0.3) * 0.3);
             
-            // hex grid
-            vec2 hexPos = vec2(p.x * 2.0, p.y * 2.0 / 1.7320508);
-            vec2 hexIndex = floor(hexPos);
+            // Get barycentric coordinates on spherical tiling
+            vec3 bary = sphericalBarycentric(dir, uTess);
             
-            // triangle sector
-            float angle = atan(p.y, p.x);
-            float sector = floor((angle + 3.14159) / 1.04719755);
-            float sectorAngle = sector * 1.04719755;
-            
-            float c = cos(sectorAngle);
-            float s = sin(sectorAngle);
-            vec2 pRot = vec2(c * p.x - s * p.y, s * p.x + c * p.y);
-            
-            // barycentric distances
-            float d1 = pRot.y + 0.288675;
-            float d2 = (pRot.x * 0.8660254 - pRot.y * 0.5) + 0.288675;
-            float d3 = (-pRot.x * 0.8660254 - pRot.y * 0.5) + 0.288675;
-            
-            vec3 bary = max(vec3(d1, d2, d3), 0.0);
-            float sum = bary.x + bary.y + bary.z;
-            if (sum > 0.0) bary /= sum;
-            else bary = vec3(0.333);
-            
+            // Minimum distance to edge (for lines)
             float minDist = min(bary.x, min(bary.y, bary.z));
             
-            // adaptive line width (2px hairlines)
-            float lineWorld = uLine / uZoom;
-            float gapWorld = uGap / uZoom;
+            // Adaptive line width (screen space)
+            float lineWidth = uLine / uResolution.y * 2.0;
+            float grid = 1.0 - smoothstep(0.0, lineWidth, minDist);
             
-            float grid = 1.0 - smoothstep(0.0, lineWorld, minDist);
-            float gap = smoothstep(0.0, gapWorld, minDist);
+            // Generate vibrant colors based on barycentric + position
+            float hue1 = fract(bary.x * 0.7 + uTime * 0.1);
+            float hue2 = fract(bary.y * 0.7 + uTime * 0.1 + 0.33);
+            float hue3 = fract(bary.z * 0.7 + uTime * 0.1 + 0.67);
             
-            // barycentric coloring
-            vec3 c1 = vec3(1.0, 0.2, 0.2);
-            vec3 c2 = vec3(0.2, 1.0, 0.2);
-            vec3 c3 = vec3(0.2, 0.2, 1.0);
+            vec3 color1 = hsv2rgb(vec3(hue1, 0.9, 1.0));
+            vec3 color2 = hsv2rgb(vec3(hue2, 0.9, 1.0));
+            vec3 color3 = hsv2rgb(vec3(hue3, 0.9, 1.0));
             
-            vec3 color = bary.x * c1 + bary.y * c2 + bary.z * c3;
-            color *= (0.7 + 0.3 * hash(hexIndex));
+            vec3 color = bary.x * color1 + bary.y * color2 + bary.z * color3;
             
-            color = mix(color, vec3(0.0), (1.0 - gap) * 0.4);
-            color = mix(color, vec3(1.0), grid);
+            // Add sparkle at vertices (where minDist is very small)
+            float sparkle = exp(-minDist * 50.0) * 0.5;
             
-            if (minDist < 0.001 / uZoom) color = vec3(1.0);
+            // Mix with grid lines
+            color = mix(color, vec3(1.0), grid * 0.8 + sparkle * 0.5);
             
-            vec2 uv = gl_FragCoord.xy / uResolution;
-            color *= (1.0 - 0.2 * length(uv - 0.5));
+            // Add glow based on barycentric values
+            float glow = sin(bary.x * 20.0 + uTime) * 0.1 + 
+                         sin(bary.y * 20.0 + uTime * 1.3) * 0.1 + 
+                         sin(bary.z * 20.0 + uTime * 1.7) * 0.1;
+            color += glow * 0.2;
+            
+            // Background fade at edges
+            float edge = abs(dot(dir, vec3(0.0, 1.0, 0.0)));
+            edge = pow(edge, 0.5);
+            color *= (0.5 + 0.5 * edge);
+            
+            // Vignette
+            vec2 uv = gl_FragCoord.xy / uResolution.xy;
+            float vig = 1.0 - 0.3 * length(uv - 0.5);
+            color *= vig;
             
             gl_FragColor = vec4(color, 1.0);
         }
@@ -268,16 +302,14 @@
         (function() {
             "use strict";
             
-            // ========== WEBGL SETUP ==========
+            // Setup WebGL
             const canvas = document.createElement('canvas');
             document.body.appendChild(canvas);
             
             const gl = canvas.getContext('webgl', {
                 antialias: true,
                 depth: false,
-                stencil: false,
                 alpha: false,
-                preserveDrawingBuffer: false,
                 powerPreference: "high-performance"
             });
             
@@ -286,26 +318,21 @@
                 return;
             }
             
-            // ========== STATE OBJECT (NO REDECLARATIONS) ==========
+            // State
             const State = {
-                pan: [0, 0],
-                zoom: 60.0,
-                size: 1.5,
-                gap: 0.06,
+                tess: 1.0,
                 line: 2.0,
-                dragging: false,
-                lastMouse: [0, 0]
+                time: 0
             };
             
-            // ========== COMPILE SHADERS ==========
+            // Compile shaders
             function compileShader(type, sourceId) {
                 const source = document.getElementById(sourceId).text;
                 const shader = gl.createShader(type);
                 gl.shaderSource(shader, source);
                 gl.compileShader(shader);
-                
                 if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-                    console.error('Shader compile error:', gl.getShaderInfoLog(shader));
+                    console.error(gl.getShaderInfoLog(shader));
                     return null;
                 }
                 return shader;
@@ -320,42 +347,41 @@
             gl.linkProgram(program);
             gl.useProgram(program);
             
-            // ========== FULLSCREEN QUAD ==========
-            const vertices = new Float32Array([
-                -1, -1, 1, -1, -1, 1,
-                -1, 1, 1, -1, 1, 1
-            ]);
-            
-            const vertexBuffer = gl.createBuffer();
-            gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+            // Fullscreen quad
+            const vertices = new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]);
+            const buffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
             gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
             
             const aPos = gl.getAttribLocation(program, 'aPos');
             gl.enableVertexAttribArray(aPos);
             gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
             
-            // ========== UNIFORM LOCATIONS (DIFFERENT NAMES FROM STATE) ==========
-            const uniformLocs = {
+            // Uniforms
+            const uniforms = {
                 resolution: gl.getUniformLocation(program, 'uResolution'),
-                pan: gl.getUniformLocation(program, 'uPan'),
-                zoom: gl.getUniformLocation(program, 'uZoom'),
-                size: gl.getUniformLocation(program, 'uSize'),
-                gap: gl.getUniformLocation(program, 'uGap'),
-                line: gl.getUniformLocation(program, 'uLine'),
-                time: gl.getUniformLocation(program, 'uTime')
+                time: gl.getUniformLocation(program, 'uTime'),
+                tess: gl.getUniformLocation(program, 'uTess'),
+                line: gl.getUniformLocation(program, 'uLine')
             };
             
-            // ========== UI ELEMENTS ==========
-            const sizeSlider = document.getElementById('size');
-            const gapSlider = document.getElementById('gap');
+            // UI
+            const tessSlider = document.getElementById('tess');
             const lineSlider = document.getElementById('line');
-            const sizeVal = document.getElementById('sizeVal');
-            const gapVal = document.getElementById('gapVal');
+            const tessVal = document.getElementById('tessVal');
             const lineVal = document.getElementById('lineVal');
-            const zoomLevel = document.getElementById('zoomLevel');
-            const fpsSpan = document.getElementById('fps');
             
-            // ========== RESIZE ==========
+            tessSlider.addEventListener('input', (e) => {
+                State.tess = parseFloat(e.target.value);
+                tessVal.textContent = State.tess.toFixed(2);
+            });
+            
+            lineSlider.addEventListener('input', (e) => {
+                State.line = parseFloat(e.target.value);
+                lineVal.textContent = State.line.toFixed(1);
+            });
+            
+            // Resize
             function resize() {
                 canvas.width = window.innerWidth;
                 canvas.height = window.innerHeight;
@@ -364,110 +390,41 @@
             resize();
             window.addEventListener('resize', resize);
             
-            // ========== INPUT ==========
-            canvas.addEventListener('mousedown', (e) => {
-                State.dragging = true;
-                State.lastMouse = [e.clientX, e.clientY];
-                canvas.style.cursor = 'grabbing';
-            });
-            
-            window.addEventListener('mousemove', (e) => {
-                if (!State.dragging) return;
-                const dx = e.clientX - State.lastMouse[0];
-                const dy = e.clientY - State.lastMouse[1];
-                State.pan[0] += dx;
-                State.pan[1] += dy;
-                State.lastMouse = [e.clientX, e.clientY];
-            });
-            
-            window.addEventListener('mouseup', () => {
-                State.dragging = false;
-                canvas.style.cursor = 'default';
-            });
-            
-            canvas.addEventListener('wheel', (e) => {
-                e.preventDefault();
-                const delta = e.deltaY > 0 ? 0.9 : 1.1;
-                State.zoom = Math.max(15, Math.min(300, State.zoom * delta));
-                zoomLevel.textContent = (State.zoom / 60).toFixed(1) + 'x';
-            }, { passive: false });
-            
-            // Touch
-            canvas.addEventListener('touchstart', (e) => {
-                e.preventDefault();
-                if (e.touches.length === 1) {
-                    State.dragging = true;
-                    State.lastMouse = [e.touches[0].clientX, e.touches[0].clientY];
-                }
-            });
-            
-            canvas.addEventListener('touchmove', (e) => {
-                e.preventDefault();
-                if (State.dragging && e.touches.length === 1) {
-                    const dx = e.touches[0].clientX - State.lastMouse[0];
-                    const dy = e.touches[0].clientY - State.lastMouse[1];
-                    State.pan[0] += dx;
-                    State.pan[1] += dy;
-                    State.lastMouse = [e.touches[0].clientX, e.touches[0].clientY];
-                }
-            });
-            
-            canvas.addEventListener('touchend', (e) => e.preventDefault());
-            
-            // ========== UI CONTROLS ==========
-            sizeSlider.addEventListener('input', (e) => {
-                State.size = parseFloat(e.target.value);
-                sizeVal.textContent = State.size.toFixed(2);
-            });
-            
-            gapSlider.addEventListener('input', (e) => {
-                State.gap = parseFloat(e.target.value);
-                gapVal.textContent = State.gap.toFixed(3);
-            });
-            
-            lineSlider.addEventListener('input', (e) => {
-                State.line = parseFloat(e.target.value);
-                lineVal.textContent = State.line.toFixed(1);
-            });
-            
-            // ========== PERFORMANCE MONITOR ==========
+            // FPS counter
             let frameCount = 0;
             let lastTime = performance.now();
+            const fpsSpan = document.querySelector('#status');
             
-            // ========== RENDER LOOP ==========
+            // Render loop
             function render(now) {
-                now *= 0.001;
+                now *= 0.001; // seconds
                 
                 // FPS
                 frameCount++;
-                const currentTime = performance.now();
-                if (currentTime - lastTime >= 1000) {
-                    fpsSpan.textContent = frameCount;
+                const current = performance.now();
+                if (current - lastTime >= 1000) {
+                    fpsSpan.innerHTML = `⚡ ${frameCount} fps · {3,6} spherical tiling`;
                     frameCount = 0;
-                    lastTime = currentTime;
+                    lastTime = current;
                 }
                 
-                // Update uniforms (using uniformLocs object)
-                gl.uniform2f(uniformLocs.resolution, canvas.width, canvas.height);
-                gl.uniform2f(uniformLocs.pan, State.pan[0], State.pan[1]);
-                gl.uniform1f(uniformLocs.zoom, State.zoom);
-                gl.uniform1f(uniformLocs.size, State.size);
-                gl.uniform1f(uniformLocs.gap, State.gap);
-                gl.uniform1f(uniformLocs.line, State.line);
-                gl.uniform1f(uniformLocs.time, now);
+                // Update uniforms
+                gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+                gl.uniform1f(uniforms.time, now);
+                gl.uniform1f(uniforms.tess, State.tess);
+                gl.uniform1f(uniforms.line, State.line);
                 
-                // Clear and draw
-                gl.clearColor(0.03, 0.03, 0.07, 1.0);
+                // Clear with deep space color
+                gl.clearColor(0.05, 0.05, 0.12, 1.0);
                 gl.clear(gl.COLOR_BUFFER_BIT);
+                
+                // Draw
                 gl.drawArrays(gl.TRIANGLES, 0, 6);
                 
                 requestAnimationFrame(render);
             }
             
             requestAnimationFrame(render);
-            
-            // Initial values
-            zoomLevel.textContent = '1.0x';
         })();
     </script>
 </body>
