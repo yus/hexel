@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>hexagon graph · barycentric grid</title>
+    <title>equilateral triangle tiling · like refgrid</title>
     <style>
         * {
             box-sizing: border-box;
@@ -45,7 +45,7 @@
         }
         
         .title-section {
-            min-width: 180px;
+            min-width: 200px;
         }
         
         .title-main {
@@ -58,14 +58,6 @@
             font-size: 10px;
             color: #8a92a6;
             margin-top: 2px;
-        }
-        
-        .vertex-badge {
-            display: flex;
-            gap: 8px;
-            font-size: 11px;
-            color: #ffd966;
-            margin-top: 4px;
         }
         
         .group {
@@ -130,8 +122,8 @@
     <div id="header">
         <div class="header-content">
             <div class="title-section">
-                <div class="title-main">HEXAGON GRAPH</div>
-                <div class="vertex-badge">O · A · B · C · D · E · F</div>
+                <div class="title-main">EQUILATERAL TRIANGLE TILING</div>
+                <div class="title-sub">like Wikimedia · refgrid orientation</div>
             </div>
             
             <div class="group">
@@ -143,15 +135,15 @@
                 
                 <div class="param-row">
                     <span class="param-label">GAP</span>
-                    <input type="range" id="gap-slider" min="0.0" max="0.8" value="0.2" step="0.01">
-                    <span class="value-display" id="gap-value">0.20</span>
+                    <input type="range" id="gap-slider" min="0.0" max="0.5" value="0.15" step="0.01">
+                    <span class="value-display" id="gap-value">0.15</span>
                 </div>
             </div>
         </div>
     </div>
     
     <div class="hint">
-        ⚡ zoom · 🖱️ pan · grid matches hexagon vertices A-F and center O
+        ⚡ zoom · 🖱️ pan · classic equilateral triangle tiling
     </div>
 
     <script>
@@ -187,7 +179,7 @@
                 }
             `;
             
-            // Fragment shader - matches hexagon vertices A-F and center O
+            // Fragment shader - classic equilateral triangle tiling
             const fsSource = `
                 precision highp float;
                 
@@ -195,7 +187,7 @@
                 
                 uniform vec2 uOffset;
                 uniform float uScale;
-                uniform float uHexSize;
+                uniform float uTriSize;
                 uniform float uGap;
                 uniform vec2 uResolution;
                 uniform float uAspect;
@@ -206,51 +198,55 @@
                     p.x *= uAspect;
                     p += uOffset;
                     
-                    // Scale to hexagon size
-                    p /= uHexSize;
+                    // Scale to triangle size
+                    p /= uTriSize;
                     
-                    // Define the six vertices of the hexagon (from Python code)
-                    // A (1,0), B (0.5,0.866), C (-0.5,0.866)
-                    // D (-1,0), E (-0.5,-0.866), F (0.5,-0.866)
-                    // O (0,0) center
-                    
-                    // For barycentric grid, we need three axes through O:
-                    // Axis 1: through A and D (horizontal)
-                    // Axis 2: through B and E (60° and 240°)
-                    // Axis 3: through C and F (120° and 300°)
-                    
+                    // For equilateral triangle tiling, we use a rhombus grid
+                    // with basis vectors at 60°
                     const float sqrt3 = 1.7320508;
                     const float halfSqrt3 = 0.8660254;
                     
-                    // Transform to coordinates along the three axes
-                    // This matches the hexagon vertex positions exactly
-                    float u = p.x;                                // A-D axis (horizontal)
-                    float v = p.y / halfSqrt3 + p.x * 0.5;        // B-E axis
-                    float w = -u - v;                              // C-F axis
+                    // Transform to grid coordinates
+                    // This creates the classic tiling seen in the Wikimedia image
+                    float x = p.x;
+                    float y = p.y;
                     
-                    // Get fractional parts for grid lines
-                    float fu = fract(u);
-                    float fv = fract(v);
-                    float fw = fract(w);
+                    // Grid coordinates (like axial coordinates for hex grid)
+                    float u = x - y * 0.5;
+                    float v = y * 0.8660254;
                     
-                    // Distance to each set of grid lines (0 at lines, 0.5 at centers)
-                    float du = min(fu, 1.0 - fu);
-                    float dv = min(fv, 1.0 - fv);
-                    float dw = min(fw, 1.0 - fw);
+                    // Get integer cell and fractional position
+                    float i = floor(u);
+                    float j = floor(v);
+                    float fu = u - i;
+                    float fv = v - j;
                     
-                    // Scale to 0-1 range
-                    float d1 = du * 2.0;
-                    float d2 = dv * 2.0;
-                    float d3 = dw * 2.0;
+                    // Determine which triangle we're in within each rhombus
+                    // This creates the alternating up/down triangles
+                    float triType = step(fu + fv, 1.0); // 0 for lower, 1 for upper
+                    
+                    // Barycentric coordinates within the triangle
+                    vec3 bary;
+                    if (fu + fv < 1.0) {
+                        // Lower triangle (pointing up)
+                        bary = vec3(1.0 - fu - fv, fu, fv);
+                    } else {
+                        // Upper triangle (pointing down)
+                        float fu2 = 1.0 - fu;
+                        float fv2 = 1.0 - fv;
+                        bary = vec3(1.0 - fu2 - fv2, fu2, fv2);
+                    }
+                    
+                    // Distance to triangle edges
+                    float minDist = min(bary.x, min(bary.y, bary.z));
                     
                     // Apply gap
-                    float minDist = min(min(d1, d2), d3);
                     float gapAdjusted = minDist - uGap;
                     
                     // Screen-space antialiasing
                     vec2 worldPerPixel = vec2(2.0 * uScale / uResolution.x, 2.0 * uScale / uResolution.y);
-                    float deriv = length(worldPerPixel) * 1.5 / uHexSize;
-                    float pixelWidth = 0.8 * deriv;
+                    float deriv = length(worldPerPixel) * 1.5 / uTriSize;
+                    float pixelWidth = 1.2 * deriv;
                     
                     // Grid intensity
                     float grid;
@@ -260,23 +256,19 @@
                         grid = smoothstep(0.0, pixelWidth, gapAdjusted);
                     }
                     
-                    // Color based on position in hexagon
-                    vec3 color1 = vec3(0.2, 0.22, 0.28);
-                    vec3 color2 = vec3(0.75, 0.8, 0.9);
-                    
-                    // Create pattern that highlights the six triangles around O
-                    float angle = atan(p.y, p.x);
-                    float sector = floor(angle / 3.14159 * 3.0 + 6.5) - 6.0;
-                    float pattern = fract(sector * 0.5);
-                    
+                    // Alternate colors for triangles to make tiling visible
+                    float pattern = mod(i + j, 2.0);
+                    vec3 color1 = vec3(0.75, 0.8, 0.9);  // light
+                    vec3 color2 = vec3(0.6, 0.65, 0.8);  // medium
                     vec3 baseColor = mix(color1, color2, pattern);
                     
-                    // Add center highlight at O
-                    float centerDist = length(p);
-                    float centerGlow = exp(-centerDist * 3.0) * 0.3;
+                    // Add subtle variation based on triangle orientation
+                    if (triType < 0.5) {
+                        baseColor *= 1.05; // slightly brighter for up triangles
+                    }
                     
                     // Final color
-                    vec3 finalColor = mix(vec3(0.05, 0.05, 0.08), baseColor + centerGlow, grid);
+                    vec3 finalColor = mix(vec3(0.08, 0.08, 0.12), baseColor, grid);
                     
                     // Gamma
                     finalColor = pow(finalColor, vec3(1.0/2.2));
@@ -313,7 +305,7 @@
             // Uniforms
             const uOffset = gl.getUniformLocation(program, 'uOffset');
             const uScale = gl.getUniformLocation(program, 'uScale');
-            const uHexSize = gl.getUniformLocation(program, 'uHexSize');
+            const uTriSize = gl.getUniformLocation(program, 'uTriSize');
             const uGap = gl.getUniformLocation(program, 'uGap');
             const uResolution = gl.getUniformLocation(program, 'uResolution');
             const uAspect = gl.getUniformLocation(program, 'uAspect');
@@ -321,8 +313,8 @@
             // State
             let offsetX = 0.0, offsetY = 0.0;
             let scale = 3.0;
-            let hexSize = 1.5;
-            let gap = 0.2;
+            let triSize = 1.5;
+            let gap = 0.15;
             
             let isDragging = false;
             let lastX = 0, lastY = 0;
@@ -331,7 +323,7 @@
                 const aspect = canvas.width / canvas.height;
                 gl.uniform2f(uOffset, offsetX, offsetY);
                 gl.uniform1f(uScale, scale);
-                gl.uniform1f(uHexSize, hexSize);
+                gl.uniform1f(uTriSize, triSize);
                 gl.uniform1f(uGap, gap);
                 gl.uniform2f(uResolution, canvas.width, canvas.height);
                 gl.uniform1f(uAspect, aspect);
@@ -414,8 +406,8 @@
             
             // UI Controls
             document.getElementById('size-slider').addEventListener('input', (e) => {
-                hexSize = parseFloat(e.target.value);
-                document.getElementById('size-value').textContent = hexSize.toFixed(1);
+                triSize = parseFloat(e.target.value);
+                document.getElementById('size-value').textContent = triSize.toFixed(1);
                 updateUniforms();
             });
             
