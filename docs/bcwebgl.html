@@ -430,15 +430,13 @@
                     p.x *= uAspect;
                     p += uOffset;
                     
-                    // Center a hexel at origin for reference
-                    // This ensures we always have a visible hexagon at the center
-                    
                     // Apply rotations
                     p = rotate(p, uRotate);
                     
                     if (uVMode) {
-                        // In base orientation, A is at (1,0), D at (-1,0)
-                        // Already horizontal, so no rotation needed
+                        // VMode rotates so A—D is horizontal
+                        // In base orientation, A is at (1,0), D at (-1,0) - already horizontal
+                        // So VMode actually does nothing in this orientation
                     }
                     
                     // Define vertices of the base hexagon (from Python code)
@@ -449,18 +447,24 @@
                     float skew = uSkew * 0.8;
                     
                     // Skewed vertex positions
-                    vec2 A = vec2(1.0 + skew * 0.0, 0.0);
-                    vec2 B = vec2(0.5 + skew * 0.866, 0.866);
-                    vec2 C = vec2(-0.5 + skew * 0.866, 0.866);
-                    vec2 D = vec2(-1.0 + skew * 0.0, 0.0);
-                    vec2 E = vec2(-0.5 + skew * -0.866, -0.866);
-                    vec2 F = vec2(0.5 + skew * -0.866, -0.866);
+                    vec2 A = vec2(1.0, 0.0);
+                    vec2 B = vec2(0.5, 0.8660254);
+                    vec2 C = vec2(-0.5, 0.8660254);
+                    vec2 D = vec2(-1.0, 0.0);
+                    vec2 E = vec2(-0.5, -0.8660254);
+                    vec2 F = vec2(0.5, -0.8660254);
                     
-                    // CRITICAL: For A—D axis (reds), the grid lines must be parallel to the line through A and D
-                    // But the spacing must adapt to maintain the hexagon sides
+                    // Apply skew transformation to vertices
+                    // Skew matrix: [1, skew; 0, 1]
+                    A = vec2(A.x + skew * A.y, A.y);
+                    B = vec2(B.x + skew * B.y, B.y);
+                    C = vec2(C.x + skew * C.y, C.y);
+                    D = vec2(D.x + skew * D.y, D.y);
+                    E = vec2(E.x + skew * E.y, E.y);
+                    F = vec2(F.x + skew * F.y, F.y);
                     
-                    // Direction vectors for each axis
-                    vec2 dirAD = normalize(D - A);  // Should be horizontal
+                    // Direction vectors for each axis (through origin)
+                    vec2 dirAD = normalize(D - A);  // Should be roughly horizontal
                     vec2 dirBE = normalize(E - B);
                     vec2 dirCF = normalize(F - C);
                     
@@ -469,27 +473,32 @@
                     vec2 normalBE = vec2(dirBE.y, -dirBE.x);
                     vec2 normalCF = vec2(dirCF.y, -dirCF.x);
                     
-                    // Normalize normals
-                    normalAD = normalize(normalAD);
-                    normalBE = normalize(normalBE);
-                    normalCF = normalize(normalCF);
+                    // Calculate grid spacing based on vertex distances
+                    // For A—D axis, the distance between lines should be such that
+                    // vertices A and D lie on grid lines
+                    float distA_AD = dot(A, normalAD);
+                    float distD_AD = dot(D, normalAD);
+                    float spacingAD = abs(distA_AD - distD_AD) / 2.0;  // Divide by 2 to get half-period
                     
-                    // The grid spacing should be such that vertices lie at integer coordinates
-                    // For A—D axis, vertices A and D are 2 units apart, so grid spacing should be 2
-                    // But we want lines every 1 unit for the hexagon sides
+                    float distB_BE = dot(B, normalBE);
+                    float distE_BE = dot(E, normalBE);
+                    float spacingBE = abs(distB_BE - distE_BE) / 2.0;
+                    
+                    float distC_CF = dot(C, normalCF);
+                    float distF_CF = dot(F, normalCF);
+                    float spacingCF = abs(distC_CF - distF_CF) / 2.0;
+                    
+                    // FIX: Ensure spacing is never zero or too small
+                    if (spacingAD < 0.001) spacingAD = 1.0;
+                    if (spacingBE < 0.001) spacingBE = 1.0;
+                    if (spacingCF < 0.001) spacingCF = 1.0;
                     
                     // Calculate distances from point p to each axis through origin
                     float distAD = dot(p, normalAD);
                     float distBE = dot(p, normalBE);
                     float distCF = dot(p, normalCF);
                     
-                    // Adjust spacing based on vertex distances
-                    // The distance between A and D along normalAD is |dot(A, normalAD) - dot(D, normalAD)|
-                    float spacingAD = abs(dot(A, normalAD) - dot(D, normalAD));
-                    float spacingBE = abs(dot(B, normalBE) - dot(E, normalBE));
-                    float spacingCF = abs(dot(C, normalCF) - dot(F, normalCF));
-                    
-                    // Normalize distances by spacing to get grid coordinates
+                    // Convert to grid coordinates using adaptive spacing
                     float gridAD = abs(fract(distAD / spacingAD + 0.5) - 0.5) * 2.0;
                     float gridBE = abs(fract(distBE / spacingBE + 0.5) - 0.5) * 2.0;
                     float gridCF = abs(fract(distCF / spacingCF + 0.5) - 0.5) * 2.0;
@@ -515,7 +524,7 @@
                     float allLines = min(min(lineAD, lineBE), lineCF);
                     color = mix(vec3(0.02, 0.02, 0.03), color, allLines);
                     
-                    // Gamma
+                    // Gamma correction
                     color = pow(color, vec3(1.0/2.2));
                     
                     gl_FragColor = vec4(color, 1.0);
