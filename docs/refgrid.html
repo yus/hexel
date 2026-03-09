@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>divided triangle grid · 90° vertex diagonals</title>
+    <title>equilateral triangle tiling · yellow/blue</title>
     <style>
         * {
             box-sizing: border-box;
@@ -40,12 +40,12 @@
             align-items: center;
             gap: 40px;
             width: 100%;
-            max-width: 1400px;
+            max-width: 1200px;
             margin: 0 auto;
         }
         
         .title-section {
-            min-width: 240px;
+            min-width: 200px;
         }
         
         .title-main {
@@ -122,8 +122,8 @@
     <div id="header">
         <div class="header-content">
             <div class="title-section">
-                <div class="title-main">DIVIDED TRIANGLE GRID</div>
-                <div class="title-sub">90° vertex diagonals · each triangle split in two</div>
+                <div class="title-main">EQUILATERAL TRIANGLE TILING</div>
+                <div class="title-sub">yellow · blue edges · red vertices</div>
             </div>
             
             <div class="group">
@@ -135,21 +135,15 @@
                 
                 <div class="param-row">
                     <span class="param-label">GAP</span>
-                    <input type="range" id="gap-slider" min="0.0" max="0.3" value="0.05" step="0.01">
-                    <span class="value-display" id="gap-value">0.05</span>
-                </div>
-                
-                <div class="param-row">
-                    <span class="param-label">DIAG</span>
-                    <input type="range" id="diag-slider" min="0.0" max="1.0" value="0.5" step="0.01">
-                    <span class="value-display" id="diag-value">0.50</span>
+                    <input type="range" id="gap-slider" min="0.0" max="0.5" value="0.0" step="0.01">
+                    <span class="value-display" id="gap-value">0.00</span>
                 </div>
             </div>
         </div>
     </div>
     
     <div class="hint">
-        ⚡ zoom · 🖱️ pan · each triangle divided from 90° vertex · DIAG slider controls diagonal weight
+        ⚡ zoom · 🖱️ pan · exactly like SVG: yellow triangles, blue edges, red vertices
     </div>
 
     <script>
@@ -185,7 +179,7 @@
                 }
             `;
             
-            // Fragment shader - triangles divided by diagonal from 90° vertex
+            // Fragment shader - exact match of the SVG
             const fsSource = `
                 precision highp float;
                 
@@ -195,9 +189,14 @@
                 uniform float uScale;
                 uniform float uTriSize;
                 uniform float uGap;
-                uniform float uDiagWeight;  // Controls visibility of diagonal lines
                 uniform vec2 uResolution;
                 uniform float uAspect;
+                
+                // SVG colors
+                const vec3 YELLOW = vec3(0.988, 0.816, 0.0); // #fcd000
+                const vec3 BLUE = vec3(0.239, 0.239, 0.976); // #3d3df9
+                const vec3 RED = vec3(0.98, 0.184, 0.184); // #fa2f2f
+                const vec3 BG = vec3(1.0, 1.0, 1.0); // white background
                 
                 void main() {
                     // World position with aspect correction
@@ -212,9 +211,10 @@
                     const float sqrt3 = 1.73205080757;
                     const float halfSqrt3 = 0.86602540378;
                     
-                    // Transform to grid coordinates
+                    // Transform to match SVG orientation
+                    // SVG shows triangles pointing up/down in a grid
                     float x = p.x;
-                    float y = p.y / halfSqrt3;  // Correct aspect for equilateral
+                    float y = p.y / halfSqrt3;
                     
                     // Grid coordinates for triangle tiling
                     float u = x;
@@ -229,106 +229,60 @@
                     // Determine which triangle we're in
                     bool isLower = (fu + fv) < 1.0;
                     
-                    // Barycentric coordinates for the base triangle
+                    // Barycentric coordinates for the triangle
                     vec3 bary;
                     if (isLower) {
-                        // Lower triangle (pointing up)
+                        // Lower triangle (pointing up in SVG)
                         bary = vec3(1.0 - fu - fv, fu, fv);
                     } else {
-                        // Upper triangle (pointing down)
+                        // Upper triangle (pointing down in SVG)
                         float fu2 = 1.0 - fu;
                         float fv2 = 1.0 - fv;
                         bary = vec3(1.0 - fu2 - fv2, fu2, fv2);
                     }
                     
-                    // Distance to triangle edges (original triangle)
+                    // Distance to triangle edges (0 at edges)
                     float minDist = min(bary.x, min(bary.y, bary.z));
                     
-                    // NOW ADD THE DIAGONAL FROM THE 90° VERTEX
-                    // In an equilateral triangle, the 90° vertex doesn't exist naturally
-                    // But we can create a diagonal line from one vertex to the opposite edge
-                    
-                    // For each triangle, we want a line from the vertex where bary.x = 1
-                    // to the midpoint of the opposite edge (where bary.y = bary.z = 0.5)
-                    
-                    // This creates a line that splits the triangle into two smaller triangles
-                    
-                    // Compute distance to this diagonal line
-                    float diagDist = 1.0;
-                    
-                    if (isLower) {
-                        // For lower triangle, vertex at (1,0,0) is the top vertex
-                        // The opposite edge is between (0,1,0) and (0,0,1)
-                        // Midpoint of that edge is at (0, 0.5, 0.5)
-                        
-                        // Parameterize the diagonal: from (1,0,0) to (0,0.5,0.5)
-                        // In barycentric space, this is a line where bary.x goes from 1 to 0,
-                        // and bary.y and bary.z go from 0 to 0.5 each
-                        
-                        // Distance to this line in barycentric space
-                        // We can compute using the fact that on the line, bary.y == bary.z
-                        // So distance = abs(bary.y - bary.z)
-                        diagDist = abs(bary.y - bary.z);
-                    } else {
-                        // For upper triangle, the geometry is different
-                        // The vertex at (1,0,0) in the transformed coordinates
-                        // is actually the bottom vertex of the upper triangle
-                        float baryY = bary.y;
-                        float baryZ = bary.z;
-                        diagDist = abs(baryY - baryZ);
-                    }
-                    
-                    // Scale diagonal distance to be comparable to edge distances
-                    diagDist = diagDist * 2.0;
+                    // Apply gap (if any)
+                    float gapAdjusted = minDist - uGap;
                     
                     // Screen-space antialiasing
                     vec2 worldPerPixel = vec2(2.0 * uScale / uResolution.x, 2.0 * uScale / uResolution.y);
                     float deriv = length(worldPerPixel) * 1.5 / uTriSize;
-                    float pixelWidth = 1.2 * deriv;
+                    float pixelWidth = 1.5 * deriv;
                     
-                    // Combine original triangle edges with diagonal
-                    // uDiagWeight controls how prominent the diagonal is (0-1)
-                    float edgeDist = minDist - uGap;
-                    float diagEffective = diagDist - (uGap * 0.5);
-                    
-                    // Grid intensity: 0 on lines, 1 elsewhere
-                    float grid = 1.0;
-                    
-                    if (edgeDist < 0.0) {
-                        grid = 0.0;
+                    // Edge detection (0 = on edge, 1 = inside triangle)
+                    float edge;
+                    if (gapAdjusted < 0.0) {
+                        edge = 0.0;
                     } else {
-                        // Smoothstep for original edges
-                        grid = smoothstep(0.0, pixelWidth, edgeDist);
+                        edge = smoothstep(0.0, pixelWidth, gapAdjusted);
                     }
                     
-                    // Blend in diagonal lines
-                    if (diagEffective < 0.0) {
-                        // Diagonal line is active - mix based on weight
-                        grid = min(grid, 1.0 - uDiagWeight);
-                    } else {
-                        float diagFactor = smoothstep(0.0, pixelWidth, diagEffective);
-                        grid = min(grid, mix(diagFactor, 1.0, 1.0 - uDiagWeight));
+                    // Fill triangles with yellow
+                    vec3 color = YELLOW;
+                    
+                    // Draw blue edges where edge < 1
+                    if (edge < 1.0) {
+                        // Mix yellow and blue at edges
+                        float edgeIntensity = 1.0 - edge;
+                        color = mix(color, BLUE, edgeIntensity);
                     }
                     
-                    // Color scheme
-                    float pattern = mod(i + j, 2.0);
-                    vec3 color1 = vec3(0.75, 0.8, 0.9);
-                    vec3 color2 = vec3(0.6, 0.65, 0.8);
-                    vec3 baseColor = mix(color1, color2, pattern);
-                    
-                    // Add variation for the two subtriangles
-                    if (diagDist < 0.3) {
-                        // Near the diagonal, slightly different color
-                        baseColor = mix(baseColor, vec3(0.8, 0.85, 0.95), 0.2);
+                    // Add red vertices at triangle corners
+                    // A vertex is where two barycentric coordinates are near 0
+                    float vertexDist = min(min(bary.x, bary.y), bary.z);
+                    if (vertexDist < pixelWidth * 2.0) {
+                        // This is a vertex - make it red
+                        float vertexIntensity = 1.0 - smoothstep(0.0, pixelWidth * 2.0, vertexDist);
+                        color = mix(color, RED, vertexIntensity);
                     }
                     
-                    // Final color
-                    vec3 finalColor = mix(vec3(0.08, 0.08, 0.12), baseColor, grid);
+                    // Gamma correction for accurate colors
+                    color = pow(color, vec3(1.0/2.2));
                     
-                    // Gamma
-                    finalColor = pow(finalColor, vec3(1.0/2.2));
-                    
-                    gl_FragColor = vec4(finalColor, 1.0);
+                    gl_FragColor = vec4(color, 1.0);
                 }
             `;
             
@@ -362,7 +316,6 @@
             const uScale = gl.getUniformLocation(program, 'uScale');
             const uTriSize = gl.getUniformLocation(program, 'uTriSize');
             const uGap = gl.getUniformLocation(program, 'uGap');
-            const uDiagWeight = gl.getUniformLocation(program, 'uDiagWeight');
             const uResolution = gl.getUniformLocation(program, 'uResolution');
             const uAspect = gl.getUniformLocation(program, 'uAspect');
             
@@ -370,8 +323,7 @@
             let offsetX = 0.0, offsetY = 0.0;
             let scale = 3.0;
             let triSize = 1.5;
-            let gap = 0.05;
-            let diagWeight = 0.5;
+            let gap = 0.0;
             
             let isDragging = false;
             let lastX = 0, lastY = 0;
@@ -382,7 +334,6 @@
                 gl.uniform1f(uScale, scale);
                 gl.uniform1f(uTriSize, triSize);
                 gl.uniform1f(uGap, gap);
-                gl.uniform1f(uDiagWeight, diagWeight);
                 gl.uniform2f(uResolution, canvas.width, canvas.height);
                 gl.uniform1f(uAspect, aspect);
                 draw();
@@ -472,12 +423,6 @@
             document.getElementById('gap-slider').addEventListener('input', (e) => {
                 gap = parseFloat(e.target.value);
                 document.getElementById('gap-value').textContent = gap.toFixed(2);
-                updateUniforms();
-            });
-            
-            document.getElementById('diag-slider').addEventListener('input', (e) => {
-                diagWeight = parseFloat(e.target.value);
-                document.getElementById('diag-value').textContent = diagWeight.toFixed(2);
                 updateUniforms();
             });
         })();
