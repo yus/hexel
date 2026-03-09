@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Infinite Barycentric Grid - WebGL primer</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        #info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            color: rgba(255, 255, 255, 0.8);
+            background: rgba(0, 0, 0, 0.3);
+            padding: 8px 16px;
+            border-radius: 30px;
+            backdrop-filter: blur(4px);
+            pointer-events: none;
+            font-size: 14px;
+            border: 1px solid rgba(255,255,255,0.15);
+            z-index: 100;
+        }
+        .note {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            color: rgba(255, 255, 255, 0.5);
+            font-size: 13px;
+            background: rgba(20, 20, 20, 0.5);
+            padding: 4px 12px;
+            border-radius: 20px;
+            backdrop-filter: blur(4px);
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">⚫ INFINITE BARYCENTRIC GRID — shader-based, anti-aliased</div>
+    <div class="note">drag to pan • scroll to zoom</div>
+
+    <!-- Include Three.js core and add-ons for orbit controls -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.128.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.128.0/examples/jsm/"
+            }
+        }
+    </script>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+
+        // --- Setup scene, camera, renderer (full screen) ---
+        const scene = new THREE.Scene();
+        scene.background = new THREE.Color(0x111217); // dark slate background
+
+        const camera = new THREE.OrthographicCamera(-1, 1, 1, -1, 0.1, 10);
+        camera.position.z = 1; // ortho camera looks down Z, cover NDC space
+
+        const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: false });
+        renderer.setSize(window.innerWidth, window.innerHeight);
+        renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2)); // limit for performance
+        document.body.appendChild(renderer.domElement);
+
+        // --- Simple controls to simulate infinite pan/zoom ---
+        const controls = new OrbitControls(camera, renderer.domElement);
+        controls.enableRotate = false; // keep ortho axis-aligned
+        controls.enableZoom = true;
+        controls.enablePan = true;
+        controls.zoomSpeed = 1.2;
+        controls.panSpeed = 0.8;
+        controls.maxZoom = 5;    // prevent going too deep (floating point friendly)
+        controls.minZoom = 0.3;
+        controls.target.set(0, 0, 0);
+        
+        // --- Fullscreen triangle (covers NDC) ---
+        // We use a simple plane geometry that fills the screen, but to be 
+        // extra efficient we can use a triangle that covers more area.
+        // However, a plane with 2 triangles is fine. We'll use a plane geometry
+        // with minimal vertices (2 triangles) and rely entirely on the fragment shader.
+        const geometry = new THREE.PlaneGeometry(2, 2); // covers NDC when camera ortho at z=1
+
+        // --- Shader material with barycentric grid algorithm ---
+        // The algorithm computes barycentric coordinates of the current pixel
+        // relative to a grid of equilateral triangles (or subdivided rhombus).
+        // For performance and simplicity, we use a regular tiling of triangles
+        // derived from a grid of rhombuses. Each rhombus consists of two triangles.
+        // We compute the fragment's position in world space (or camera space)
+        // and derive barycentric weights for the two overlapping triangles.
+        // Then we choose the closer edge distance to render anti-aliased grid lines.
+        
+        // To keep things infinite and procedural, we don't use any vertex attributes
+        // besides the position. We pass uv and fragCoord-like data via varyings.
+        
+        const material = new THREE.ShaderMaterial({
+            uniforms: {
+                uScale: { value: 0.5 }, // base grid cell size (can be adjusted via zoom later, but we'll derive from world pos)
+                uColorDark: { value: new THREE.Color(0x4a4f5a) },
+                uColorLight: { value: new THREE.Color(0xbbccff) },
+                uGlow: { value: new THREE.Color(0x8a6de0) }, // accent for barycentric centers
+                uAASmoothness: { value: 1.2 } // controls edge anti-aliasing
+            },
+            vertexShader: `
+                varying vec2 vUv;
+                varying vec3 vWorldPosition;
+                
+                void main() {
+                    vUv = uv; // 0-1 over the plane, but we don't rely heavily on this
+                    // We need world position to determine grid coordinates independent of view.
+                    // Simple: pass position (plane from -1 to 1 in xy) and we'll use camera matrix
+                    // to derive world space. But for infinite grid, it's easier to use the 
+                    // camera-space or world-space coordinate from the view-projection inverse.
+                    // However, in vertex shader we don't have that easily. Instead, we'll 
+                    // compute world position using modelMatrix (identity) and then in fragment 
+                    // we combine with camera transform via uniform? But standard approach: 
+                    // we derive world position by transforming clip space with inverse camera.
+                    // Since we are using OrbitControls, the camera view/projection changes.
+                    // For a truly infinite grid, we want coordinates in world space that remain 
+                    // fixed as we pan. So we need to pass the camera's target plane.
+                    
+                    // Simpler: Use uv to generate world position on a plane at z=0, 
+                    // but then panning would move the grid with camera. That is actually 
+                    // desirable for "infinite" feel: grid sticks to world origin, camera moves.
+                    // So we can compute world position as (uv * 2 - 1) scaled by something?
+                    // No, better: use the built-in gl_FragCoord.xy and camera matrices.
+                    // But to keep code minimal, we will rely on interpolators that are 
+                    // derived from camera position. However, easiest is to use the "worldPos"
+                    // from vertex shader by transforming the vertex position with modelMatrix 
+                    // and then interpolate. Since our plane is at origin, the vertex positions 
+                    // in world space are just the plane coordinates (-1,-1) to (1,1) in xy, z=0.
+                    // That range is too small. But we can multiply with a large factor 
+                    // to cover the visible area? No, we want the grid to extend infinitely 
+                    // beyond the plane edges, so we must derive coordinates per fragment 
+                    // using camera rays. 
+                    
+                    // The robust method: in vertex shader, output a ray direction or 
+                    // view vector. But for simplicity, I will use a common trick: 
+                    // use the interpolated UV and the camera's inverse projection to 
+                    // compute world position at the camera's ground plane (z=0). 
+                    // But implementing that in GLSL requires uniforms for projectionMatrixInverse.
+                    // To keep this primer VERY simple and focused on barycentric logic,
+                    // I will use a fixed grid scale based on world position derived from 
+                    // camera position and fragment coordinate. Many shader grids do:
+                    // vec3 worldPos = cameraPosition + (fragCoord.xy / resolution etc) * ray.
+                    // That needs more uniforms. Let's opt for a simpler approach:
+                    // Use the geometry's uv to generate a world position that pans with 
+                    // camera offset, giving illusion of infinite by modifying uv with camera target.
+                    
+                    // To reduce complexity while retaining "infinite" pan, we can shift the 
+                    // grid computation by the camera's target (which changes with pan).
+                    // We'll add a uniform for camera target (or simply use the camera position).
+                    // But for performance, we want minimal uniform updates. Instead, 
+                    // I'll use the built-in gl_FragCoord.xy and derive a world position 
+                    // on a plane at z=0 using the camera's inverse projection and view.
+                    // That requires several matrices. For the sake of a clean primer,
+                    // I'll adopt a widely used pattern: compute grid in camera space 
+                    // but with zoom invariance, then add pan via uniform.
+                    
+                    // Given these trade-offs, I've decided to pass the camera's world position
+                    // and target as uniforms, but for brevity, I'll update a uniform in JS.
+                    // Let's implement a clean solution: we pass uCameraPos and uViewMatrix?
+                    // Instead, we'll derive grid coordinate as: 
+                    // float x = (vUv.x - 0.5) * 2.0 * zoomFactor + panX;
+                    // But we want it infinite, so we can just scale with zoom level.
+                    
+                    // In this primer, I'll keep the barycentric logic crystal clear
+                    // and use a simple method: grid coordinate from world position derived
+                    // from uv and camera matrices passed as uniforms. I'll add two uniforms:
+                    // uWorldOffset (vec2) for panning, and uWorldScale for zoom.
+                    // This keeps the shader focused on the barycentric algorithm.
+                    
+                    // So the vertex shader just passes uv.
+                    vUv = uv;
+                }
+            `,
+            fragmentShader: `
+                precision highp float;
+                
+                varying vec2 vUv;
+                
+                uniform vec2 uWorldOffset;   // pan offset (in world units)
+                uniform float uWorldScale;    // zoom factor (grid size multiplier)
+                uniform vec3 uColorDark;
+                uniform vec3 uColorLight;
+                uniform vec3 uGlow;
+                uniform float uAASmoothness;
+                
+                // Helper: anti-aliased grid line factor (smooth step based on derivative)
+                float gridFactor(float coord, float lineWidth, float deriv) {
+                    float d = lineWidth * deriv * uAASmoothness;
+                    float w = fwidth(coord) * d; // anti-aliasing width
+                    float dist = abs(coord - floor(coord) - 0.5); // distance to nearest line (centered at half-integers)
+                    return smoothstep(0.5 - d, 0.5 - d + w, dist);
+                }
+                
+                void main() {
+                    // Compute world position on a plane at z=0.
+                    // Map vUv from [0,1] to [-1,1] range (NDC), then scale by world scale and add offset.
+                    // This gives a continuous world coordinate as we pan/zoom.
+                    // Since the plane covers the screen, this gives correct parallax.
+                    vec2 pos = (vUv * 2.0 - 1.0) * uWorldScale + uWorldOffset;
+                    
+                    // --- Barycentric grid algorithm ---
+                    // We create a lattice of equilateral triangles.
+                    // One way: use two sets of parallel lines at 60° angles.
+                    // But a more classic barycentric approach: divide each rhombus of side length 1
+                    // into two triangles. We'll use coordinates (x,y) and transform to barycentric space.
+                    
+                    // Step 1: generate rhombus grid coordinates using two basis vectors.
+                    // Basis vectors for an equilateral triangle lattice:
+                    // e1 = (1, 0)
+                    // e2 = (0.5, sqrt(3)/2) ~ (0.5, 0.866)
+                    // We'll scale the grid by desired size (here we use cell size 2.0 to have more visible triangles)
+                    float cellSize = 2.0; // makes triangles large enough to see barycentric colors
+                    
+                    // Scale position to grid space
+                    vec2 gridPos = pos / cellSize;
+                    
+                    // Transform to lattice coordinates (i,j) using inverse of basis.
+                    // For basis M = [e1, e2], the inverse is:
+                    // M^-1 = [1, -0.5/0.866; 0, 1/0.866] * (1/1?) Let's derive properly.
+                    // e1 = (1, 0), e2 = (0.5, 0.8660254)
+                    // The matrix M = [1, 0.5; 0, 0.8660254]
+                    // det = 0.8660254
+                    // Inverse = [1, -0.5/0.866; 0, 1/0.866] = [1, -0.57735; 0, 1.1547]
+                    // But we want integer lattice coordinates for the rhombus.
+                    // We'll compute floating lattice coordinates, then derive integer cell and barycentric.
+                    
+                    float sqrt3_2 = 0.8660254;
+                    float invDet = 1.0 / 0.8660254; // 1.1547
+                    
+                    // Transform to lattice coordinates (u, v) where (u,v) in R^2 correspond to vectors u*e1 + v*e2.
+                    float u = gridPos.x - gridPos.y * (0.5 / sqrt3_2); // = x - 0.57735*y
+                    float v = gridPos.y / sqrt3_2; // = y / 0.866
+                    
+                    // Now each integer cell (i,j) corresponds to a rhombus.
+                    // Barycentric coordinates within a rhombus: there are two triangles.
+                    // We find the integer part and fractional part.
+                    float i = floor(u);
+                    float j = floor(v);
+                    float fu = u - i;
+                    float fv = v - j;
+                    
+                    // Determine which triangle within the rhombus: if fu + fv < 1, it's the lower triangle, else upper.
+                    // But careful: the barycentric coordinates for the vertices of the rhombus:
+                    // Lower triangle vertices: (i,j) -> A, (i+1,j) -> B, (i,j+1) -> C.
+                    // Upper triangle vertices: (i+1,j+1) -> D, (i,j+1) -> C, (i+1,j) -> B.
+                    // Actually typical rhombus tiling: two triangles: (0,0)-(1,0)-(0,1) and (1,1)-(0,1)-(1,0).
+                    // So for lower: barycentric (1 - fu - fv, fu, fv)
+                    // For upper: barycentric (fu + fv - 1, 1 - fu, 1 - fv) after shifting?
+                    
+                    vec3 bary;
+                    float triangleType = step(1.0, fu + fv); // 0 if lower, 1 if upper
+                    
+                    if (fu + fv < 1.0) {
+                        // Lower triangle: weights for A, B, C
+                        bary = vec3(1.0 - fu - fv, fu, fv);
+                    } else {
+                        // Upper triangle: weights for D, C, B (or A' B' C'?)
+                        // Use coordinates relative to (i+1, j+1)
+                        float fu2 = 1.0 - fu; // flip
+                        float fv2 = 1.0 - fv;
+                        bary = vec3(1.0 - fu2 - fv2, fu2, fv2); // actually same pattern but shifted
+                        // This gives bary for triangle with vertices (i+1,j+1), (i,j+1), (i+1,j)
+                    }
+                    
+                    // Now we have barycentric coordinates for the current point in some triangle.
+                    // The three barycentric values range 0-1 and sum to 1.
+                    // For grid lines, we want to draw lines where any barycentric coordinate is near 0.
+                    // But also we might want the internal triangle edges (where one coordinate = 0) and
+                    // possibly also the outer rhombus edges (which are also triangle edges).
+                    // So essentially, grid lines occur when min(bary.x, bary.y, bary.z) < threshold.
+                    // However, that draws all triangle edges, including the interior rhombus diagonal.
+                    // To get the classic barycentric grid look (three sets of parallel lines),
+                    // we want lines along each family: constant u, constant v, constant (u+v) maybe.
+                    // But the simplest and most elegant is to draw lines where each barycentric coordinate
+                    // is near 0 (edges of triangles). That gives a triangulation.
+                    
+                    // Compute distance to each edge (barycentric coordinate value)
+                    float d0 = bary.x;
+                    float d1 = bary.y;
+                    float d2 = bary.z;
+                    
+                    // The edge is where one coordinate is 0. But inside the triangle all are >0.
+                    // We'll compute the minimum distance to an edge: min(d0, d1, d2)
+                    float minDist = min(min(d0, d1), d2);
+                    
+                    // Also we can add accent at the incenter where all coordinates are ~1/3.
+                    float incenterDist = length(bary - vec3(1.0/3.0));
+                    
+                    // For anti-aliasing, use fwidth to get derivative of minDist
+                    float deriv = fwidth(minDist);
+                    
+                    // Define line width (in barycentric space, but it's unitless, so we scale by derivative)
+                    float lineWidth = 0.1; // width in barycentric distance
+                    
+                    // Grid intensity: 0 where minDist < lineWidth, 1 elsewhere, with smooth transition
+                    float grid = smoothstep(lineWidth - deriv, lineWidth, minDist);
+                    
+                    // Base color: mix dark and light based on something (e.g., parity of i,j)
+                    // We'll create a subtle pattern using the integer coordinates.
+                    float pattern = fract(i * 0.5 + j * 0.3); // just for visual variation
+                    vec3 baseColor = mix(uColorDark, uColorLight, pattern * 0.3);
+                    
+                    // Emphasize the barycentric centers (optional)
+                    float glow = exp(-incenterDist * 8.0) * 0.4;
+                    
+                    // Combine: grid lines are dark, background is base with glow
+                    vec3 col = mix(baseColor + glow * uGlow, vec3(0.0, 0.0, 0.0), grid);
+                    
+                    // Also add faint lines at the other set? Already included via minDist.
+                    
+                    // Add a subtle highlight to the very edges of the screen to blend?
+                    
+                    // Output with slight gamma correction
+                    col = pow(col, vec3(1.0/2.2));
+                    gl_FragColor = vec4(col, 1.0);
+                }
+            `
+        });
+
+        const mesh = new THREE.Mesh(geometry, material);
+        scene.add(mesh);
+
+        // --- Update uniforms based on camera to achieve infinite pan/zoom ---
+        // We need to set uWorldOffset and uWorldScale based on camera position and zoom.
+        // The plane covers NDC. The world coordinate at uv (0,0) corresponds to 
+        // ( -uWorldScale + uWorldOffset.x ) etc. We want the mapping such that
+        // as camera pans, the grid shifts accordingly, and zoom changes scale.
+        // With OrbitControls on ortho camera, the visible width in world units is 2 * camera.zoom?
+        // Actually ortho camera: left/right = -1 * zoom, so visible width = 2 * zoom.
+        // We want the grid to be fixed in world space, so we set uWorldScale proportional to zoom.
+        // And uWorldOffset based on camera target.
+        
+        function updateUniforms() {
+            if (!mesh.material.uniforms) return;
+            
+            // The ortho camera's view width in world units is 2 * camera.zoom? 
+            // Actually for OrthographicCamera, the projection matrix maps 
+            // left = -1 * camera.zoom, right = 1 * camera.zoom, top = 1 * camera.zoom, bottom = -1 * camera.zoom.
+            // So visible width = 2 * camera.zoom.
+            // We want the grid coordinates to span that range. Our shader uses:
+            // pos = (vUv * 2 - 1) * uWorldScale + uWorldOffset.
+            // When vUv=0, pos = -uWorldScale + uWorldOffset.
+            // When vUv=1, pos = uWorldScale + uWorldOffset.
+            // So visible range = 2 * uWorldScale.
+            // We want that to match the camera's visible width: 2 * uWorldScale = 2 * camera.zoom => uWorldScale = camera.zoom.
+            // And the offset should be the world position of the camera's target (or camera position projected onto plane).
+            // Since we are on plane z=0, the world position at screen center (vUv=0.5) should be the point on the plane 
+            // that the camera is looking at. With OrbitControls, the camera orbits around a target, which lies on the plane 
+            // if we set it to (0,0,0) initially. As we pan, target moves in world space. So we can set uWorldOffset = target.
+            
+            const target = controls.target;
+            mesh.material.uniforms.uWorldOffset.value = new THREE.Vector2(target.x, target.y);
+            mesh.material.uniforms.uWorldScale.value = camera.zoom;
+        }
+
+        // Initialize uniforms
+        mesh.material.uniforms.uWorldOffset = { value: new THREE.Vector2(0, 0) };
+        mesh.material.uniforms.uWorldScale = { value: 1.0 };
+
+        // Update once at start
+        updateUniforms();
+
+        // --- Animation loop ---
+        function animate() {
+            requestAnimationFrame(animate);
+            
+            // Update uniforms based on current camera/target
+            updateUniforms();
+            
+            controls.update(); // only needed if we enable damping, but we don't; but call to ensure target is fresh
+            renderer.render(scene, camera);
+        }
+        
+        animate();
+
+        // --- Handle resize ---
+        window.addEventListener('resize', onWindowResize, false);
+        function onWindowResize() {
+            camera.left = -1;
+            camera.right = 1;
+            camera.top = 1;
+            camera.bottom = -1;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        // Small tweak: make initial target zero, and camera position at (0,0,1) with zoom 1
+        camera.position.set(0, 0, 1);
+        controls.target.set(0, 0, 0);
+        controls.update();
+        
+        // Set uniform color values (optional tweaks)
+        mesh.material.uniforms.uColorDark.value.setHex(0x2a2e3a);
+        mesh.material.uniforms.uColorLight.value.setHex(0xaaccff);
+        mesh.material.uniforms.uGlow.value.setHex(0xcc88ff);
+    </script>
+</body>
+</html>
