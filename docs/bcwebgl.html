@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>infinite barycentric grid · hairline control</title>
+    <title>infinite barycentric grid · full controls</title>
     <style>
         * {
             box-sizing: border-box;
@@ -30,7 +30,7 @@
             z-index: 100;
             display: flex;
             align-items: center;
-            padding: 0 40px;
+            padding: 0 30px;
             color: #e0e4f0;
             letter-spacing: 0.3px;
         }
@@ -39,10 +39,11 @@
         .header-content {
             display: flex;
             align-items: center;
-            gap: 60px;
+            gap: 40px;
             width: 100%;
-            max-width: 1400px;
+            max-width: 1600px;
             margin: 0 auto;
+            flex-wrap: wrap;
         }
         
         /* Title section */
@@ -50,60 +51,68 @@
             display: flex;
             flex-direction: column;
             gap: 4px;
+            min-width: 180px;
         }
         
         .title-main {
-            font-size: 22px;
+            font-size: 20px;
             font-weight: 400;
             color: white;
             letter-spacing: 1px;
         }
         
         .title-sub {
-            font-size: 13px;
+            font-size: 12px;
             color: #8892a6;
             font-weight: 400;
         }
         
-        /* Control section */
-        .control-section {
+        /* Control sections */
+        .control-group {
             display: flex;
             align-items: center;
-            gap: 30px;
+            gap: 24px;
             flex-wrap: wrap;
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            padding-left: 24px;
         }
         
-        /* Slider container - minimalist style */
-        .slider-container {
+        .control-item {
             display: flex;
-            align-items: center;
-            gap: 20px;
-            min-width: 300px;
+            flex-direction: column;
+            gap: 8px;
+            min-width: 180px;
         }
         
-        .slider-label {
+        .control-label {
             display: flex;
             align-items: center;
-            gap: 12px;
-            font-size: 14px;
+            gap: 10px;
+            font-size: 12px;
             color: #a0a8ba;
             text-transform: uppercase;
-            letter-spacing: 1px;
+            letter-spacing: 0.8px;
         }
         
-        .slider-label span {
+        .control-label span {
             color: white;
             font-weight: 500;
             background: rgba(255, 255, 255, 0.08);
-            padding: 4px 10px;
+            padding: 3px 10px;
             border-radius: 20px;
-            font-size: 15px;
+            font-size: 13px;
         }
         
-        /* Minimalist slider styling */
+        /* Slider styling */
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+        }
+        
         input[type=range] {
             -webkit-appearance: none;
-            width: 200px;
+            width: 160px;
             height: 1px;
             background: rgba(255, 255, 255, 0.2);
             border-radius: 0;
@@ -112,8 +121,8 @@
         
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 16px;
-            height: 16px;
+            width: 14px;
+            height: 14px;
             background: white;
             border: none;
             border-radius: 0;
@@ -126,31 +135,50 @@
         }
         
         input[type=range]::-moz-range-thumb {
-            width: 16px;
-            height: 16px;
+            width: 14px;
+            height: 14px;
             background: white;
             border: none;
             border-radius: 0;
             cursor: pointer;
         }
         
-        input[type=range]::-moz-range-track {
-            background: rgba(255, 255, 255, 0.2);
-            height: 1px;
-        }
-        
-        /* Value display */
         .value-display {
-            font-size: 15px;
+            font-size: 14px;
             color: white;
             background: rgba(255, 255, 255, 0.06);
-            padding: 6px 14px;
+            padding: 4px 12px;
             border-radius: 30px;
             font-weight: 500;
-            letter-spacing: 0.5px;
-            min-width: 60px;
+            min-width: 55px;
             text-align: center;
             border: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        /* Checkbox styling */
+        .checkbox-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-left: 10px;
+        }
+        
+        .checkbox-item label {
+            font-size: 13px;
+            color: #a0a8ba;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+            cursor: pointer;
+        }
+        
+        input[type=checkbox] {
+            width: 18px;
+            height: 18px;
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            border-radius: 2px;
+            cursor: pointer;
+            accent-color: white;
         }
         
         /* Status indicator */
@@ -158,7 +186,7 @@
             display: flex;
             align-items: center;
             gap: 8px;
-            font-size: 13px;
+            font-size: 12px;
             color: #7f8798;
             margin-left: auto;
         }
@@ -180,13 +208,13 @@
             height: calc(100vh - 150px);
         }
         
-        /* Small hint */
+        /* Hint */
         .hint {
             position: fixed;
             bottom: 20px;
             right: 20px;
             color: #8892a6;
-            font-size: 12px;
+            font-size: 11px;
             background: rgba(10, 12, 18, 0.6);
             backdrop-filter: blur(4px);
             padding: 6px 14px;
@@ -198,21 +226,55 @@
     </style>
 </head>
 <body>
-    <!-- Minimalist header panel 150px -->
+    <!-- Minimalist header panel 150px with three controls -->
     <div id="header">
         <div class="header-content">
             <div class="title-section">
                 <div class="title-main">BARYCENTRIC GRID</div>
-                <div class="title-sub">infinite · webgl · hairline</div>
+                <div class="title-sub">equilateral · 60° · webgl</div>
             </div>
             
-            <div class="control-section">
-                <div class="slider-container">
-                    <div class="slider-label">
-                        HAIRLINE <span id="value-preview">0.6</span>
+            <!-- Control Group 1: Hairline Width -->
+            <div class="control-group">
+                <div class="control-item">
+                    <div class="control-label">
+                        HAIRLINE <span id="hairline-preview">0.6</span>
                     </div>
-                    <input type="range" id="hairline-slider" min="0.1" max="1.0" step="0.01" value="0.6">
-                    <div class="value-display" id="slider-value">0.60</div>
+                    <div class="slider-row">
+                        <input type="range" id="hairline-slider" min="0.1" max="1.5" step="0.01" value="0.6">
+                        <div class="value-display" id="hairline-value">0.60</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Control Group 2: Vertical Shift / Diagonal Skew -->
+            <div class="control-group">
+                <div class="control-item">
+                    <div class="control-label">
+                        VERTICAL SHIFT <span id="shift-preview">0.0</span>
+                    </div>
+                    <div class="slider-row">
+                        <input type="range" id="shift-slider" min="-0.5" max="0.5" step="0.01" value="0.0">
+                        <div class="value-display" id="shift-value">0.00</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Control Group 3: Rotation Angle & Horizontal Mode -->
+            <div class="control-group">
+                <div class="control-item">
+                    <div class="control-label">
+                        ROTATION <span id="rotate-preview">0°</span>
+                    </div>
+                    <div class="slider-row">
+                        <input type="range" id="rotate-slider" min="0" max="360" step="1" value="0">
+                        <div class="value-display" id="rotate-value">0°</div>
+                    </div>
+                </div>
+                
+                <div class="checkbox-item">
+                    <input type="checkbox" id="horizontal-mode">
+                    <label for="horizontal-mode">HORIZONTAL MODE</label>
                 </div>
             </div>
             
@@ -223,7 +285,7 @@
         </div>
     </div>
     
-    <div class="hint">🖱️ drag to pan · ⚡ scroll to zoom · ⇢ slider controls hairline</div>
+    <div class="hint">🖱️ drag · ⚡ zoom · ⇢ hairline | shift | rotate | horizontal</div>
 
     <script>
         (function() {
@@ -264,7 +326,7 @@
                 }
             `;
 
-            // --- fragment shader with perfect 60-degree equilateral triangulation ---
+            // --- fragment shader with perfect 60-degree and all controls ---
             const fsSource = `
                 precision highp float;
                 
@@ -276,83 +338,93 @@
                 uniform vec3  uColorB;
                 uniform vec3  uEdgeColor;
                 uniform float uLineWidth;
+                uniform float uShift;        // Vertical shift / diagonal skew
+                uniform float uRotate;        // Rotation angle in radians
+                uniform bool  uHorizontalMode; // Horizontal mode toggle
                 uniform vec2  uResolution;
+                uniform float uAspect;        // Screen aspect ratio (width/height)
+                
+                // 2D rotation matrix
+                vec2 rotate(vec2 p, float angle) {
+                    float s = sin(angle);
+                    float c = cos(angle);
+                    return vec2(p.x * c - p.y * s, p.x * s + p.y * c);
+                }
                 
                 void main() {
-                    // World position on plane z=0
+                    // Base world position
                     vec2 p = (vUv * 2.0 - 1.0) * uScale + uOffset;
                     
+                    // Apply aspect correction to keep triangles equilateral on screen
+                    p.x *= uAspect;
+                    
+                    // Apply rotation
+                    p = rotate(p, uRotate);
+                    
+                    // Apply vertical shift (affects diagonal intersections)
+                    p.y += uShift * 2.0;
+                    
                     // Perfect 60-degree equilateral triangle grid
-                    // Basis vectors for equilateral triangles:
-                    // e1 = (1, 0)
-                    // e2 = (0.5, √3/2)
                     const float sqrt3 = 1.73205080757;
                     const float halfSqrt3 = 0.86602540378;
                     
-                    // Transform to barycentric coordinates using inverse matrix
-                    // For a perfect equilateral grid, we use three coordinates that sum to 0 or 1
+                    // Three axis directions at 60 degrees
                     float x = p.x;
                     float y = p.y;
                     
-                    // Three axis directions at 60 degrees:
-                    // u axis (0°): (1, 0)
-                    // v axis (60°): (0.5, √3/2)
-                    // w axis (120°): (-0.5, √3/2) = -(u + v)
-                    
                     // Convert to barycentric-like coordinates
-                    float u = x;
-                    float v = (y / halfSqrt3) - (x * 0.5);
-                    float w = -u - v;  // This ensures u + v + w = 0 in continuous space
+                    float u, v, w;
                     
-                    // Get integer cell and fractional parts for triangle selection
-                    float iu = floor(u);
-                    float iv = floor(v);
-                    float iw = floor(w);
+                    if (uHorizontalMode) {
+                        // Horizontal mode: align triangles with horizontal axis
+                        u = x;
+                        v = (y / halfSqrt3) - (x * 0.5);
+                        w = -u - v;
+                    } else {
+                        // Standard orientation
+                        u = x;
+                        v = (y / halfSqrt3) - (x * 0.5);
+                        w = -u - v;
+                        // Add 30-degree rotation for classic look
+                        float temp = u;
+                        u = u * 0.866 - v * 0.5;
+                        v = temp * 0.5 + v * 0.866;
+                        w = -u - v;
+                    }
                     
-                    // Fractional parts tell us where we are in the triangle
-                    float fu = u - iu;
-                    float fv = v - iv;
-                    float fw = w - iw;
+                    // Get fractional parts
+                    float fu = fract(u);
+                    float fv = fract(v);
+                    float fw = fract(w);
                     
-                    // Determine which sub-triangle we're in (there are 6 per hexagon)
-                    // But for barycentric grid, we want the three edge distances
-                    vec3 bary;
+                    // Distances to the three sets of parallel lines
+                    float du = min(fu, 1.0 - fu) * 2.0;
+                    float dv = min(fv, 1.0 - fv) * 2.0;
+                    float dw = min(fw, 1.0 - fw) * 2.0;
                     
-                    // For an equilateral triangle grid, each point has barycentric coordinates
-                    // relative to the three triangle edges. We can compute these from (u,v,w)
-                    // The magic: distance to each edge is min(fu, 1-fu, fv, 1-fv, fw, 1-fw) but oriented
+                    // Now du,dv,dw are 0 at edges, 1 at triangle centers
+                    float minDist = min(min(du, dv), dw);
                     
-                    // Better: compute distances to the three sets of parallel lines
-                    float du = abs(fu - 0.5);  // distance to nearest u-line
-                    float dv = abs(fv - 0.5);  // distance to nearest v-line
-                    float dw = abs(fw - 0.5);  // distance to nearest w-line
-                    
-                    // These give us the three edge distances (0 at lines, 0.5 in triangle centers)
-                    float d1 = min(du, 1.0 - du) * 2.0;
-                    float d2 = min(dv, 1.0 - dv) * 2.0;
-                    float d3 = min(dw, 1.0 - dw) * 2.0;
-                    
-                    // Now d1,d2,d3 are 0 at edges, 1 at triangle centers
-                    float minDist = min(min(d1, d2), d3);
-                    
-                    // --- Screen-space pixel calculation ---
+                    // Screen-space pixel calculation with aspect correction
                     vec2 worldPerPixel = vec2(2.0 * uScale / uResolution.x, 2.0 * uScale / uResolution.y);
-                    float deriv = length(worldPerPixel) * 1.2;  // Slightly adjusted factor
+                    float deriv = length(worldPerPixel) * 1.5;
                     
                     // Line width in screen pixels
                     float pixelWidth = uLineWidth * deriv;
                     
-                    // Invert so lines are dark (0 = line, 1 = background)
+                    // Invert so lines are dark
                     float line = smoothstep(0.0, pixelWidth, minDist);
                     
-                    // Triangle center glow using the barycentric coordinates
-                    float centerDist = length(vec3(d1, d2, d3) - vec3(1.0));
-                    float glow = exp(-centerDist * 4.0) * 0.3;
+                    // Triangle center glow
+                    float centerDist = length(vec3(du, dv, dw) - vec3(1.0));
+                    float glow = exp(-centerDist * 5.0) * 0.3;
                     
-                    // Subtle cell variation using integer coordinates
-                    float pattern = fract(iu * 0.5 + iv * 0.7 + iw * 0.3);
+                    // Cell variation using floor
+                    float iu = floor(u + 0.5);
+                    float iv = floor(v + 0.5);
+                    float pattern = fract(iu * 0.5 + iv * 0.7);
+                    
                     vec3 baseColor = mix(uColorA, uColorB, pattern * 0.3);
-                    
                     vec3 finalColor = mix(baseColor + glow * uColorB, uEdgeColor, line);
                     
                     // Gamma
@@ -403,15 +475,26 @@
             const uColorB = gl.getUniformLocation(program, 'uColorB');
             const uEdgeColor = gl.getUniformLocation(program, 'uEdgeColor');
             const uLineWidth = gl.getUniformLocation(program, 'uLineWidth');
+            const uShift = gl.getUniformLocation(program, 'uShift');
+            const uRotate = gl.getUniformLocation(program, 'uRotate');
+            const uHorizontalMode = gl.getUniformLocation(program, 'uHorizontalMode');
             const uResolution = gl.getUniformLocation(program, 'uResolution');
+            const uAspect = gl.getUniformLocation(program, 'uAspect');
 
             gl.uniform3f(uColorA, 0.15, 0.17, 0.22);
             gl.uniform3f(uColorB, 0.75, 0.85, 1.0);
             gl.uniform3f(uEdgeColor, 0.04, 0.04, 0.05);
             
-            // Initial line width - will be controlled by slider
+            // Initial values
             let currentLineWidth = 0.6;
+            let currentShift = 0.0;
+            let currentRotate = 0.0;
+            let currentHorizontalMode = false;
+            
             gl.uniform1f(uLineWidth, currentLineWidth);
+            gl.uniform1f(uShift, currentShift);
+            gl.uniform1f(uRotate, currentRotate * Math.PI / 180.0);
+            gl.uniform1i(uHorizontalMode, currentHorizontalMode ? 1 : 0);
 
             // --- interaction state ---
             let offsetX = 1.5, offsetY = -1.0;
@@ -420,9 +503,12 @@
             let lastMouseX = 0, lastMouseY = 0;
 
             function updateUniforms() {
+                const aspect = canvas.width / canvas.height;
+                
                 gl.uniform2f(uOffset, offsetX, offsetY);
                 gl.uniform1f(uScale, scale);
                 gl.uniform2f(uResolution, canvas.width, canvas.height);
+                gl.uniform1f(uAspect, aspect);
                 draw();
             }
 
@@ -489,7 +575,7 @@
             // --- resize ---
             function resizeCanvas() {
                 canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight - 150; // Subtract header height
+                canvas.height = window.innerHeight - 150;
                 gl.viewport(0, 0, canvas.width, canvas.height);
                 updateUniforms();
             }
@@ -509,27 +595,60 @@
             loop();
 
             // --- UI Controls ---
-            const slider = document.getElementById('hairline-slider');
-            const sliderValue = document.getElementById('slider-value');
-            const valuePreview = document.getElementById('value-preview');
+            // Hairline slider
+            const hairlineSlider = document.getElementById('hairline-slider');
+            const hairlineValue = document.getElementById('hairline-value');
+            const hairlinePreview = document.getElementById('hairline-preview');
             
-            // Update slider display and uniform
-            function updateHairline(value) {
-                const numValue = parseFloat(value).toFixed(2);
-                sliderValue.textContent = numValue;
-                valuePreview.textContent = numValue;
-                
-                // Update WebGL uniform
-                gl.uniform1f(uLineWidth, parseFloat(value));
-                draw(); // Immediate redraw
-            }
-            
-            slider.addEventListener('input', (e) => {
-                updateHairline(e.target.value);
+            hairlineSlider.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                hairlineValue.textContent = val.toFixed(2);
+                hairlinePreview.textContent = val.toFixed(2);
+                gl.uniform1f(uLineWidth, val);
+                draw();
             });
             
-            // Initialize display
-            updateHairline(currentLineWidth);
+            // Shift slider
+            const shiftSlider = document.getElementById('shift-slider');
+            const shiftValue = document.getElementById('shift-value');
+            const shiftPreview = document.getElementById('shift-preview');
+            
+            shiftSlider.addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                shiftValue.textContent = val.toFixed(2);
+                shiftPreview.textContent = val.toFixed(2);
+                gl.uniform1f(uShift, val);
+                draw();
+            });
+            
+            // Rotation slider
+            const rotateSlider = document.getElementById('rotate-slider');
+            const rotateValue = document.getElementById('rotate-value');
+            const rotatePreview = document.getElementById('rotate-preview');
+            
+            rotateSlider.addEventListener('input', (e) => {
+                const val = parseInt(e.target.value);
+                rotateValue.textContent = val + '°';
+                rotatePreview.textContent = val + '°';
+                gl.uniform1f(uRotate, val * Math.PI / 180.0);
+                draw();
+            });
+            
+            // Horizontal mode checkbox
+            const horizontalCheck = document.getElementById('horizontal-mode');
+            
+            horizontalCheck.addEventListener('change', (e) => {
+                gl.uniform1i(uHorizontalMode, e.target.checked ? 1 : 0);
+                draw();
+            });
+            
+            // Initialize displays
+            hairlineValue.textContent = currentLineWidth.toFixed(2);
+            hairlinePreview.textContent = currentLineWidth.toFixed(2);
+            shiftValue.textContent = currentShift.toFixed(2);
+            shiftPreview.textContent = currentShift.toFixed(2);
+            rotateValue.textContent = currentRotate + '°';
+            rotatePreview.textContent = currentRotate + '°';
         })();
     </script>
 </body>
