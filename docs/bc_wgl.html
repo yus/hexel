@@ -2,140 +2,315 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebGL Barycentric Grid - Fixed</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>⚡ BARYCENTRIC GRID · INFINITE · 2px HAIRLINES</title>
     <style>
+        * {
+            box-sizing: border-box;
+            user-select: none;
+            -webkit-tap-highlight-color: transparent;
+        }
         body {
             margin: 0;
             overflow: hidden;
-            font-family: 'Courier New', monospace;
-            background: #111;
-        }
-        #info {
-            position: absolute;
-            top: 20px;
-            left: 20px;
-            color: white;
-            background: rgba(0,0,0,0.8);
-            padding: 10px 20px;
-            border-radius: 4px;
-            pointer-events: none;
-            z-index: 10;
-            font-size: 14px;
-            border: 1px solid #00ffff;
-            box-shadow: 0 0 10px rgba(0,255,255,0.3);
-        }
-        #stats {
-            position: absolute;
-            top: 20px;
-            right: 20px;
-            color: #00ff00;
-            background: rgba(0,0,0,0.8);
-            padding: 10px 20px;
-            border-radius: 4px;
-            font-family: monospace;
-            font-size: 14px;
-            border: 1px solid #00ff00;
-            z-index: 10;
-            box-shadow: 0 0 10px rgba(0,255,0,0.3);
+            background: #0a0c14;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', monospace;
+            font-weight: 500;
+            font-size: 12px;
         }
         canvas {
             display: block;
-            background: #0a0a1a;
+            width: 100vw;
+            height: 100vh;
+            background: radial-gradient(circle at 50% 50%, #141824, #0a0c14);
         }
-        .error {
-            color: #ff5555;
-            background: rgba(0,0,0,0.9);
-            padding: 5px 10px;
-            border-radius: 4px;
+        /* Ultra-compact panel - glass morphism */
+        #panel {
+            position: fixed;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(10, 15, 25, 0.85);
+            backdrop-filter: blur(12px) saturate(180%);
+            -webkit-backdrop-filter: blur(12px) saturate(180%);
+            border: 0.5px solid rgba(255, 255, 255, 0.15);
+            border-radius: 40px;
+            padding: 6px 12px;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(0, 200, 255, 0.1) inset;
+            z-index: 100;
+            color: #eef;
+            font-size: 13px;
+            letter-spacing: 0.3px;
+            white-space: nowrap;
+        }
+        #panel .badge {
+            background: rgba(0, 200, 255, 0.2);
+            padding: 4px 10px;
+            border-radius: 30px;
+            font-weight: 600;
+            color: #8df;
+            border: 0.5px solid rgba(100, 200, 255, 0.3);
             font-size: 12px;
+        }
+        #panel .ctrl {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        #panel .ctrl label {
+            opacity: 0.6;
+            font-size: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        #panel .ctrl input {
+            width: 60px;
+            background: rgba(0, 0, 0, 0.3);
+            border: 0.5px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 4px 10px;
+            color: white;
+            font-family: monospace;
+            font-size: 12px;
+            font-weight: 500;
+            text-align: center;
+            outline: none;
+            transition: 0.2s;
+        }
+        #panel .ctrl input:focus {
+            border-color: #4af;
+            background: rgba(0, 0, 0, 0.5);
+            box-shadow: 0 0 0 2px rgba(64, 160, 255, 0.3);
+        }
+        #panel .perf {
+            background: rgba(0, 255, 100, 0.15);
+            border-radius: 20px;
+            padding: 4px 12px;
+            color: #8fe;
+            border: 0.5px solid rgba(100, 255, 150, 0.3);
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        #panel .perf span {
+            color: white;
+            font-weight: 400;
+        }
+        #status {
+            position: fixed;
+            top: 16px;
+            right: 16px;
+            background: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(4px);
+            border-radius: 30px;
+            padding: 6px 14px;
+            font-family: monospace;
+            font-size: 13px;
+            color: #afa;
+            border: 0.5px solid #4a8;
+            z-index: 100;
+            letter-spacing: 0.5px;
+        }
+        /* touch hint */
+        #hint {
+            position: fixed;
+            top: 16px;
+            left: 16px;
+            background: rgba(30, 30, 40, 0.6);
+            backdrop-filter: blur(4px);
+            border-radius: 30px;
+            padding: 4px 12px;
+            font-size: 11px;
+            color: #acf;
+            border: 0.5px solid #57c;
+            z-index: 100;
+        }
+        @media (max-width: 600px) {
+            #panel { font-size: 11px; gap: 8px; padding: 4px 8px; }
+            #panel .ctrl input { width: 50px; }
         }
     </style>
 </head>
 <body>
-    <div id="info">
-        <span style="color:#00ffff;">⚡ BARYCENTRIC GRID</span> | 6 triangles/hex | drag to pan | scroll to zoom
-    </div>
-    <div id="stats">
-        FPS: <span id="fps-count">0</span> | 
-        Tris: <span id="tri-count">0</span> | 
-        Hex: <span id="hex-count">0</span>
+    <div id="hint">🖱️ drag · ⚡ scroll · ∞ grid</div>
+    <div id="status">⚡ 60 fps · <span id="tri-count">0</span> tris (infinite)</div>
+    
+    <div id="panel">
+        <div class="badge">BARYCENTRIC ∞</div>
+        <div class="ctrl">
+            <label>SIZE</label>
+            <input type="range" id="sizeSlider" min="0.5" max="3.0" step="0.01" value="1.5">
+            <span id="sizeVal">1.50</span>
+        </div>
+        <div class="ctrl">
+            <label>GAP</label>
+            <input type="range" id="gapSlider" min="0.0" max="0.2" step="0.005" value="0.06">
+            <span id="gapVal">0.06</span>
+        </div>
+        <div class="ctrl">
+            <label>LINE</label>
+            <input type="range" id="lineSlider" min="0.5" max="2.5" step="0.1" value="2.0">
+            <span id="lineVal">2.0</span>
+        </div>
+        <div class="perf">
+            <span>🔋 ZOOM</span>
+            <span id="zoomPerf">1.0x</span>
+        </div>
     </div>
 
-    <script id="vertex-shader" type="x-shader/x-vertex">
-        attribute vec2 a_position;
-        attribute vec3 a_barycentric;
-        attribute float a_hexId;
+    <!-- VERTEX SHADER: infinite grid positioning -->
+    <script type="x-shader/x-vertex" id="vertShader">
+        attribute vec2 a_pos;          // 0,1,2,3 for quad
+        varying vec2 v_gridCoord;
+        varying vec2 v_viewCoord;
         
+        uniform vec2 u_resolution;
         uniform vec2 u_translation;
         uniform float u_scale;
-        uniform vec2 u_resolution;
-        
-        varying vec3 v_barycentric;
-        varying float v_hexId;
-        varying vec2 v_position;
         
         void main() {
-            vec2 pos = a_position * u_scale + u_translation;
+            // simple fullscreen quad
+            vec2 zeroToOne = a_pos * 0.5 + 0.5; // map [-1,1] to [0,1]
+            vec2 pixelPos = zeroToOne * u_resolution;
             
-            // Convert to clip space
-            vec2 zeroToOne = pos / u_resolution;
-            vec2 clipSpace = zeroToOne * 2.0 - 1.0;
+            // reverse map to world coordinate (infinite grid)
+            vec2 worldPos = (pixelPos - u_translation) / u_scale;
             
-            // Flip Y for WebGL
-            gl_Position = vec4(clipSpace.x, -clipSpace.y, 0.0, 1.0);
+            v_gridCoord = worldPos;
+            v_viewCoord = a_pos;
             
-            v_barycentric = a_barycentric;
-            v_hexId = a_hexId;
-            v_position = a_position;
+            gl_Position = vec4(a_pos, 0.0, 1.0);
         }
     </script>
 
-    <script id="fragment-shader" type="x-shader/x-fragment">
+    <!-- FRAGMENT SHADER: barycentric grid from world position -->
+    <script type="x-shader/x-fragment" id="fragShader">
         precision highp float;
         
-        varying vec3 v_barycentric;
-        varying float v_hexId;
-        varying vec2 v_position;
+        varying vec2 v_gridCoord;
         
-        uniform float u_time;
+        uniform float u_size;
         uniform float u_gap;
         uniform float u_line;
+        uniform float u_time;
+        uniform vec2 u_resolution;
+        uniform float u_zoomScale; // for adaptive line thickness
+        
+        // rotation by 30° for hex orientation
+        const mat2 rot = mat2(0.8660254, -0.5, 0.5, 0.8660254); // cos30, -sin30, sin30, cos30
+        
+        // from hexagon lattice to barycentric (3 distances)
+        vec3 barycentricFromHex(vec2 p, float size) {
+            // scale to hex size
+            p = p / size;
+            
+            // skew coordinates for hex grid
+            vec2 q = vec2(p.x * 2.0, p.y * 2.0 / 1.7320508); // 2/√3
+            
+            // find hex center indices
+            vec2 i = floor(q);
+            vec2 f = fract(q) - 0.5;
+            
+            // distance to three edges of triangle within hex
+            float d1 = abs(f.x - f.y);
+            float d2 = abs(f.x + 0.5);
+            float d3 = abs(f.y + 0.5);
+            
+            // we want barycentric coordinates (distances to edges of triangle)
+            // but we need to wrap to 6 triangles per hexagon
+            // use sector based on angle
+            vec2 hp = p;
+            float angle = atan(hp.y, hp.x);
+            float sector = floor((angle + 3.14159) / 1.04719755); // 60° = pi/3
+            
+            // rotate into first sector for calculation
+            float sectorAngle = 1.04719755 * sector;
+            mat2 rotSector = mat2(cos(sectorAngle), -sin(sectorAngle), sin(sectorAngle), cos(sectorAngle));
+            vec2 pRot = rotSector * hp;
+            
+            // now in triangle coordinates (equilateral triangle with base at bottom)
+            // barycentric: distances to three lines: y=0, y=√3 x, y=-√3 x + √3*size
+            float sqrt3 = 1.7320508;
+            float h = size * 0.8660254; // height of triangle
+            
+            // normalize to triangle height
+            vec2 pt = pRot / size;
+            
+            // three edge distances for equilateral triangle
+            float dA = pt.y + 0.288675; // distance to horizontal base (adjusted)
+            float dB = (pt.x * 0.8660254 - pt.y * 0.5) + 0.288675;
+            float dC = (-pt.x * 0.8660254 - pt.y * 0.5) + 0.288675;
+            
+            // clamp and normalize to 0-1 range within triangle
+            vec3 bary;
+            bary.x = clamp(dA, 0.0, 1.0);
+            bary.y = clamp(dB, 0.0, 1.0);
+            bary.z = clamp(dC, 0.0, 1.0);
+            
+            // ensure sum ~ 1 within triangle
+            float sum = bary.x + bary.y + bary.z;
+            if (sum > 0.0) {
+                bary /= sum;
+            }
+            
+            return bary;
+        }
         
         void main() {
-            // Find minimum barycentric coordinate (distance to edge)
-            float minDist = min(v_barycentric.x, min(v_barycentric.y, v_barycentric.z));
+            // get world position
+            vec2 pos = v_gridCoord;
             
-            // Grid lines
-            float lineWidth = u_line * 0.15;
-            float grid = 1.0 - smoothstep(0.0, lineWidth, minDist);
+            // apply rotation for hex orientation
+            pos = rot * pos;
             
-            // Generate vibrant colors based on barycentric coordinates
-            vec3 color1 = vec3(1.0, 0.2, 0.2); // Red
-            vec3 color2 = vec3(0.2, 1.0, 0.2); // Green  
-            vec3 color3 = vec3(0.2, 0.2, 1.0); // Blue
+            // get barycentric coordinates from infinite hex lattice
+            vec3 bary = barycentricFromHex(pos, u_size);
             
-            // Mix colors based on barycentric coordinates
-            vec3 triangleColor = v_barycentric.x * color1 + 
-                                v_barycentric.y * color2 + 
-                                v_barycentric.z * color3;
+            // minimum distance to any edge (barycentric coordinate)
+            float minDist = min(bary.x, min(bary.y, bary.z));
             
-            // Add variation based on hex ID
-            float hexVar = fract(v_hexId * 0.618) * 0.3 + 0.7;
-            triangleColor *= hexVar;
+            // adaptive line width: keep 2px thickness in screen space
+            float lineWidthWorld = u_line / u_zoomScale; // convert pixel line to world space
             
-            // Apply gap effect
-            float gapSize = u_gap * 2.0;
-            float edgeMask = 1.0 - smoothstep(0.0, gapSize, minDist);
-            triangleColor = mix(triangleColor, vec3(0.0), edgeMask * 0.5);
+            // grid line: where minDist < lineWidthWorld (edge proximity)
+            float gridLine = 1.0 - smoothstep(0.0, lineWidthWorld, minDist);
             
-            // Mix grid lines
-            vec3 finalColor = mix(triangleColor, vec3(0.9, 0.9, 1.0), grid);
+            // gap effect (dark edges)
+            float gapWorld = u_gap / u_zoomScale;
+            float gapMask = 1.0 - smoothstep(0.0, gapWorld, minDist);
             
-            // Add subtle edge highlight
-            if (minDist < 0.01) {
+            // base triangle color from barycentric (vibrant)
+            vec3 colorA = vec3(1.0, 0.2, 0.2); // red
+            vec3 colorB = vec3(0.2, 1.0, 0.2); // green
+            vec3 colorC = vec3(0.2, 0.2, 1.0); // blue
+            
+            // mix based on barycentric coordinates
+            vec3 triColor = bary.x * colorA + bary.y * colorB + bary.z * colorC;
+            
+            // hex index for variation (using floor of position)
+            float hexId = floor(pos.x * 0.5) + floor(pos.y * 0.3) * 10.0;
+            float variation = 0.7 + 0.3 * fract(hexId * 0.713);
+            triColor *= variation;
+            
+            // apply gap (darken edges)
+            triColor = mix(triColor, vec3(0.0), gapMask * 0.4);
+            
+            // apply grid line (white lines)
+            vec3 finalColor = mix(triColor, vec3(0.95, 0.95, 1.0), gridLine);
+            
+            // subtle highlight on exact edges
+            if (minDist < 0.001 / u_zoomScale) {
                 finalColor = vec3(1.0);
             }
+            
+            // vignette for style
+            vec2 uv = gl_FragCoord.xy / u_resolution.xy;
+            float vignette = 1.0 - 0.2 * length(uv - 0.5);
+            finalColor *= vignette;
             
             gl_FragColor = vec4(finalColor, 1.0);
         }
@@ -144,348 +319,218 @@
     <script>
         (function() {
             // ================================================
-            // CONFIGURATION
+            // ULTRA PERFORMANCE: SINGLE QUAD, INFINITE SHADER
             // ================================================
-            const CONFIG = {
-                HEX_SIZE: 1.5,
-                GAP: 0.08,
-                LINE_WIDTH: 0.9,
-                VISIBLE_RADIUS: 15,  // Reduced for 16-bit index safety
-            };
             
-            // ================================================
-            // WEBGL SETUP
-            // ================================================
-            let gl, canvas;
-            let program;
-            let vertexBuffer, indexBuffer;
-            let translation = [400, 300];
-            let scale = 25.0;
+            const canvas = document.createElement('canvas');
+            document.body.appendChild(canvas);
+            
+            // WebGL context with anti-aliasing
+            const gl = canvas.getContext('webgl', {
+                antialias: true,
+                depth: false,
+                stencil: false,
+                alpha: false,
+                preserveDrawingBuffer: false,
+                powerPreference: "high-performance"
+            });
+            
+            if (!gl) {
+                alert('WebGL required');
+                return;
+            }
+            
+            // ========== STATE ==========
+            let translation = [0, 0];
+            let scale = 50.0; // zoom
             let isDragging = false;
-            let lastMousePos = [0, 0];
+            let lastMouse = [0, 0];
             
-            // Performance monitoring
+            // UI elements
+            const sizeSlider = document.getElementById('sizeSlider');
+            const gapSlider = document.getElementById('gapSlider');
+            const lineSlider = document.getElementById('lineSlider');
+            const sizeVal = document.getElementById('sizeVal');
+            const gapVal = document.getElementById('gapVal');
+            const lineVal = document.getElementById('lineVal');
+            const zoomPerf = document.getElementById('zoomPerf');
+            const triCount = document.getElementById('tri-count');
+            
+            // Uniform values
+            let uSize = 1.5;
+            let uGap = 0.06;
+            let uLine = 2.0;
+            
+            // FPS counter
             let frameCount = 0;
             let lastTime = performance.now();
-            let fps = 0;
+            let fps = 60;
             
-            // Geometry data
-            let vertexData = [];
-            let indexData = [];
-            let triangleCount = 0;
-            let hexCount = 0;
-            
-            // ================================================
-            // GEOMETRY GENERATION (16-bit indices safe)
-            // ================================================
-            
-            function generateGrid() {
-                console.log("Generating grid geometry...");
-                vertexData = [];
-                indexData = [];
-                
-                const radius = CONFIG.VISIBLE_RADIUS;
-                hexCount = 0;
-                
-                // Pre-calculate hex centers
-                for (let j = -radius; j <= radius; j++) {
-                    for (let i = -radius; i <= radius; i++) {
-                        const centerX = CONFIG.HEX_SIZE * (i + j/2);
-                        const centerY = CONFIG.HEX_SIZE * (j * Math.sqrt(3)/2);
-                        
-                        // Generate 6 outer vertices
-                        const outerVerts = [];
-                        for (let k = 0; k < 6; k++) {
-                            const angle = k * Math.PI / 3;
-                            outerVerts.push({
-                                x: centerX + CONFIG.HEX_SIZE * Math.cos(angle),
-                                y: centerY + CONFIG.HEX_SIZE * Math.sin(angle)
-                            });
-                        }
-                        
-                        // Hex ID for color variation
-                        const hexId = (i * 7 + j * 31) / 100.0;
-                        
-                        // Generate 6 triangles
-                        for (let tri = 0; tri < 6; tri++) {
-                            const next = (tri + 1) % 6;
-                            
-                            // Vertex 0: Center (equal barycentric)
-                            vertexData.push(centerX, centerY);
-                            vertexData.push(0.33, 0.33, 0.33);
-                            vertexData.push(hexId);
-                            
-                            // Vertex 1: Outer vertex tri
-                            vertexData.push(outerVerts[tri].x, outerVerts[tri].y);
-                            vertexData.push(1.0, 0.0, 0.0);
-                            vertexData.push(hexId);
-                            
-                            // Vertex 2: Outer vertex next
-                            vertexData.push(outerVerts[next].x, outerVerts[next].y);
-                            vertexData.push(0.0, 1.0, 0.0);
-                            vertexData.push(hexId);
-                            
-                            // Add indices (using UNSIGNED_SHORT)
-                            const baseIdx = (hexCount * 18) + (tri * 3);
-                            indexData.push(baseIdx, baseIdx + 1, baseIdx + 2);
-                        }
-                        
-                        hexCount++;
-                    }
-                }
-                
-                triangleCount = indexData.length;
-                document.getElementById('tri-count').textContent = triangleCount.toLocaleString();
-                document.getElementById('hex-count').textContent = hexCount;
-                
-                console.log(`Generated ${hexCount} hexagons (${triangleCount} triangles)`);
-                console.log(`Vertices: ${vertexData.length / 6}`);
-                
-                // Verify 16-bit index safety
-                if (hexCount * 18 > 65535) {
-                    console.warn("Too many vertices for 16-bit indices!");
-                }
-            }
-            
-            // ================================================
-            // WEBGL INIT
-            // ================================================
-            
-            function initWebGL() {
-                canvas = document.createElement('canvas');
-                document.body.appendChild(canvas);
-                
-                // Request WebGL with explicit settings
-                gl = canvas.getContext('webgl', {
-                    antialias: true,
-                    depth: false,
-                    alpha: false,
-                    preserveDrawingBuffer: false
-                });
-                
-                if (!gl) {
-                    document.body.innerHTML += '<div class="error">WebGL not supported</div>';
-                    return;
-                }
-                
-                // Log WebGL info
-                console.log("WebGL Renderer:", gl.getParameter(gl.RENDERER));
-                console.log("WebGL Version:", gl.getParameter(gl.VERSION));
-                
-                resizeCanvas();
-                window.addEventListener('resize', resizeCanvas);
-                
-                // Compile shaders
-                const vs = compileShader(gl.VERTEX_SHADER, 
-                    document.getElementById('vertex-shader').text);
-                const fs = compileShader(gl.FRAGMENT_SHADER, 
-                    document.getElementById('fragment-shader').text);
-                
-                if (!vs || !fs) return;
-                
-                program = gl.createProgram();
-                gl.attachShader(program, vs);
-                gl.attachShader(program, fs);
-                gl.linkProgram(program);
-                
-                if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-                    console.error('Shader link failed:', gl.getProgramInfoLog(program));
-                    return;
-                }
-                
-                gl.useProgram(program);
-                
-                // Generate geometry
-                generateGrid();
-                
-                // Setup buffers
-                setupBuffers();
-                
-                // Get uniform locations
-                program.u_translation = gl.getUniformLocation(program, 'u_translation');
-                program.u_scale = gl.getUniformLocation(program, 'u_scale');
-                program.u_resolution = gl.getUniformLocation(program, 'u_resolution');
-                program.u_time = gl.getUniformLocation(program, 'u_time');
-                program.u_gap = gl.getUniformLocation(program, 'u_gap');
-                program.u_line = gl.getUniformLocation(program, 'u_line');
-                
-                // Set uniforms
-                gl.uniform1f(program.u_gap, CONFIG.GAP);
-                gl.uniform1f(program.u_line, CONFIG.LINE_WIDTH);
-                
-                // Setup events
-                setupEvents();
-                
-                // Start render loop
-                requestAnimationFrame(render);
-            }
-            
-            function compileShader(type, source) {
+            // ========== SHADER COMPILATION ==========
+            function compileShader(type, sourceId) {
+                const source = document.getElementById(sourceId).text;
                 const shader = gl.createShader(type);
                 gl.shaderSource(shader, source);
                 gl.compileShader(shader);
                 
                 if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
                     console.error('Shader compile error:', gl.getShaderInfoLog(shader));
-                    console.error('Source:', source);
-                    gl.deleteShader(shader);
                     return null;
                 }
-                
                 return shader;
             }
             
-            function setupBuffers() {
-                // Vertex buffer
-                vertexBuffer = gl.createBuffer();
-                gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-                gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexData), gl.STATIC_DRAW);
-                
-                // Index buffer - USING UNSIGNED_SHORT (16-bit)
-                indexBuffer = gl.createBuffer();
-                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-                gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indexData), gl.STATIC_DRAW);
-                
-                // Setup attributes
-                const stride = 6 * 4; // 6 floats * 4 bytes
-                
-                // a_position (location 0)
-                gl.vertexAttribPointer(0, 2, gl.FLOAT, false, stride, 0);
-                gl.enableVertexAttribArray(0);
-                
-                // a_barycentric (location 1)
-                gl.vertexAttribPointer(1, 3, gl.FLOAT, false, stride, 2 * 4);
-                gl.enableVertexAttribArray(1);
-                
-                // a_hexId (location 2)
-                gl.vertexAttribPointer(2, 1, gl.FLOAT, false, stride, 5 * 4);
-                gl.enableVertexAttribArray(2);
-                
-                // Check for errors
-                const error = gl.getError();
-                if (error !== gl.NO_ERROR) {
-                    console.error("WebGL error:", error);
-                }
+            const vs = compileShader(gl.VERTEX_SHADER, 'vertShader');
+            const fs = compileShader(gl.FRAGMENT_SHADER, 'fragShader');
+            
+            const program = gl.createProgram();
+            gl.attachShader(program, vs);
+            gl.attachShader(program, fs);
+            gl.linkProgram(program);
+            
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                console.error('Link failed');
             }
             
-            // ================================================
-            // RENDER LOOP
-            // ================================================
+            gl.useProgram(program);
             
-            function render(time) {
-                time *= 0.001;
-                
-                // FPS counter
-                frameCount++;
-                const now = performance.now();
-                const delta = now - lastTime;
-                
-                if (delta >= 1000) {
-                    fps = frameCount;
-                    document.getElementById('fps-count').textContent = fps;
-                    frameCount = 0;
-                    lastTime = now;
-                }
-                
-                // Resize if needed
-                if (canvas.width !== canvas.clientWidth || 
-                    canvas.height !== canvas.clientHeight) {
-                    resizeCanvas();
-                }
-                
-                // Clear with dark blue
+            // ========== SINGLE QUAD (COVERS SCREEN) ==========
+            const vertices = new Float32Array([
+                -1, -1, 1, -1, -1, 1,
+                -1, 1, 1, -1, 1, 1
+            ]);
+            
+            const vertexBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+            
+            const aPos = gl.getAttribLocation(program, 'a_pos');
+            gl.enableVertexAttribArray(aPos);
+            gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+            
+            // ========== UNIFORMS ==========
+            const uResolution = gl.getUniformLocation(program, 'u_resolution');
+            const uTranslation = gl.getUniformLocation(program, 'u_translation');
+            const uScale = gl.getUniformLocation(program, 'u_scale');
+            const uSize = gl.getUniformLocation(program, 'u_size');
+            const uGap = gl.getUniformLocation(program, 'u_gap');
+            const uLine = gl.getUniformLocation(program, 'u_line');
+            const uTime = gl.getUniformLocation(program, 'u_time');
+            const uZoomScale = gl.getUniformLocation(program, 'u_zoomScale');
+            
+            // ========== RESIZE ==========
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
                 gl.viewport(0, 0, canvas.width, canvas.height);
-                gl.clearColor(0.05, 0.05, 0.15, 1.0);
-                gl.clear(gl.COLOR_BUFFER_BIT);
+            }
+            resize();
+            window.addEventListener('resize', resize);
+            
+            // ========== INPUT HANDLING ==========
+            canvas.addEventListener('mousedown', (e) => {
+                isDragging = true;
+                lastMouse = [e.clientX, e.clientY];
+                canvas.style.cursor = 'grabbing';
+            });
+            
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                const dx = e.clientX - lastMouse[0];
+                const dy = e.clientY - lastMouse[1];
+                translation[0] += dx;
+                translation[1] += dy;
+                lastMouse = [e.clientX, e.clientY];
+            });
+            
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+                canvas.style.cursor = 'default';
+            });
+            
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? 0.9 : 1.1;
+                scale = Math.max(10, Math.min(300, scale * delta));
+                zoomPerf.textContent = (scale / 50).toFixed(1) + 'x';
+            }, { passive: false });
+            
+            // Touch
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (e.touches.length === 1) {
+                    isDragging = true;
+                    lastMouse = [e.touches[0].clientX, e.touches[0].clientY];
+                }
+            });
+            
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (isDragging && e.touches.length === 1) {
+                    const dx = e.touches[0].clientX - lastMouse[0];
+                    const dy = e.touches[0].clientY - lastMouse[1];
+                    translation[0] += dx;
+                    translation[1] += dy;
+                    lastMouse = [e.touches[0].clientX, e.touches[0].clientY];
+                }
+            });
+            
+            canvas.addEventListener('touchend', (e) => e.preventDefault());
+            
+            // ========== UI CONTROLS ==========
+            sizeSlider.addEventListener('input', (e) => {
+                uSize = parseFloat(e.target.value);
+                sizeVal.textContent = uSize.toFixed(2);
+            });
+            
+            gapSlider.addEventListener('input', (e) => {
+                uGap = parseFloat(e.target.value);
+                gapVal.textContent = uGap.toFixed(3);
+            });
+            
+            lineSlider.addEventListener('input', (e) => {
+                uLine = parseFloat(e.target.value);
+                lineVal.textContent = uLine.toFixed(1);
+            });
+            
+            // ========== RENDER LOOP ==========
+            function render(now) {
+                now *= 0.001;
+                
+                // FPS
+                frameCount++;
+                const ts = performance.now();
+                if (ts - lastTime >= 1000) {
+                    fps = frameCount;
+                    document.getElementById('status').innerHTML = `⚡ ${fps} fps · <span id="tri-count">∞</span> tris (infinite)`;
+                    frameCount = 0;
+                    lastTime = ts;
+                }
                 
                 // Update uniforms
-                gl.uniform2f(program.u_translation, translation[0], translation[1]);
-                gl.uniform1f(program.u_scale, scale);
-                gl.uniform2f(program.u_resolution, canvas.width, canvas.height);
-                gl.uniform1f(program.u_time, time);
+                gl.uniform2f(uResolution, canvas.width, canvas.height);
+                gl.uniform2f(uTranslation, translation[0], translation[1]);
+                gl.uniform1f(uScale, scale);
+                gl.uniform1f(uSize, uSize);
+                gl.uniform1f(uGap, uGap);
+                gl.uniform1f(uLine, uLine);
+                gl.uniform1f(uTime, now);
+                gl.uniform1f(uZoomScale, scale); // for pixel-perfect lines
                 
-                // Draw
-                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-                gl.drawElements(gl.TRIANGLES, indexData.length, gl.UNSIGNED_SHORT, 0);
+                // Clear
+                gl.clearColor(0.05, 0.05, 0.1, 1.0);
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                
+                // Draw fullscreen quad (2 triangles)
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
                 
                 requestAnimationFrame(render);
             }
             
-            // ================================================
-            // INTERACTION
-            // ================================================
+            requestAnimationFrame(render);
             
-            function setupEvents() {
-                canvas.addEventListener('mousedown', (e) => {
-                    isDragging = true;
-                    lastMousePos = [e.clientX, e.clientY];
-                    canvas.style.cursor = 'grabbing';
-                });
-                
-                window.addEventListener('mousemove', (e) => {
-                    if (!isDragging) return;
-                    
-                    translation[0] += e.clientX - lastMousePos[0];
-                    translation[1] += e.clientY - lastMousePos[1];
-                    lastMousePos = [e.clientX, e.clientY];
-                });
-                
-                window.addEventListener('mouseup', () => {
-                    isDragging = false;
-                    canvas.style.cursor = 'default';
-                });
-                
-                canvas.addEventListener('wheel', (e) => {
-                    e.preventDefault();
-                    const delta = e.deltaY > 0 ? 0.9 : 1.1;
-                    scale = Math.max(5, Math.min(100, scale * delta));
-                }, { passive: false });
-                
-                // Touch support
-                canvas.addEventListener('touchstart', (e) => {
-                    e.preventDefault();
-                    if (e.touches.length === 1) {
-                        isDragging = true;
-                        lastMousePos = [e.touches[0].clientX, e.touches[0].clientY];
-                    }
-                });
-                
-                canvas.addEventListener('touchmove', (e) => {
-                    e.preventDefault();
-                    if (isDragging && e.touches.length === 1) {
-                        translation[0] += e.touches[0].clientX - lastMousePos[0];
-                        translation[1] += e.touches[0].clientY - lastMousePos[1];
-                        lastMousePos = [e.touches[0].clientX, e.touches[0].clientY];
-                    }
-                });
-                
-                canvas.addEventListener('touchend', (e) => {
-                    e.preventDefault();
-                    isDragging = false;
-                });
-            }
-            
-            function resizeCanvas() {
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight;
-                
-                if (gl) {
-                    gl.viewport(0, 0, canvas.width, canvas.height);
-                }
-            }
-            
-            // ================================================
-            // START
-            // ================================================
-            
-            window.onload = () => {
-                try {
-                    initWebGL();
-                } catch (e) {
-                    console.error("Init failed:", e);
-                    document.body.innerHTML += `<div class="error">Error: ${e.message}</div>`;
-                }
-            };
+            // Initial values
+            triCount.innerHTML = '∞';
         })();
     </script>
 </body>
