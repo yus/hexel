@@ -1,0 +1,595 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>hexagon lattice → barycentric grid · mathematics</title>
+    <style>
+        /* Your styles - clean and precise */
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
+        body {
+            margin: 0;
+            overflow: hidden;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            background: #0a0c12;
+        }
+        
+        #header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 140px;
+            background: rgba(18, 20, 26, 0.96);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            padding: 0 20px;
+            color: #eef2f8;
+            font-size: 11px;
+        }
+        
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: 40px;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .title-section {
+            min-width: 240px;
+        }
+        
+        .title-main {
+            font-size: 16px;
+            font-weight: 500;
+            color: white;
+        }
+        
+        .title-sub {
+            font-size: 10px;
+            color: #8a92a6;
+            margin-top: 2px;
+            font-family: monospace;
+        }
+        
+        .math-badge {
+            background: rgba(100, 120, 200, 0.2);
+            padding: 4px 12px;
+            border-radius: 40px;
+            font-size: 11px;
+            color: #aaccff;
+            border: 1px solid rgba(170, 204, 255, 0.3);
+            margin-top: 6px;
+            display: inline-block;
+        }
+        
+        .group {
+            display: flex;
+            gap: 30px;
+            padding: 0 20px;
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .param-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .param-label {
+            font-size: 10px;
+            color: #b0b8d0;
+            text-transform: uppercase;
+            min-width: 45px;
+            letter-spacing: 0.5px;
+        }
+        
+        .param-label .math-symbol {
+            color: #ffd966;
+            font-family: monospace;
+            font-size: 12px;
+            margin-left: 4px;
+        }
+        
+        input[type=range] {
+            -webkit-appearance: auto;
+            width: 120px;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .value-display {
+            font-size: 10px;
+            color: white;
+            background: rgba(255, 255, 255, 0.06);
+            padding: 3px 8px;
+            border-radius: 4px;
+            min-width: 45px;
+            text-align: center;
+            font-family: monospace;
+        }
+        
+        .color-dot {
+            width: 20px;
+            height: 20px;
+            border-radius: 20px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+        }
+        
+        .color-dot.hex1 { background: #ffd966; }
+        .color-dot.hex2 { background: #7fbfff; }
+        .color-dot.line { background: #ffffff; }
+        .color-dot.bg { background: #1a1c24; }
+        
+        canvas {
+            display: block;
+            position: fixed;
+            top: 140px;
+            left: 0;
+            width: 100%;
+            height: calc(100vh - 140px);
+        }
+        
+        .equation-panel {
+            position: fixed;
+            bottom: 24px;
+            left: 24px;
+            background: rgba(10, 12, 18, 0.8);
+            backdrop-filter: blur(8px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 16px;
+            padding: 16px 20px;
+            color: #eef2f8;
+            font-size: 12px;
+            font-family: monospace;
+            z-index: 200;
+            max-width: 360px;
+            line-height: 1.8;
+            pointer-events: none;
+        }
+        
+        .equation-panel .highlight {
+            color: #ffd966;
+            font-weight: 600;
+        }
+        
+        .equation-panel .comment {
+            color: #6a728a;
+        }
+        
+        .hint {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            color: #9aa2b8;
+            font-size: 11px;
+            background: rgba(10, 12, 18, 0.6);
+            backdrop-filter: blur(8px);
+            padding: 10px 18px;
+            border-radius: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            z-index: 200;
+        }
+    </style>
+</head>
+<body>
+    <div id="header">
+        <div class="header-content">
+            <div class="title-section">
+                <div class="title-main">HEXAGON LATTICE → BARYCENTRIC GRID</div>
+                <div class="title-sub">equilateral triangles · 60° · 6 triangles per hexagon</div>
+                <div class="math-badge">u = x - y/√3 · v = 2y/√3 · w = -u-v</div>
+            </div>
+            
+            <div class="group">
+                <div class="param-row">
+                    <span class="param-label">SIZE <span class="math-symbol">s</span></span>
+                    <input type="range" id="size" min="0.5" max="3.0" value="1.5" step="0.05">
+                    <span class="value-display" id="size-value">1.50</span>
+                </div>
+                
+                <div class="param-row">
+                    <span class="param-label">GAP <span class="math-symbol">δ</span></span>
+                    <input type="range" id="gap" min="0.0" max="0.3" value="0.05" step="0.01">
+                    <span class="value-display" id="gap-value">0.05</span>
+                </div>
+                
+                <div class="param-row">
+                    <span class="param-label">LINE <span class="math-symbol">γ</span></span>
+                    <input type="range" id="hair" min="0.3" max="2.0" value="0.9" step="0.05">
+                    <span class="value-display" id="hair-value">0.90</span>
+                </div>
+            </div>
+            
+            <div class="group">
+                <div class="param-row">
+                    <span class="param-label">COLORS</span>
+                    <div class="color-dot hex1" id="color1"></div>
+                    <div class="color-dot hex2" id="color2"></div>
+                    <div class="color-dot line" id="color-line"></div>
+                    <div class="color-dot bg" id="color-bg"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="equation-panel">
+        <div><span class="comment">// HEXAGON LATTICE</span></div>
+        <div><span class="highlight">center = (i + j/2, j·√3/2)</span> <span class="comment">where i,j ∈ ℤ</span></div>
+        <div>&nbsp;</div>
+        <div><span class="comment">// 6 TRIANGLES PER HEXAGON</span></div>
+        <div><span class="highlight">sector = floor(angle / 60°)</span></div>
+        <div><span class="highlight">barycentric = f(radius, sector)</span></div>
+        <div>&nbsp;</div>
+        <div><span class="comment">// EDGE DISTANCE → BARYCENTRIC GRID</span></div>
+        <div><span class="highlight">grid = min(</span>dist to 3 edges<span class="highlight">)</span></div>
+    </div>
+    
+    <div class="hint">
+        <kbd>🖱️</kbd> drag to pan · <kbd>⚡</kbd> scroll to zoom · hexagon = 6 triangles
+    </div>
+
+    <script>
+        (function() {
+            const canvas = document.createElement('canvas');
+            document.body.appendChild(canvas);
+            
+            const gl = canvas.getContext('webgl');
+            if (!gl) return;
+            
+            // Fullscreen quad
+            const vertices = new Float32Array([
+                -1, -1, 0, 0,
+                 1, -1, 1, 0,
+                 1,  1, 1, 1,
+                -1, -1, 0, 0,
+                 1,  1, 1, 1,
+                -1,  1, 0, 1
+            ]);
+            
+            const buffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+            gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+            
+            // Vertex shader
+            const vsSource = `
+                attribute vec2 aPos;
+                attribute vec2 aUv;
+                varying vec2 vUv;
+                void main() {
+                    gl_Position = vec4(aPos, 0.0, 1.0);
+                    vUv = aUv;
+                }
+            `;
+            
+            // Fragment shader - with mathematical comments
+            const fsSource = `
+                precision highp float;
+                
+                varying vec2 vUv;
+                
+                uniform vec2 uOffset;
+                uniform float uScale;
+                uniform float uSize;      // hexagon size (s)
+                uniform float uGap;        // gap between hexagons (δ)
+                uniform float uHair;        // line thickness (γ)
+                
+                uniform vec3 uColor1;
+                uniform vec3 uColor2;
+                uniform vec3 uColorLine;
+                uniform vec3 uColorBg;
+                
+                uniform vec2 uResolution;
+                uniform float uAspect;
+                
+                // Constants for equilateral geometry
+                const float sqrt3 = 1.73205080757;
+                const float halfSqrt3 = 0.86602540378;
+                const float pi = 3.14159265359;
+                
+                void main() {
+                    // STEP 1: World position
+                    vec2 p = (vUv * 2.0 - 1.0) * uScale * 2.0;
+                    p.x *= uAspect;
+                    p += uOffset;
+                    
+                    // STEP 2: Scale by hexagon size
+                    p /= uSize;
+                    
+                    // STEP 3: Transform to axial coordinates for hex lattice
+                    // x = axial coordinate q
+                    // y = axial coordinate r (scaled by √3/2)
+                    float x = p.x;
+                    float y = p.y / halfSqrt3;
+                    
+                    // STEP 4: Find nearest hexagon center
+                    // In axial coordinates, hex centers are at integer (q,r)
+                    float q = x;
+                    float r = y;
+                    
+                    float q0 = floor(q + 0.5);
+                    float r0 = floor(r + 0.5);
+                    
+                    // STEP 5: Convert back to Cartesian coordinates of hex center
+                    // center = (q + r/2, r * √3/2)
+                    vec2 center = vec2(
+                        q0 + r0 * 0.5,
+                        r0 * halfSqrt3
+                    );
+                    
+                    // STEP 6: Local coordinates within hexagon
+                    vec2 local = p - center;
+                    
+                    // STEP 7: Convert to polar coordinates
+                    float radius = length(local);
+                    float angle = atan(local.y, local.x);
+                    
+                    // STEP 8: Determine which of the 6 triangles we're in
+                    // Each hexagon is divided into 6 equilateral triangles
+                    // by lines from center to vertices at 0°, 60°, 120°, etc.
+                    float sector = floor(angle / pi * 3.0 + 6.5) - 6.0;
+                    
+                    // STEP 9: Compute distance to hexagon edge
+                    // For a regular hexagon, edge distance = 1 - radius * cos(θ - 60°*sector)
+                    float sectorAngle = angle - sector * pi / 3.0;
+                    float edgeDist = 1.0 - radius * cos(sectorAngle);
+                    
+                    // STEP 10: Apply gap
+                    float gapDist = edgeDist - uGap;
+                    
+                    // STEP 11: Anti-aliased edge detection
+                    vec2 worldPerPixel = vec2(2.0 * uScale * 2.0 / uResolution.x, 2.0 * uScale * 2.0 / uResolution.y);
+                    float deriv = length(worldPerPixel) / uSize;
+                    float pixelWidth = uHair * deriv;
+                    
+                    float edge;
+                    if (gapDist < 0.0) {
+                        edge = 0.0;  // inside gap
+                    } else {
+                        edge = smoothstep(0.0, pixelWidth, gapDist);
+                    }
+                    
+                    // STEP 12: Barycentric coordinates within triangle
+                    // In each sector, we have a triangle with vertices:
+                    // center (0,0), vertex at radius 1 on left edge, vertex at radius 1 on right edge
+                    // The barycentric coordinates determine distance to each edge
+                    
+                    // For a point in this triangle, distances to the three edges are:
+                    float d1 = edgeDist;                                   // distance to outer edge
+                    float d2 = radius * sin(sectorAngle);                  // distance to left edge
+                    float d3 = radius * sin(pi/3.0 - sectorAngle);        // distance to right edge
+                    
+                    float minDist = min(d1, min(d2, d3));
+                    
+                    // STEP 13: Color determination
+                    float pattern = mod(q0 + r0, 2.0);
+                    vec3 hexColor = pattern < 0.5 ? uColor1 : uColor2;
+                    
+                    vec3 color = uColorBg;
+                    if (radius < 1.0) {
+                        color = hexColor;
+                    }
+                    
+                    // Draw grid lines (barycentric edges)
+                    if (edge < 1.0) {
+                        float edgeIntensity = 1.0 - edge;
+                        color = mix(color, uColorLine, edgeIntensity);
+                    }
+                    
+                    // Highlight vertices where two edges meet
+                    float vertexDist = min(min(d2, d3), abs(radius - 1.0));
+                    if (vertexDist < pixelWidth * 2.0) {
+                        color = uColorLine;
+                    }
+                    
+                    gl_FragColor = vec4(color, 1.0);
+                }
+            `;
+            
+            // Compile shaders
+            function compileShader(gl, source, type) {
+                const shader = gl.createShader(type);
+                gl.shaderSource(shader, source);
+                gl.compileShader(shader);
+                return shader;
+            }
+            
+            const vs = compileShader(gl, vsSource, gl.VERTEX_SHADER);
+            const fs = compileShader(gl, fsSource, gl.FRAGMENT_SHADER);
+            
+            const program = gl.createProgram();
+            gl.attachShader(program, vs);
+            gl.attachShader(program, fs);
+            gl.linkProgram(program);
+            gl.useProgram(program);
+            
+            // Attributes
+            const aPos = gl.getAttribLocation(program, 'aPos');
+            const aUv = gl.getAttribLocation(program, 'aUv');
+            gl.enableVertexAttribArray(aPos);
+            gl.enableVertexAttribArray(aUv);
+            gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 16, 0);
+            gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, 16, 8);
+            
+            // Uniforms
+            const uOffset = gl.getUniformLocation(program, 'uOffset');
+            const uScale = gl.getUniformLocation(program, 'uScale');
+            const uSize = gl.getUniformLocation(program, 'uSize');
+            const uGap = gl.getUniformLocation(program, 'uGap');
+            const uHair = gl.getUniformLocation(program, 'uHair');
+            const uColor1 = gl.getUniformLocation(program, 'uColor1');
+            const uColor2 = gl.getUniformLocation(program, 'uColor2');
+            const uColorLine = gl.getUniformLocation(program, 'uColorLine');
+            const uColorBg = gl.getUniformLocation(program, 'uColorBg');
+            const uResolution = gl.getUniformLocation(program, 'uResolution');
+            const uAspect = gl.getUniformLocation(program, 'uAspect');
+            
+            // Default colors
+            gl.uniform3f(uColor1, 1.0, 0.85, 0.4);    // yellow
+            gl.uniform3f(uColor2, 0.5, 0.75, 1.0);    // blue
+            gl.uniform3f(uColorLine, 1.0, 1.0, 1.0);   // white
+            gl.uniform3f(uColorBg, 0.1, 0.12, 0.16);   // dark
+            
+            // State
+            let offsetX = 0.0, offsetY = 0.0;
+            let scale = 1.2;
+            let size = 1.5;
+            let gap = 0.05;
+            let hair = 0.9;
+            
+            let isDragging = false;
+            let lastX = 0, lastY = 0;
+            
+            function updateUniforms() {
+                const aspect = canvas.width / canvas.height;
+                gl.uniform2f(uOffset, offsetX, offsetY);
+                gl.uniform1f(uScale, scale);
+                gl.uniform1f(uSize, size);
+                gl.uniform1f(uGap, gap);
+                gl.uniform1f(uHair, hair);
+                gl.uniform2f(uResolution, canvas.width, canvas.height);
+                gl.uniform1f(uAspect, aspect);
+                draw();
+            }
+            
+            // Mouse events
+            canvas.addEventListener('mousedown', (e) => {
+                if (e.button === 0) {
+                    isDragging = true;
+                    lastX = e.clientX;
+                    lastY = e.clientY;
+                    canvas.style.cursor = 'grabbing';
+                }
+            });
+            
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                
+                const dx = e.clientX - lastX;
+                const dy = e.clientY - lastY;
+                
+                offsetX -= (dx / canvas.width) * (2.0 * scale * 2.0);
+                offsetY += (dy / canvas.height) * (2.0 * scale * 2.0);
+                
+                lastX = e.clientX;
+                lastY = e.clientY;
+                
+                updateUniforms();
+            });
+            
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+                canvas.style.cursor = 'default';
+            });
+            
+            // Wheel zoom
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                
+                const rect = canvas.getBoundingClientRect();
+                const mx = ((e.clientX - rect.left) / rect.width) * 2.0 - 1.0;
+                const my = -(((e.clientY - rect.top) / rect.height) * 2.0 - 1.0);
+                
+                const worldX = mx * scale * 2.0 + offsetX;
+                const worldY = my * scale * 2.0 + offsetY;
+                
+                const factor = 0.95;
+                const newScale = e.deltaY > 0 ? scale * factor : scale / factor;
+                
+                if (newScale < 0.3 || newScale > 5.0) return;
+                
+                offsetX = worldX - mx * newScale * 2.0;
+                offsetY = worldY - my * newScale * 2.0;
+                scale = newScale;
+                
+                updateUniforms();
+            }, { passive: false });
+            
+            // Resize
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight - 140;
+                gl.viewport(0, 0, canvas.width, canvas.height);
+                updateUniforms();
+            }
+            window.addEventListener('resize', resize);
+            resize();
+            
+            function draw() {
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
+            }
+            
+            function loop() {
+                draw();
+                requestAnimationFrame(loop);
+            }
+            loop();
+            
+            // UI Controls
+            document.getElementById('size').addEventListener('input', (e) => {
+                size = parseFloat(e.target.value);
+                document.getElementById('size-value').textContent = size.toFixed(2);
+                updateUniforms();
+            });
+            
+            document.getElementById('gap').addEventListener('input', (e) => {
+                gap = parseFloat(e.target.value);
+                document.getElementById('gap-value').textContent = gap.toFixed(2);
+                updateUniforms();
+            });
+            
+            document.getElementById('hair').addEventListener('input', (e) => {
+                hair = parseFloat(e.target.value);
+                document.getElementById('hair-value').textContent = hair.toFixed(2);
+                updateUniforms();
+            });
+            
+            // Color pickers
+            const colors1 = [[1.0,0.85,0.4], [1.0,0.7,0.5], [0.9,0.8,0.6]];
+            let idx1 = 0;
+            document.getElementById('color1').addEventListener('click', () => {
+                idx1 = (idx1 + 1) % colors1.length;
+                gl.uniform3f(uColor1, colors1[idx1][0], colors1[idx1][1], colors1[idx1][2]);
+                updateUniforms();
+            });
+            
+            const colors2 = [[0.5,0.75,1.0], [0.6,0.8,0.9], [0.7,0.6,1.0]];
+            let idx2 = 0;
+            document.getElementById('color2').addEventListener('click', () => {
+                idx2 = (idx2 + 1) % colors2.length;
+                gl.uniform3f(uColor2, colors2[idx2][0], colors2[idx2][1], colors2[idx2][2]);
+                updateUniforms();
+            });
+            
+            const lineColors = [[1.0,1.0,1.0], [0.9,0.9,1.0], [0.8,0.8,0.8]];
+            let lineIdx = 0;
+            document.getElementById('color-line').addEventListener('click', () => {
+                lineIdx = (lineIdx + 1) % lineColors.length;
+                gl.uniform3f(uColorLine, lineColors[lineIdx][0], lineColors[lineIdx][1], lineColors[lineIdx][2]);
+                updateUniforms();
+            });
+            
+            const bgColors = [[0.1,0.12,0.16], [0.15,0.17,0.22], [0.2,0.22,0.26]];
+            let bgIdx = 0;
+            document.getElementById('color-bg').addEventListener('click', () => {
+                bgIdx = (bgIdx + 1) % bgColors.length;
+                gl.uniform3f(uColorBg, bgColors[bgIdx][0], bgColors[bgIdx][1], bgColors[bgIdx][2]);
+                updateUniforms();
+            });
+        })();
+    </script>
+</body>
+</html>
