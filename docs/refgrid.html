@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>equilateral triangle tiling · like refgrid</title>
+    <title>perfect equilateral triangle tiling</title>
     <style>
         * {
             box-sizing: border-box;
@@ -45,7 +45,7 @@
         }
         
         .title-section {
-            min-width: 200px;
+            min-width: 220px;
         }
         
         .title-main {
@@ -122,8 +122,8 @@
     <div id="header">
         <div class="header-content">
             <div class="title-section">
-                <div class="title-main">EQUILATERAL TRIANGLE TILING</div>
-                <div class="title-sub">like Wikimedia · refgrid orientation</div>
+                <div class="title-main">PERFECT EQUILATERAL TILING</div>
+                <div class="title-sub">hexagons · exact 60° proportions</div>
             </div>
             
             <div class="group">
@@ -135,15 +135,15 @@
                 
                 <div class="param-row">
                     <span class="param-label">GAP</span>
-                    <input type="range" id="gap-slider" min="0.0" max="0.5" value="0.15" step="0.01">
-                    <span class="value-display" id="gap-value">0.15</span>
+                    <input type="range" id="gap-slider" min="0.0" max="0.4" value="0.1" step="0.01">
+                    <span class="value-display" id="gap-value">0.10</span>
                 </div>
             </div>
         </div>
     </div>
     
     <div class="hint">
-        ⚡ zoom · 🖱️ pan · classic equilateral triangle tiling
+        ⚡ zoom · 🖱️ pan · perfect equilateral triangles · hexagons formed by 6 triangles
     </div>
 
     <script>
@@ -179,7 +179,7 @@
                 }
             `;
             
-            // Fragment shader - classic equilateral triangle tiling
+            // Fragment shader - perfect equilateral triangle tiling
             const fsSource = `
                 precision highp float;
                 
@@ -201,19 +201,20 @@
                     // Scale to triangle size
                     p /= uTriSize;
                     
-                    // For equilateral triangle tiling, we use a rhombus grid
-                    // with basis vectors at 60°
-                    const float sqrt3 = 1.7320508;
-                    const float halfSqrt3 = 0.8660254;
+                    // FIXED: Perfect equilateral triangle basis
+                    // Height of equilateral triangle with side length 1 = √3/2 ≈ 0.8660254
+                    const float sqrt3 = 1.73205080757;
+                    const float halfSqrt3 = 0.86602540378;
                     
-                    // Transform to grid coordinates
-                    // This creates the classic tiling seen in the Wikimedia image
+                    // Grid coordinates - using rhombus tiling with correct aspect
+                    // The key fix: proper scaling of the vertical coordinate
                     float x = p.x;
-                    float y = p.y;
+                    float y = p.y / halfSqrt3;  // This corrects the aspect ratio
                     
-                    // Grid coordinates (like axial coordinates for hex grid)
-                    float u = x - y * 0.5;
-                    float v = y * 0.8660254;
+                    // Now transform to triangle grid
+                    // Each rhombus is made of two triangles
+                    float u = x;
+                    float v = y;
                     
                     // Get integer cell and fractional position
                     float i = floor(u);
@@ -221,23 +222,23 @@
                     float fu = u - i;
                     float fv = v - j;
                     
-                    // Determine which triangle we're in within each rhombus
-                    // This creates the alternating up/down triangles
-                    float triType = step(fu + fv, 1.0); // 0 for lower, 1 for upper
-                    
-                    // Barycentric coordinates within the triangle
+                    // Barycentric coordinates within the rhombus
                     vec3 bary;
+                    float triType;
+                    
                     if (fu + fv < 1.0) {
-                        // Lower triangle (pointing up)
+                        // Lower triangle (pointing up) - these form upward pointing triangles
                         bary = vec3(1.0 - fu - fv, fu, fv);
+                        triType = 0.0;
                     } else {
                         // Upper triangle (pointing down)
                         float fu2 = 1.0 - fu;
                         float fv2 = 1.0 - fv;
                         bary = vec3(1.0 - fu2 - fv2, fu2, fv2);
+                        triType = 1.0;
                     }
                     
-                    // Distance to triangle edges
+                    // Distance to triangle edges (0 at edges, 0.5 at center)
                     float minDist = min(bary.x, min(bary.y, bary.z));
                     
                     // Apply gap
@@ -256,19 +257,25 @@
                         grid = smoothstep(0.0, pixelWidth, gapAdjusted);
                     }
                     
-                    // Alternate colors for triangles to make tiling visible
-                    float pattern = mod(i + j, 2.0);
-                    vec3 color1 = vec3(0.75, 0.8, 0.9);  // light
-                    vec3 color2 = vec3(0.6, 0.65, 0.8);  // medium
-                    vec3 baseColor = mix(color1, color2, pattern);
+                    // Color scheme to highlight hexagons (6 triangles)
+                    // Each hexagon center is at integer coordinates where (i + j) mod 2 == 0
+                    float hexId = mod(i + j, 2.0);
                     
-                    // Add subtle variation based on triangle orientation
+                    // Also vary by triangle orientation to make the pattern clear
+                    vec3 colorBase;
                     if (triType < 0.5) {
-                        baseColor *= 1.05; // slightly brighter for up triangles
+                        // Upward triangles
+                        colorBase = mix(vec3(0.75, 0.8, 0.9), vec3(0.65, 0.7, 0.85), hexId);
+                    } else {
+                        // Downward triangles
+                        colorBase = mix(vec3(0.7, 0.75, 0.88), vec3(0.6, 0.65, 0.82), hexId);
                     }
                     
-                    // Final color
-                    vec3 finalColor = mix(vec3(0.08, 0.08, 0.12), baseColor, grid);
+                    // Add subtle center glow for hexagons
+                    float hexCenterDist = length(vec2(fu - 0.5, fv - 0.5));
+                    float hexGlow = exp(-hexCenterDist * 3.0) * 0.15;
+                    
+                    vec3 finalColor = mix(vec3(0.08, 0.08, 0.12), colorBase + hexGlow, grid);
                     
                     // Gamma
                     finalColor = pow(finalColor, vec3(1.0/2.2));
@@ -314,7 +321,7 @@
             let offsetX = 0.0, offsetY = 0.0;
             let scale = 3.0;
             let triSize = 1.5;
-            let gap = 0.15;
+            let gap = 0.1;
             
             let isDragging = false;
             let lastX = 0, lastY = 0;
