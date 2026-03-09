@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>barycentric · 60° parallel/diagonal</title>
+    <title>barycentric · parallel/diagonal groups</title>
     <style>
         * {
             box-sizing: border-box;
@@ -18,16 +18,14 @@
             font-weight: 400;
             -webkit-font-smoothing: antialiased;
             -moz-osx-font-smoothing: grayscale;
-            text-rendering: optimizeLegibility;
         }
         
-        /* Header - 150px, cleaner typography */
         #header {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
-            height: 150px;
+            height: 160px;
             background: rgba(18, 20, 26, 0.96);
             backdrop-filter: blur(12px);
             border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -36,78 +34,90 @@
             align-items: center;
             padding: 0 20px;
             color: #eef2f8;
-            letter-spacing: 0.2px;
             font-size: 11px;
         }
         
         .header-content {
             display: flex;
-            align-items: center;
-            gap: 24px;
+            align-items: flex-start;
+            gap: 30px;
             width: 100%;
             max-width: 1800px;
             margin: 0 auto;
         }
         
         .title-section {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-            min-width: 140px;
+            min-width: 130px;
+            padding-top: 4px;
         }
         
         .title-main {
             font-size: 15px;
             font-weight: 500;
             color: white;
-            letter-spacing: 0.5px;
+            letter-spacing: 0.3px;
         }
         
         .title-sub {
-            font-size: 10px;
+            font-size: 9px;
             color: #8a92a6;
-            font-weight: 400;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-top: 2px;
+        }
+        
+        /* Group containers */
+        .group {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            padding: 8px 16px;
+            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            min-width: 200px;
+        }
+        
+        .group-header {
+            font-size: 10px;
+            font-weight: 600;
+            color: #b8c0d8;
             text-transform: uppercase;
             letter-spacing: 0.8px;
+            margin-bottom: 2px;
         }
         
-        /* Parameter groups - ultra compact */
-        .param-group {
-            display: flex;
-            align-items: center;
-            gap: 16px;
-            padding: 0 16px;
-            border-left: 1px solid rgba(255, 255, 255, 0.08);
-            height: 40px;
+        .group-header small {
+            color: #6a728a;
+            font-weight: 400;
+            margin-left: 6px;
+            font-size: 9px;
         }
         
-        .param-item {
+        /* Parameter rows */
+        .param-row {
             display: flex;
             align-items: center;
-            gap: 8px;
-            position: relative;
+            justify-content: space-between;
+            height: 24px;
         }
         
         .param-label {
             font-size: 10px;
-            color: #98a0b5;
+            color: #b0b8d0;
             text-transform: uppercase;
-            letter-spacing: 0.4px;
-            font-weight: 500;
-            min-width: 55px;
+            letter-spacing: 0.3px;
+            min-width: 80px;
         }
         
         .param-label i {
             color: #d0d8f0;
             font-style: normal;
             background: rgba(255, 255, 255, 0.08);
-            padding: 2px 6px;
+            padding: 2px 5px;
             border-radius: 20px;
             margin-left: 4px;
-            font-size: 9px;
+            font-size: 8px;
         }
         
-        /* Sliders - minimalist */
         .slider-row {
             display: flex;
             align-items: center;
@@ -116,9 +126,9 @@
         
         input[type=range] {
             -webkit-appearance: none;
-            width: 110px;
+            width: 130px;
             height: 1px;
-            background: rgba(255, 255, 255, 0.2);
+            background: rgba(255, 255, 255, 0.25);
             border-radius: 0;
             outline: none;
         }
@@ -131,53 +141,40 @@
             border: none;
             border-radius: 0;
             cursor: pointer;
-            transition: 0.1s;
-        }
-        
-        input[type=range]::-webkit-slider-thumb:hover {
-            background: #aaccff;
-            transform: scale(1.1);
         }
         
         .value-display {
-            font-size: 11px;
+            font-size: 10px;
             color: white;
             background: rgba(255, 255, 255, 0.06);
-            padding: 3px 8px;
+            padding: 2px 6px;
             border-radius: 20px;
-            font-weight: 450;
-            min-width: 42px;
+            min-width: 38px;
             text-align: center;
             border: 1px solid rgba(255, 255, 255, 0.1);
             font-feature-settings: 'tnum';
         }
         
-        /* Color swatches */
-        .color-group {
+        /* Color controls */
+        .color-row {
             display: flex;
-            gap: 8px;
-            margin-left: 4px;
+            align-items: center;
+            gap: 10px;
+            margin: 4px 0;
         }
         
-        .color-swatch {
+        .color-picker {
             width: 20px;
             height: 20px;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            border: 1px solid rgba(255, 255, 255, 0.3);
             cursor: pointer;
-            transition: 0.1s;
+            position: relative;
         }
         
-        .color-swatch:hover {
-            transform: scale(1.15);
-            border-color: white;
-        }
+        .color-picker.bg-picker { background: #16181f; }
+        .color-picker.diag-picker { background: #7f5af0; }
+        .color-picker.para-picker { background: #2cb67d; }
         
-        .color-swatch.diag { background: #7f5af0; }  /* purple - diagonals */
-        .color-swatch.para { background: #2cb67d; }  /* green - parallels */
-        .color-swatch.bgnd { background: #16181f; }  /* dark - background */
-        .color-swatch.hlit { background: #fffffe; }  /* white - highlights */
-        
-        /* Checkbox - minimalist */
         .checkbox-item {
             display: flex;
             align-items: center;
@@ -185,33 +182,25 @@
         }
         
         .checkbox-item label {
-            font-size: 10px;
+            font-size: 9px;
             color: #b0b8d0;
             text-transform: uppercase;
-            letter-spacing: 0.5px;
             cursor: pointer;
         }
         
         input[type=checkbox] {
-            width: 14px;
-            height: 14px;
-            background: transparent;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 2px;
-            cursor: pointer;
-            accent-color: #7f5af0;
+            width: 12px;
+            height: 12px;
             margin: 0;
+            accent-color: #7f5af0;
         }
         
-        /* Key hint */
-        .key-hint {
-            font-size: 9px;
-            color: #5f6778;
-            background: rgba(0, 0, 0, 0.4);
-            padding: 2px 5px;
-            border-radius: 4px;
-            font-family: 'SF Mono', 'Fira Code', monospace;
-            letter-spacing: 0;
+        .bright-indicator {
+            display: inline-block;
+            width: 8px;
+            height: 8px;
+            border-radius: 0;
+            margin-left: 4px;
         }
         
         .status {
@@ -219,7 +208,7 @@
             align-items: center;
             gap: 6px;
             margin-left: auto;
-            font-size: 10px;
+            font-size: 9px;
             color: #8a92a6;
         }
         
@@ -227,16 +216,15 @@
             width: 5px;
             height: 5px;
             background: #6bffb8;
-            border-radius: 0;
         }
         
         canvas {
             display: block;
             position: fixed;
-            top: 150px;
+            top: 160px;
             left: 0;
             width: 100%;
-            height: calc(100vh - 150px);
+            height: calc(100vh - 160px);
         }
         
         .hint {
@@ -244,25 +232,22 @@
             bottom: 20px;
             right: 20px;
             color: #98a0b5;
-            font-size: 10px;
+            font-size: 9px;
             background: rgba(10, 12, 18, 0.7);
             backdrop-filter: blur(8px);
-            padding: 8px 16px;
-            border-radius: 40px;
+            padding: 6px 14px;
+            border-radius: 30px;
             border: 1px solid rgba(255, 255, 255, 0.06);
             z-index: 200;
-            letter-spacing: 0.2px;
-            line-height: 1.5;
-            font-weight: 400;
         }
         
         .hint kbd {
             background: #232731;
-            padding: 2px 6px;
+            padding: 2px 5px;
             border-radius: 4px;
             color: #eef2f8;
-            font-family: 'SF Mono', monospace;
-            font-size: 9px;
+            font-family: monospace;
+            font-size: 8px;
         }
     </style>
 </head>
@@ -270,76 +255,76 @@
     <div id="header">
         <div class="header-content">
             <div class="title-section">
-                <div class="title-main">BARYCENTRIC 60°</div>
+                <div class="title-main">60° GRID</div>
                 <div class="title-sub">parallels · diagonals</div>
             </div>
             
-            <!-- GROUP 1: LINE CONTROLS -->
-            <div class="param-group">
-                <div class="param-item">
-                    <span class="param-label">HAIR<i>px</i></span>
+            <!-- GROUP 1: HAIRLINE & EQUAL COLORS -->
+            <div class="group">
+                <div class="group-header">HAIRLINE <small>px</small></div>
+                <div class="param-row">
+                    <span class="param-label">SIZE</span>
                     <div class="slider-row">
-                        <input type="range" id="hairline-slider" min="0.1" max="2.0" step="0.01" value="0.8">
-                        <span class="value-display" id="hairline-value">0.80</span>
+                        <input type="range" id="hairline-slider" min="0.3" max="2.5" step="0.05" value="0.9">
+                        <span class="value-display" id="hairline-value">0.90</span>
                     </div>
                 </div>
-                
-                <div class="param-item">
-                    <span class="param-label">SHIFT<i>∥</i></span>
-                    <div class="slider-row">
-                        <input type="range" id="shift-slider" min="0.0" max="1.0" step="0.01" value="0.3">
-                        <span class="value-display" id="shift-value">0.30</span>
+                <div class="color-row">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="equal-colors">
+                        <label for="equal-colors">EQUAL COLORS</label>
                     </div>
                 </div>
             </div>
             
-            <!-- GROUP 2: COLOR CONTROLS -->
-            <div class="param-group">
-                <div class="param-item">
-                    <span class="param-label">DIAG</span>
-                    <div class="color-group">
-                        <div class="color-swatch diag" data-color="diag" data-values="0.5,0.35,0.95"></div>
-                        <div class="color-swatch" style="background:#9f7afa;" data-color="diag" data-values="0.62,0.47,0.98"></div>
-                        <div class="color-swatch" style="background:#5f3bc0;" data-color="diag" data-values="0.37,0.23,0.75"></div>
+            <!-- GROUP 2: DIAGONALS -->
+            <div class="group">
+                <div class="group-header">DIAGONALS <small>60° base</small></div>
+                <div class="param-row">
+                    <span class="param-label">ANGLE</span>
+                    <div class="slider-row">
+                        <input type="range" id="diag-angle-slider" min="30" max="60" step="0.5" value="60">
+                        <span class="value-display" id="diag-angle-value">60°</span>
                     </div>
                 </div>
-                
-                <div class="param-item">
-                    <span class="param-label">PARA</span>
-                    <div class="color-group">
-                        <div class="color-swatch para" data-color="para" data-values="0.17,0.71,0.47"></div>
-                        <div class="color-swatch" style="background:#4ec9a0;" data-color="para" data-values="0.30,0.79,0.63"></div>
-                        <div class="color-swatch" style="background:#1e8b6a;" data-color="para" data-values="0.12,0.55,0.42"></div>
-                    </div>
-                </div>
-                
-                <div class="param-item">
-                    <span class="param-label">BACK</span>
-                    <div class="color-group">
-                        <div class="color-swatch bgnd" data-color="bg" data-values="0.08,0.09,0.12"></div>
-                        <div class="color-swatch" style="background:#1e212a;" data-color="bg" data-values="0.12,0.13,0.16"></div>
-                        <div class="color-swatch" style="background:#0a0c12;" data-color="bg" data-values="0.04,0.05,0.07"></div>
+                <div class="color-row">
+                    <div class="color-picker diag-picker" id="diag-color"></div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="diag-bright">
+                        <label for="diag-bright">BRIGHT</label>
                     </div>
                 </div>
             </div>
             
-            <!-- GROUP 3: MODIFIERS -->
-            <div class="param-group">
-                <div class="checkbox-item">
-                    <input type="checkbox" id="snap-30">
-                    <label for="snap-30">SNAP 30°</label>
-                </div>
-                
-                <div class="checkbox-item">
-                    <input type="checkbox" id="invert-para">
-                    <label for="invert-para">INVERT ∥</label>
-                </div>
-                
-                <div class="param-item">
-                    <span class="param-label">OPACITY</span>
+            <!-- GROUP 3: PARALLELS -->
+            <div class="group">
+                <div class="group-header">PARALLELS <small>thru intersections</small></div>
+                <div class="param-row">
+                    <span class="param-label">SHIFT</span>
                     <div class="slider-row">
-                        <input type="range" id="opacity-slider" min="0.3" max="1.0" step="0.01" value="0.8">
-                        <span class="value-display" id="opacity-value">0.80</span>
+                        <input type="range" id="para-shift-slider" min="0.0" max="1.0" step="0.01" value="0.0">
+                        <span class="value-display" id="para-shift-value">0.00</span>
+                    </div>
+                </div>
+                <div class="color-row">
+                    <div class="color-picker para-picker" id="para-color"></div>
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="para-bright">
+                        <label for="para-bright">BRIGHT</label>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- GROUP 4: BACKGROUND & STATE -->
+            <div class="group">
+                <div class="group-header">BACKGROUND</div>
+                <div class="color-row">
+                    <div class="color-picker bg-picker" id="bg-color"></div>
+                </div>
+                <div class="param-row">
+                    <div class="checkbox-item">
+                        <input type="checkbox" id="start-state" checked>
+                        <label for="start-state">START STATE</label>
                     </div>
                 </div>
             </div>
@@ -352,7 +337,7 @@
     </div>
     
     <div class="hint">
-        <kbd>ALT</kbd>+drag rotate · <kbd>ALT</kbd>+<kbd>SHIFT</kbd> snap 30° · ∥ shift moves parallels between diagonals
+        <kbd>ALT</kbd>+drag rotate · <kbd>ALT</kbd>+<kbd>SHIFT</kbd> snap 30° · shift moves parallels
     </div>
 
     <script>
@@ -379,7 +364,6 @@
             gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
             gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
 
-            // Vertex shader
             const vsSource = `
                 attribute vec2 aPos;
                 attribute vec2 aUv;
@@ -390,7 +374,6 @@
                 }
             `;
 
-            // Fragment shader with distinct parallel/diagonal coloring
             const fsSource = `
                 precision highp float;
                 
@@ -398,15 +381,22 @@
                 
                 uniform vec2  uOffset;
                 uniform float uScale;
-                uniform vec3  uColorDiag;      // color for diagonals
-                uniform vec3  uColorPara;       // color for parallels
-                uniform vec3  uColorBg;         // background
-                uniform vec3  uColorHair;       // hairline color
-                uniform float uLineWidth;
-                uniform float uParallelShift;    // 0-1 shift of parallels
                 uniform float uRotate;
-                uniform bool  uInvertPara;       // invert parallel/diagonal roles
-                uniform float uOpacity;           // overall opacity
+                
+                // Colors
+                uniform vec3  uColorBg;
+                uniform vec3  uColorDiag;
+                uniform vec3  uColorPara;
+                
+                // Controls
+                uniform float uHairlineSize;
+                uniform float uDiagAngle;      // 30-60 degrees
+                uniform float uParaShift;       // 0-1 shift relative to diagonals
+                uniform bool  uEqualColors;
+                uniform bool  uDiagBright;
+                uniform bool  uParaBright;
+                uniform bool  uStartState;
+                
                 uniform vec2  uResolution;
                 uniform float uAspect;
                 
@@ -423,82 +413,92 @@
                     p += uOffset;
                     p = rotate(p, uRotate);
                     
-                    // Perfect 60° grid
-                    const float halfSqrt3 = 0.86602540378;
+                    // Base 60° grid
+                    const float sqrt3 = 1.73205;
+                    const float halfSqrt3 = 0.866025;
                     
-                    // Three axes at 0°, 60°, 120°
-                    float u = p.x;
-                    float v = p.y / halfSqrt3 + p.x * 0.5;
+                    // Convert diagonal angle from degrees to radians and to scale factor
+                    float diagRad = uDiagAngle * 3.14159 / 180.0;
+                    float diagScale = tan(diagRad) / 1.73205;  // Normalize to 60° base
+                    
+                    // Three axes with adjustable diagonal angle
+                    // u axis: horizontal (parallels group baseline)
+                    // v axis: first diagonal at diagAngle
+                    // w axis: second diagonal at 120°? Actually we want two diagonals symmetric
+                    
+                    float u = p.x;  // parallels reference
+                    
+                    // Diagonals: symmetric around vertical
+                    float v = (p.y / halfSqrt3) * diagScale + p.x * 0.5;
                     float w = -u - v;
                     
-                    // Parallel shift moves the v/w axes relative to u
-                    v += uParallelShift * 0.5;
-                    w = -u - v;
+                    // Parallel shift moves parallels relative to diagonal intersections
+                    // At shift=0, parallels go through diagonal intersections
+                    // At shift=0.5, parallels are halfway between
+                    // At shift=1.0, parallels align with next diagonal set
                     
-                    // Distances to each set of lines (0-1 range, 0=line, 0.5=center)
-                    float du = abs(fract(u + 0.5) - 0.5) * 2.0;
+                    // The diagonal intersection points occur where v and w are integers
+                    // We want parallels (u lines) to pass through these points
+                    float intersectionOffset = fract(v + w) * 0.5;
+                    float paraShift = uParaShift * 1.0;
+                    
+                    // Adjust u based on shift parameter to align with diagonal intersections
+                    float uAdj = u + paraShift * 0.5;
+                    
+                    // Distances to each line set (0-1 range, 0=line, 0.5=center)
+                    float du = abs(fract(uAdj + 0.5) - 0.5) * 2.0;
                     float dv = abs(fract(v + 0.5) - 0.5) * 2.0;
                     float dw = abs(fract(w + 0.5) - 0.5) * 2.0;
                     
-                    // Identify which lines are diagonals vs parallels
-                    // In a 60° grid, two axes are diagonals (60° apart), one is parallels
-                    // Here: u is one diagonal, v and w are the other diagonal and parallels
-                    // But we want distinct coloring: let's make u and w the diagonals (60° apart)
-                    // and v the parallels (the third direction)
-                    
-                    float diag1 = du;
-                    float diag2 = dw;
-                    float para = dv;
-                    
-                    if (uInvertPara) {
-                        // Swap roles for different visual states
-                        diag1 = dv;
-                        diag2 = dw;
-                        para = du;
+                    // Start state: parallels at 0°, diagonals at 60° and 120°
+                    if (uStartState) {
+                        // Force pure 60° geometry with parallels through intersections
+                        uAdj = p.x;
+                        float vv = p.y / halfSqrt3 + p.x * 0.5;
+                        float ww = -p.x - vv;
+                        du = abs(fract(uAdj + 0.5) - 0.5) * 2.0;
+                        dv = abs(fract(vv + 0.5) - 0.5) * 2.0;
+                        dw = abs(fract(ww + 0.5) - 0.5) * 2.0;
                     }
                     
-                    // Edge detection with screen-space antialiasing
+                    // Edge detection
                     vec2 worldPerPixel = vec2(2.0 * uScale / uResolution.x, 2.0 * uScale / uResolution.y);
                     float deriv = length(worldPerPixel) * 1.5;
-                    float pixelWidth = uLineWidth * deriv;
+                    float pixelWidth = uHairlineSize * deriv;
                     
-                    // Line detection (0 = on line, 1 = off line)
-                    float lineDiag1 = smoothstep(0.0, pixelWidth, diag1);
-                    float lineDiag2 = smoothstep(0.0, pixelWidth, diag2);
-                    float linePara = smoothstep(0.0, pixelWidth, para);
+                    // Line detection
+                    float linePara = smoothstep(0.0, pixelWidth, du);
+                    float lineDiag1 = smoothstep(0.0, pixelWidth, dv);
+                    float lineDiag2 = smoothstep(0.0, pixelWidth, dw);
                     
-                    // Combine: we want lines where any of the three is near 0
-                    float lineAll = min(min(lineDiag1, lineDiag2), linePara);
-                    
-                    // Color mixing: background with diagonal and parallel influences
+                    // Color mixing
                     vec3 color = uColorBg;
                     
-                    // Add diagonal colors (at line positions)
+                    // Brightness modifiers
+                    float diagBrightness = uDiagBright ? 1.5 : 1.0;
+                    float paraBrightness = uParaBright ? 1.5 : 1.0;
+                    
+                    // Apply diagonal colors
                     float diagIntensity = (1.0 - lineDiag1) * (1.0 - lineDiag2);
-                    color = mix(color, uColorDiag, diagIntensity * 0.8);
+                    vec3 diagColor = uEqualColors ? vec3(0.9, 0.9, 0.95) : uColorDiag;
+                    color = mix(color, diagColor * diagBrightness, diagIntensity * 0.9);
                     
-                    // Add parallel colors
-                    float paraIntensity = (1.0 - linePara);
-                    color = mix(color, uColorPara, paraIntensity * 0.6);
+                    // Apply parallel colors
+                    float paraIntensity = 1.0 - linePara;
+                    vec3 paraColor = uEqualColors ? vec3(0.85, 0.85, 0.9) : uColorPara;
+                    color = mix(color, paraColor * paraBrightness, paraIntensity * 0.7);
                     
-                    // Hairline edges in darker color
-                    color = mix(uColorHair, color, lineAll);
+                    // Grid lines in darker color
+                    float allLines = min(min(linePara, lineDiag1), lineDiag2);
+                    color = mix(vec3(0.02, 0.02, 0.03), color, allLines);
                     
-                    // Subtle cell variation
-                    float iu = floor(u + 0.5);
-                    float iv = floor(v + 0.5);
-                    float pattern = fract(iu * 0.3 + iv * 0.5) * 0.15;
-                    color += pattern;
-                    
-                    // Opacity and gamma
-                    color = mix(uColorBg, color, uOpacity);
+                    // Gamma
                     color = pow(color, vec3(1.0/2.2));
                     
                     gl_FragColor = vec4(color, 1.0);
                 }
             `;
 
-            // Compile shader
             function compileShader(gl, source, type) {
                 const shader = gl.createShader(type);
                 gl.shaderSource(shader, source);
@@ -530,37 +530,43 @@
             // Uniforms
             const uOffset = gl.getUniformLocation(program, 'uOffset');
             const uScale = gl.getUniformLocation(program, 'uScale');
+            const uRotate = gl.getUniformLocation(program, 'uRotate');
+            const uColorBg = gl.getUniformLocation(program, 'uColorBg');
             const uColorDiag = gl.getUniformLocation(program, 'uColorDiag');
             const uColorPara = gl.getUniformLocation(program, 'uColorPara');
-            const uColorBg = gl.getUniformLocation(program, 'uColorBg');
-            const uColorHair = gl.getUniformLocation(program, 'uColorHair');
-            const uLineWidth = gl.getUniformLocation(program, 'uLineWidth');
-            const uParallelShift = gl.getUniformLocation(program, 'uParallelShift');
-            const uRotate = gl.getUniformLocation(program, 'uRotate');
-            const uInvertPara = gl.getUniformLocation(program, 'uInvertPara');
-            const uOpacity = gl.getUniformLocation(program, 'uOpacity');
+            const uHairlineSize = gl.getUniformLocation(program, 'uHairlineSize');
+            const uDiagAngle = gl.getUniformLocation(program, 'uDiagAngle');
+            const uParaShift = gl.getUniformLocation(program, 'uParaShift');
+            const uEqualColors = gl.getUniformLocation(program, 'uEqualColors');
+            const uDiagBright = gl.getUniformLocation(program, 'uDiagBright');
+            const uParaBright = gl.getUniformLocation(program, 'uParaBright');
+            const uStartState = gl.getUniformLocation(program, 'uStartState');
             const uResolution = gl.getUniformLocation(program, 'uResolution');
             const uAspect = gl.getUniformLocation(program, 'uAspect');
 
             // Default colors
+            gl.uniform3f(uColorBg, 0.08, 0.09, 0.12);
             gl.uniform3f(uColorDiag, 0.5, 0.35, 0.95);    // purple
             gl.uniform3f(uColorPara, 0.17, 0.71, 0.47);   // green
-            gl.uniform3f(uColorBg, 0.08, 0.09, 0.12);      // dark
-            gl.uniform3f(uColorHair, 0.04, 0.04, 0.06);    // almost black
             
             // Initial values
-            let currentLineWidth = 0.8;
-            let currentShift = 0.3;
+            let currentHairline = 0.9;
+            let currentDiagAngle = 60.0;
+            let currentParaShift = 0.0;
             let currentRotate = 0.0;
-            let snap30Enabled = false;
-            let invertPara = false;
-            let currentOpacity = 0.8;
+            let equalColors = false;
+            let diagBright = false;
+            let paraBright = false;
+            let startState = true;
             
-            gl.uniform1f(uLineWidth, currentLineWidth);
-            gl.uniform1f(uParallelShift, currentShift);
+            gl.uniform1f(uHairlineSize, currentHairline);
+            gl.uniform1f(uDiagAngle, currentDiagAngle);
+            gl.uniform1f(uParaShift, currentParaShift);
             gl.uniform1f(uRotate, currentRotate);
-            gl.uniform1i(uInvertPara, invertPara ? 1 : 0);
-            gl.uniform1f(uOpacity, currentOpacity);
+            gl.uniform1i(uEqualColors, equalColors ? 1 : 0);
+            gl.uniform1i(uDiagBright, diagBright ? 1 : 0);
+            gl.uniform1i(uParaBright, paraBright ? 1 : 0);
+            gl.uniform1i(uStartState, startState ? 1 : 0);
 
             // Interaction state
             let offsetX = 1.5, offsetY = -1.0;
@@ -571,7 +577,6 @@
             let isAltDown = false;
             let isShiftDown = false;
             let dragStartRotate = 0;
-            let dragStartX = 0, dragStartY = 0;
 
             function updateUniforms() {
                 const aspect = canvas.width / canvas.height;
@@ -582,7 +587,7 @@
                 draw();
             }
 
-            // Keyboard modifiers
+            // Keyboard
             window.addEventListener('keydown', (e) => {
                 if (e.key === 'Alt') {
                     isAltDown = true;
@@ -599,7 +604,7 @@
                 if (e.key === 'Shift') isShiftDown = false;
             });
 
-            // Mouse events
+            // Mouse
             canvas.addEventListener('mousedown', (e) => {
                 if (e.button === 0) {
                     isDragging = true;
@@ -609,8 +614,6 @@
                     if (isAltDown) {
                         canvas.style.cursor = 'grabbing';
                         dragStartRotate = currentRotate;
-                        dragStartX = e.clientX;
-                        dragStartY = e.clientY;
                     } else {
                         canvas.style.cursor = 'grabbing';
                     }
@@ -621,11 +624,11 @@
                 if (!isDragging) return;
                 
                 if (isAltDown) {
-                    const dx = e.clientX - dragStartX;
-                    const dy = e.clientY - dragStartY;
-                    let angleDelta = (dx - dy) * 0.008;
+                    const dx = e.clientX - lastMouseX;
+                    const dy = e.clientY - lastMouseY;
+                    let angleDelta = (dx - dy) * 0.005;
                     
-                    if (isShiftDown && snap30Enabled) {
+                    if (isShiftDown) {
                         const snap = Math.PI / 6;
                         let newRotate = dragStartRotate + angleDelta;
                         currentRotate = Math.round(newRotate / snap) * snap;
@@ -683,14 +686,13 @@
             // Resize
             function resizeCanvas() {
                 canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight - 150;
+                canvas.height = window.innerHeight - 160;
                 gl.viewport(0, 0, canvas.width, canvas.height);
                 updateUniforms();
             }
             window.addEventListener('resize', resizeCanvas);
             resizeCanvas();
 
-            // Draw loop
             function draw() {
                 gl.clear(gl.COLOR_BUFFER_BIT);
                 gl.drawArrays(gl.TRIANGLES, 0, 6);
@@ -706,55 +708,101 @@
             document.getElementById('hairline-slider').addEventListener('input', (e) => {
                 const val = parseFloat(e.target.value);
                 document.getElementById('hairline-value').textContent = val.toFixed(2);
-                gl.uniform1f(uLineWidth, val);
+                gl.uniform1f(uHairlineSize, val);
                 draw();
             });
             
-            document.getElementById('shift-slider').addEventListener('input', (e) => {
+            document.getElementById('diag-angle-slider').addEventListener('input', (e) => {
                 const val = parseFloat(e.target.value);
-                document.getElementById('shift-value').textContent = val.toFixed(2);
-                gl.uniform1f(uParallelShift, val);
+                document.getElementById('diag-angle-value').textContent = val + '°';
+                gl.uniform1f(uDiagAngle, val);
                 draw();
             });
             
-            document.getElementById('opacity-slider').addEventListener('input', (e) => {
+            document.getElementById('para-shift-slider').addEventListener('input', (e) => {
                 const val = parseFloat(e.target.value);
-                document.getElementById('opacity-value').textContent = val.toFixed(2);
-                gl.uniform1f(uOpacity, val);
+                document.getElementById('para-shift-value').textContent = val.toFixed(2);
+                gl.uniform1f(uParaShift, val);
                 draw();
             });
             
-            document.getElementById('snap-30').addEventListener('change', (e) => {
-                snap30Enabled = e.target.checked;
-            });
-            
-            document.getElementById('invert-para').addEventListener('change', (e) => {
-                invertPara = e.target.checked;
-                gl.uniform1i(uInvertPara, invertPara ? 1 : 0);
+            document.getElementById('equal-colors').addEventListener('change', (e) => {
+                equalColors = e.target.checked;
+                gl.uniform1i(uEqualColors, equalColors ? 1 : 0);
                 draw();
             });
             
-            // Color swatches
-            document.querySelectorAll('.color-swatch').forEach(swatch => {
-                swatch.addEventListener('click', () => {
-                    const colorType = swatch.dataset.color;
-                    const values = swatch.dataset.values.split(',').map(Number);
-                    
-                    if (colorType === 'diag') {
-                        gl.uniform3f(uColorDiag, values[0], values[1], values[2]);
-                    } else if (colorType === 'para') {
-                        gl.uniform3f(uColorPara, values[0], values[1], values[2]);
-                    } else if (colorType === 'bg') {
-                        gl.uniform3f(uColorBg, values[0], values[1], values[2]);
-                    }
-                    draw();
-                });
+            document.getElementById('diag-bright').addEventListener('change', (e) => {
+                diagBright = e.target.checked;
+                gl.uniform1i(uDiagBright, diagBright ? 1 : 0);
+                draw();
+            });
+            
+            document.getElementById('para-bright').addEventListener('change', (e) => {
+                paraBright = e.target.checked;
+                gl.uniform1i(uParaBright, paraBright ? 1 : 0);
+                draw();
+            });
+            
+            document.getElementById('start-state').addEventListener('change', (e) => {
+                startState = e.target.checked;
+                gl.uniform1i(uStartState, startState ? 1 : 0);
+                draw();
+            });
+            
+            // Color pickers (simplified - cycle through presets)
+            const diagColors = [
+                [0.5, 0.35, 0.95],  // purple
+                [0.95, 0.4, 0.5],   // red
+                [0.3, 0.7, 0.95],   // blue
+                [0.95, 0.8, 0.3]    // gold
+            ];
+            let diagColorIndex = 0;
+            
+            document.getElementById('diag-color').addEventListener('click', () => {
+                diagColorIndex = (diagColorIndex + 1) % diagColors.length;
+                const c = diagColors[diagColorIndex];
+                gl.uniform3f(uColorDiag, c[0], c[1], c[2]);
+                document.getElementById('diag-color').style.backgroundColor = `rgb(${c[0]*255},${c[1]*255},${c[2]*255})`;
+                draw();
+            });
+            
+            const paraColors = [
+                [0.17, 0.71, 0.47],  // green
+                [0.95, 0.6, 0.2],    // orange
+                [0.8, 0.4, 0.8],     // magenta
+                [0.4, 0.8, 0.9]      // cyan
+            ];
+            let paraColorIndex = 0;
+            
+            document.getElementById('para-color').addEventListener('click', () => {
+                paraColorIndex = (paraColorIndex + 1) % paraColors.length;
+                const c = paraColors[paraColorIndex];
+                gl.uniform3f(uColorPara, c[0], c[1], c[2]);
+                document.getElementById('para-color').style.backgroundColor = `rgb(${c[0]*255},${c[1]*255},${c[2]*255})`;
+                draw();
+            });
+            
+            const bgColors = [
+                [0.08, 0.09, 0.12],  // dark
+                [0.15, 0.15, 0.18],  // medium dark
+                [0.22, 0.22, 0.26],  // lighter dark
+                [0.05, 0.05, 0.08]   // very dark
+            ];
+            let bgColorIndex = 0;
+            
+            document.getElementById('bg-color').addEventListener('click', () => {
+                bgColorIndex = (bgColorIndex + 1) % bgColors.length;
+                const c = bgColors[bgColorIndex];
+                gl.uniform3f(uColorBg, c[0], c[1], c[2]);
+                document.getElementById('bg-color').style.backgroundColor = `rgb(${c[0]*255},${c[1]*255},${c[2]*255})`;
+                draw();
             });
             
             // Initialize displays
-            document.getElementById('hairline-value').textContent = currentLineWidth.toFixed(2);
-            document.getElementById('shift-value').textContent = currentShift.toFixed(2);
-            document.getElementById('opacity-value').textContent = currentOpacity.toFixed(2);
+            document.getElementById('hairline-value').textContent = currentHairline.toFixed(2);
+            document.getElementById('diag-angle-value').textContent = currentDiagAngle + '°';
+            document.getElementById('para-shift-value').textContent = currentParaShift.toFixed(2);
         })();
     </script>
 </body>
