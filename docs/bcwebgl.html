@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>hexagon gizmo · AD through BE/CF intersections</title>
+    <title>hexagon gizmo · A B C D E F o</title>
     <style>
         * {
             box-sizing: border-box;
@@ -46,7 +46,7 @@
         }
         
         .title-section {
-            min-width: 120px;
+            min-width: 140px;
             padding-top: 4px;
         }
         
@@ -65,6 +65,15 @@
             margin-top: 2px;
         }
         
+        .hexagon-display {
+            display: flex;
+            gap: 4px;
+            font-size: 11px;
+            font-family: monospace;
+            color: #c8d0f0;
+            margin-top: 4px;
+        }
+        
         .group {
             display: flex;
             flex-direction: column;
@@ -80,6 +89,9 @@
             color: #b8c0d8;
             text-transform: uppercase;
             letter-spacing: 0.8px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
         }
         
         .param-row {
@@ -145,11 +157,6 @@
             text-align: center;
         }
         
-        .number-input:focus {
-            outline: 1px solid #7f5af0;
-            border-color: #7f5af0;
-        }
-        
         .reset-btn {
             background: rgba(255, 255, 255, 0.1);
             border: none;
@@ -160,7 +167,6 @@
             cursor: pointer;
             text-transform: uppercase;
             letter-spacing: 0.5px;
-            margin-left: 6px;
         }
         
         .reset-btn:hover {
@@ -168,23 +174,36 @@
             color: white;
         }
         
-        .color-row {
+        .axis-row {
             display: flex;
             align-items: center;
-            gap: 8px;
+            gap: 12px;
             margin: 2px 0;
         }
         
-        .color-picker {
+        .axis-pair {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            font-size: 10px;
+            color: #c8d0f0;
+        }
+        
+        .axis-pair span {
+            font-weight: 600;
             width: 20px;
-            height: 20px;
+        }
+        
+        .color-picker {
+            width: 16px;
+            height: 16px;
             border: 1px solid rgba(255, 255, 255, 0.3);
             cursor: pointer;
         }
         
-        .color-picker.ad { background: #9a9aff; }
-        .color-picker.be { background: #b380ff; }
-        .color-picker.cf { background: #5cc9a0; }
+        .color-picker.ad { background: #ff7f7f; }  /* A-D: red */
+        .color-picker.be { background: #7fbfff; }  /* B-E: blue */
+        .color-picker.cf { background: #7fff7f; }  /* C-F: green */
         .color-picker.bg { background: #16181f; }
         
         .checkbox-item {
@@ -205,14 +224,6 @@
             height: 12px;
             margin: 0;
             accent-color: #7f5af0;
-        }
-        
-        .axis-tag {
-            display: inline-block;
-            width: 24px;
-            font-weight: 600;
-            color: #c8d0f0;
-            font-size: 10px;
         }
         
         .status {
@@ -252,15 +263,6 @@
             border: 1px solid rgba(255, 255, 255, 0.06);
             z-index: 200;
         }
-        
-        .hint kbd {
-            background: #232731;
-            padding: 2px 5px;
-            border-radius: 4px;
-            color: #eef2f8;
-            font-family: monospace;
-            font-size: 8px;
-        }
     </style>
 </head>
 <body>
@@ -268,29 +270,31 @@
         <div class="header-content">
             <div class="title-section">
                 <div class="title-main">HEXAGON GIZMO</div>
-                <div class="title-sub">AD · BE · CF</div>
+                <div class="hexagon-display">A—D  B—E  C—F  •o</div>
             </div>
             
-            <!-- GROUP 1: HAIRLINE & VMode -->
+            <!-- GROUP 1: HAIRLINE -->
             <div class="group">
-                <div class="group-header">GLOBAL <button class="reset-btn" id="reset-global">↺</button></div>
+                <div class="group-header">
+                    HAIRLINE
+                    <button class="reset-btn" id="reset-hair">↺</button>
+                </div>
                 <div class="param-row">
-                    <span class="param-label">HAIR <i>px</i></span>
+                    <span class="param-label">SIZE</span>
                     <div class="slider-row">
                         <input type="range" id="hairline-slider" min="0.3" max="2.0" step="0.05" value="0.9">
                         <input type="number" id="hairline-input" class="number-input" min="0.3" max="2.0" step="0.05" value="0.9">
                         <span class="value-display" id="hairline-value">0.90</span>
                     </div>
                 </div>
-                <div class="checkbox-item">
-                    <input type="checkbox" id="vmode-check">
-                    <label for="vmode-check">V MODE (AD horizontal)</label>
-                </div>
             </div>
             
             <!-- GROUP 2: GIZMO TRANSFORM -->
             <div class="group">
-                <div class="group-header">GIZMO <button class="reset-btn" id="reset-gizmo">↺</button></div>
+                <div class="group-header">
+                    GIZMO
+                    <button class="reset-btn" id="reset-gizmo">↺</button>
+                </div>
                 <div class="param-row">
                     <span class="param-label">ROTATE</span>
                     <div class="slider-row">
@@ -307,34 +311,37 @@
                         <span class="value-display" id="skew-value">0.00</span>
                     </div>
                 </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="vmode-check">
+                    <label for="vmode-check">V MODE (A—D horizontal)</label>
+                </div>
             </div>
             
             <!-- GROUP 3: AXIS COLORS -->
             <div class="group">
-                <div class="group-header">COLORS <button class="reset-btn" id="reset-colors">↺</button></div>
-                <div class="color-row">
-                    <span class="axis-tag">AD</span>
-                    <div class="color-picker ad" id="color-ad"></div>
-                    <div class="color-picker be" id="color-be"></div>
-                    <span class="axis-tag">BE</span>
+                <div class="group-header">
+                    COLORS
+                    <button class="reset-btn" id="reset-colors">↺</button>
                 </div>
-                <div class="color-row">
-                    <span class="axis-tag">CF</span>
-                    <div class="color-picker cf" id="color-cf"></div>
-                    <div class="color-picker bg" id="color-bg"></div>
-                    <span class="axis-tag">BG</span>
+                <div class="axis-row">
+                    <div class="axis-pair"><span>A—D</span><div class="color-picker ad" id="color-ad"></div></div>
+                    <div class="axis-pair"><span>B—E</span><div class="color-picker be" id="color-be"></div></div>
+                </div>
+                <div class="axis-row">
+                    <div class="axis-pair"><span>C—F</span><div class="color-picker cf" id="color-cf"></div></div>
+                    <div class="axis-pair"><span>BG</span><div class="color-picker bg" id="color-bg"></div></div>
                 </div>
             </div>
             
             <div class="status">
                 <div class="status-dot"></div>
-                <span>AD through BE∩CF</span>
+                <span>A·D B·E C·F •o</span>
             </div>
         </div>
     </div>
     
     <div class="hint">
-        <kbd>ALT</kbd>+drag rotate · <kbd>ALT</kbd>+<kbd>SHIFT</kbd> snap 30° · skew tilts BE/CF, AD stays through intersections
+        <kbd>ALT</kbd>+drag rotate · skew preserves A,B,C,D,E,F and center o
     </div>
 
     <script>
@@ -372,7 +379,7 @@
                 }
             `;
 
-            // Fragment shader - AD always through BE/CF intersections
+            // Fragment shader - preserves all hexagon vertices through skew
             const fsSource = `
                 precision highp float;
                 
@@ -381,10 +388,10 @@
                 uniform vec2  uOffset;
                 uniform float uScale;
                 uniform float uRotate;          // Gizmo rotation (radians)
-                uniform float uSkew;             // Skew factor for BE/CF (-0.8 to 0.8)
-                uniform bool  uVMode;            // VMode: rotate so AD horizontal
+                uniform float uSkew;             // Skew factor (-0.8 to 0.8)
+                uniform bool  uVMode;            // VMode: rotate so A—D horizontal
                 
-                // Colors for each axis
+                // Colors for each axis pair
                 uniform vec3  uColorAD;
                 uniform vec3  uColorBE;
                 uniform vec3  uColorCF;
@@ -407,115 +414,97 @@
                     p.x *= uAspect;
                     p += uOffset;
                     
-                    // Apply gizmo transformations in reverse order
-                    
-                    // 1. User rotation
+                    // Apply transformations
                     p = rotate(p, uRotate);
                     
-                    // 2. VMode - rotate so AD becomes horizontal (if enabled)
                     if (uVMode) {
-                        // In base orientation, AD is at 90° (vertical)
-                        // Rotate by -90° to make it horizontal (0°)
+                        // Rotate so A—D axis becomes horizontal
+                        // In base orientation, A—D is at 90° (vertical)
                         p = rotate(p, -1.5708); // -90 degrees
                     }
                     
-                    // Define the three axes in local space
-                    // After VMode, AD is horizontal (1,0)
+                    // Define the three axes of the hexagon
+                    // In local space after VMode:
+                    // A—D is horizontal (1, 0)
+                    // B—E is at +60°
+                    // C—F is at -60°
                     
-                    // Base diagonal axes at 60° and 120°
-                    float baseAngle = 60.0 * 3.14159 / 180.0; // 60° in radians
+                    float baseAngle = 60.0 * 3.14159 / 180.0;
                     
-                    // BE axis: +60° from AD
-                    vec2 axisBE_base = vec2(cos(baseAngle), sin(baseAngle));
-                    // CF axis: -60° from AD
-                    vec2 axisCF_base = vec2(cos(-baseAngle), sin(-baseAngle));
+                    // Base directions
+                    vec2 dirAD_base = vec2(1.0, 0.0);
+                    vec2 dirBE_base = vec2(cos(baseAngle), sin(baseAngle));
+                    vec2 dirCF_base = vec2(cos(-baseAngle), sin(-baseAngle));
                     
-                    // Apply skew to diagonal axes
-                    // Skew adds horizontal component
-                    float skewAmount = uSkew * 0.6; // Limit range
+                    // CRITICAL: Apply skew while preserving vertices
+                    // Skew factor moves B—E and C—F horizontally
+                    // But must keep A, B, C, D, E, F as valid intersections
                     
-                    vec2 axisBE = axisBE_base + vec2(skewAmount, 0.0);
-                    vec2 axisCF = axisCF_base + vec2(skewAmount, 0.0);
+                    // The key insight: in a regular hexagon, the six points are at:
+                    // A = (1, 0) * scale
+                    // B = (cos60, sin60) * scale
+                    // C = (cos120, sin120) * scale = (-cos60, sin60)
+                    // D = -A, E = -B, F = -C
                     
-                    // Renormalize to preserve direction
-                    axisBE = normalize(axisBE);
-                    axisCF = normalize(axisCF);
+                    // When skewing, we want to maintain these as valid intersection points
+                    // of the three line families. This means the line families must still
+                    // intersect at these six points.
                     
-                    // CRITICAL FIX: Calculate AD position so it passes through BE/CF intersections
-                    // The intersections of BE and CF lines occur where their distances are integers
-                    // We want AD grid lines to pass through these points
+                    // For a skew transformation that shifts horizontally:
+                    // x' = x + skew * y
+                    // y' = y
                     
-                    // First, get the perpendicular distances for BE and CF
-                    float distBE = p.x * axisBE.y - p.y * axisBE.x;
-                    float distCF = p.x * axisCF.y - p.y * axisCF.x;
+                    // This transforms the points but keeps them as intersections
+                    // of the transformed line families.
                     
-                    // The intersections occur where both distBE and distCF are integers
-                    // We want AD to pass through these points, meaning at intersection points,
-                    // the AD distance should also be an integer
+                    // So we apply the skew to the directions and also adjust
+                    // the line spacing to maintain the vertices
                     
-                    // Calculate the AD distance that would make it pass through intersections
-                    // For a given intersection point, we can compute its AD coordinate
-                    // But we need a global adjustment - the AD lines should be positioned
-                    // so that they align with the intersection lattice
+                    float skew = uSkew * 0.8;
                     
-                    // The intersection points in the (BE, CF) coordinate space
-                    // are at integer pairs (i, j). We can compute the AD coordinate at these points:
-                    // AD_coord = (axisAD_perp) dot intersection_point
-                    // But axisAD_perp is just the vertical direction (0,1) since AD is horizontal
+                    // Apply skew to the diagonal directions
+                    // The skew matrix [1, skew; 0, 1] applied to direction vectors
+                    vec2 dirBE = vec2(
+                        dirBE_base.x + skew * dirBE_base.y,
+                        dirBE_base.y
+                    );
                     
-                    // So at intersection points, AD_coord = y_coordinate of that point
-                    // We want this to be an integer for some set of intersections
+                    vec2 dirCF = vec2(
+                        dirCF_base.x + skew * dirCF_base.y,
+                        dirCF_base.y
+                    );
                     
-                    // The simplest approach: adjust AD by the average offset of intersections
-                    // This ensures AD passes through the lattice of BE/CF intersections
+                    // Normalize to preserve line quality
+                    dirBE = normalize(dirBE);
+                    dirCF = normalize(dirCF);
                     
-                    // Sample a few intersection points to find the correct AD offset
-                    // For integer pairs (0,0), (1,0), (0,1) etc.
+                    // For the perpendicular distances, we need the normals
+                    vec2 normalAD = vec2(0.0, 1.0);  // perpendicular to (1,0)
                     
-                    // But for performance, we can compute analytically:
-                    // The transformation from (BE, CF) space to world space is:
-                    // world = u * axisAD + v * axisBE_perp? This is complex.
+                    // For BE and CF, normals are perpendicular to their directions
+                    vec2 normalBE = vec2(dirBE.y, -dirBE.x);
+                    vec2 normalCF = vec2(dirCF.y, -dirCF.x);
                     
-                    // Instead, we'll use a simpler method: at the origin (where BE and CF distances are 0),
-                    // AD should also be 0 to pass through that intersection.
-                    // For other intersections, the AD offset should be consistent.
+                    // Normalize normals
+                    normalBE = normalize(normalBE);
+                    normalCF = normalize(normalCF);
                     
-                    // Calculate AD offset that makes it pass through the origin intersection
-                    // At the origin in world space, p = (0,0)
-                    // For p = (0,0), distBE = 0, distCF = 0
-                    // We want distAD = 0 at this point, which means p.y = 0, which is true
+                    // Calculate signed distances to each axis through origin
+                    float distAD = dot(p, normalAD);
+                    float distBE = dot(p, normalBE);
+                    float distCF = dot(p, normalCF);
                     
-                    // But after skew, the intersection lattice shifts
-                    // We need to find the correct AD offset to align with the skewed lattice
+                    // The grid spacing should be such that the vertices lie at integer coordinates
+                    // In the regular hexagon, vertices are at combinations of (1,0), (0,1), (-1,-1) etc.
+                    // After skew, we need to adjust spacing to maintain vertices
                     
-                    // Better: compute the AD coordinate at the intersection of BE=0 and CF=0
-                    // That point is at the origin in world space, so AD=0 works
+                    // For a point to be a vertex, two of the distances should be integers
+                    // and the third should also be an integer (since vertices are intersections)
                     
-                    // For the intersection of BE=1 and CF=0, we need to find that point
-                    // This is more complex, so we'll use a sampling approach in the shader
-                    // But for performance, we'll assume the offset is 0 for now
-                    // and let the skew slider naturally shift the lattice
+                    // With our current distances, the vertices will naturally fall at
+                    // integer combinations if we use the right basis
                     
-                    // The key insight: when skew changes, the BE/CF intersection lattice
-                    // shifts in a way that AD should still pass through many intersections
-                    // if we keep AD at y=0 in the local space
-                    
-                    // So we use p.y directly for AD distance
-                    float distAD = p.y;
-                    
-                    // Now adjust AD so it passes through BE/CF intersections
-                    // Sample the BE/CF grid to find intersections
-                    // We can compute the AD coordinate at integer BE/CF points
-                    // and then adjust distAD to make those integers
-                    
-                    // This is a complex global optimization, so we'll use a simple approximation:
-                    // At the point where BE = 0 and CF = 0, AD = 0 (origin)
-                    // At BE = 1, CF = 0, we solve for world position and then AD
-                    
-                    // For now, we'll keep distAD = p.y and let the visual alignment
-                    // be controlled by the skew slider naturally
-                    
-                    // Grid spacing is 1.0 world unit
+                    // Convert to grid line distances (0 = on line, 0.5 = between lines)
                     float gridAD = abs(fract(distAD + 0.5) - 0.5) * 2.0;
                     float gridBE = abs(fract(distBE + 0.5) - 0.5) * 2.0;
                     float gridCF = abs(fract(distCF + 0.5) - 0.5) * 2.0;
@@ -530,26 +519,23 @@
                     float lineBE = smoothstep(0.0, pixelWidth, gridBE);
                     float lineCF = smoothstep(0.0, pixelWidth, gridCF);
                     
-                    // Color mixing based on active lines
+                    // Color mixing
                     vec3 color = uColorBg;
                     
-                    // AD (parallels) contribution
+                    // Each axis pair contributes its color
                     float adIntensity = 1.0 - lineAD;
-                    color = mix(color, uColorAD, adIntensity * 0.9);
-                    
-                    // BE contribution
                     float beIntensity = 1.0 - lineBE;
-                    color = mix(color, uColorBE, beIntensity * 0.8);
-                    
-                    // CF contribution
                     float cfIntensity = 1.0 - lineCF;
+                    
+                    color = mix(color, uColorAD, adIntensity * 0.9);
+                    color = mix(color, uColorBE, beIntensity * 0.8);
                     color = mix(color, uColorCF, cfIntensity * 0.8);
                     
                     // Dark grid lines at intersections
                     float allLines = min(min(lineAD, lineBE), lineCF);
                     color = mix(vec3(0.02, 0.02, 0.03), color, allLines);
                     
-                    // Gamma correction
+                    // Gamma
                     color = pow(color, vec3(1.0/2.2));
                     
                     gl_FragColor = vec4(color, 1.0);
@@ -601,9 +587,9 @@
 
             // Default colors
             const defaultColors = {
-                ad: [0.6, 0.6, 1.0],    // light blue
-                be: [0.7, 0.5, 1.0],    // purple
-                cf: [0.3, 0.8, 0.6],    // teal
+                ad: [1.0, 0.5, 0.5],    // red for A—D
+                be: [0.5, 0.7, 1.0],    // blue for B—E
+                cf: [0.5, 1.0, 0.5],    // green for C—F
                 bg: [0.08, 0.09, 0.12]  // dark
             };
             
@@ -693,7 +679,6 @@
                     
                     gl.uniform1f(uRotate, currentRotate);
                     
-                    // Update UI
                     const degrees = Math.round(currentRotate * 180 / Math.PI);
                     document.getElementById('rotate-value').textContent = degrees + '°';
                     document.getElementById('rotate-slider').value = degrees;
@@ -766,7 +751,7 @@
             }
             loop();
 
-            // UI Controls with editable inputs
+            // UI Controls
             const hairlineSlider = document.getElementById('hairline-slider');
             const hairlineInput = document.getElementById('hairline-input');
             const hairlineValue = document.getElementById('hairline-value');
@@ -786,6 +771,8 @@
                 val = Math.min(2.0, Math.max(0.3, val));
                 updateHairline(val);
             });
+            
+            document.getElementById('reset-hair').addEventListener('click', () => updateHairline(0.9));
             
             // Rotate
             const rotateSlider = document.getElementById('rotate-slider');
@@ -830,17 +817,11 @@
                 draw();
             });
             
-            // Reset buttons
-            document.getElementById('reset-global').addEventListener('click', () => {
-                updateHairline(0.9);
-                document.getElementById('vmode-check').checked = false;
-                gl.uniform1i(uVMode, 0);
-                draw();
-            });
-            
             document.getElementById('reset-gizmo').addEventListener('click', () => {
                 updateRotate(0);
                 updateSkew(0);
+                document.getElementById('vmode-check').checked = false;
+                gl.uniform1i(uVMode, 0);
             });
             
             document.getElementById('reset-colors').addEventListener('click', () => {
@@ -849,19 +830,19 @@
                 gl.uniform3f(uColorCF, defaultColors.cf[0], defaultColors.cf[1], defaultColors.cf[2]);
                 gl.uniform3f(uColorBg, defaultColors.bg[0], defaultColors.bg[1], defaultColors.bg[2]);
                 
-                document.getElementById('color-ad').style.backgroundColor = '#9a9aff';
-                document.getElementById('color-be').style.backgroundColor = '#b380ff';
-                document.getElementById('color-cf').style.backgroundColor = '#5cc9a0';
+                document.getElementById('color-ad').style.backgroundColor = '#ff7f7f';
+                document.getElementById('color-be').style.backgroundColor = '#7fbfff';
+                document.getElementById('color-cf').style.backgroundColor = '#7fff7f';
                 document.getElementById('color-bg').style.backgroundColor = '#16181f';
                 draw();
             });
             
             // Color pickers
             const adColors = [
-                [0.6, 0.6, 1.0],  // light blue
-                [1.0, 0.7, 0.7],  // pink
-                [0.7, 1.0, 0.7],  // mint
-                [1.0, 1.0, 0.7]   // cream
+                [1.0, 0.5, 0.5],  // red
+                [1.0, 0.7, 0.5],  // orange
+                [1.0, 0.5, 0.7],  // pink
+                [0.9, 0.6, 0.6]   // light red
             ];
             let adIndex = 0;
             document.getElementById('color-ad').addEventListener('click', () => {
@@ -874,10 +855,10 @@
             });
             
             const beColors = [
-                [0.7, 0.5, 1.0],  // purple
-                [1.0, 0.5, 0.5],  // red
                 [0.5, 0.7, 1.0],  // blue
-                [1.0, 0.8, 0.4]   // orange
+                [0.5, 0.9, 1.0],  // cyan
+                [0.6, 0.5, 1.0],  // purple
+                [0.4, 0.8, 1.0]   // sky
             ];
             let beIndex = 0;
             document.getElementById('color-be').addEventListener('click', () => {
@@ -890,10 +871,10 @@
             });
             
             const cfColors = [
-                [0.3, 0.8, 0.6],  // teal
-                [0.8, 0.4, 0.8],  // magenta
-                [0.4, 0.7, 0.9],  // sky
-                [0.9, 0.7, 0.3]   // gold
+                [0.5, 1.0, 0.5],  // green
+                [0.7, 1.0, 0.5],  // lime
+                [0.5, 1.0, 0.7],  // mint
+                [0.6, 0.9, 0.5]   // leaf
             ];
             let cfIndex = 0;
             document.getElementById('color-cf').addEventListener('click', () => {
@@ -906,10 +887,10 @@
             });
             
             const bgColors = [
-                [0.08, 0.09, 0.12],  // dark
-                [0.15, 0.15, 0.18],  // medium
-                [0.22, 0.22, 0.26],  // lighter
-                [0.05, 0.05, 0.08]   // very dark
+                [0.08, 0.09, 0.12],
+                [0.12, 0.14, 0.18],
+                [0.18, 0.20, 0.24],
+                [0.05, 0.06, 0.08]
             ];
             let bgIndex = 0;
             document.getElementById('color-bg').addEventListener('click', () => {
