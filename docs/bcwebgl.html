@@ -264,7 +264,7 @@
                 }
             `;
 
-            // --- fragment shader with proper screen-space hairline rendering ---
+            // --- fragment shader with perfect 60-degree equilateral triangulation ---
             const fsSource = `
                 precision highp float;
                 
@@ -282,63 +282,80 @@
                     // World position on plane z=0
                     vec2 p = (vUv * 2.0 - 1.0) * uScale + uOffset;
                     
-                    // equilateral triangle basis
-                    const float halfSqrt3 = 0.86602540378;  // √3/2
+                    // Perfect 60-degree equilateral triangle grid
+                    // Basis vectors for equilateral triangles:
+                    // e1 = (1, 0)
+                    // e2 = (0.5, √3/2)
+                    const float sqrt3 = 1.73205080757;
+                    const float halfSqrt3 = 0.86602540378;
                     
-                    // transform to lattice coordinates
-                    float fu = p.x - p.y * (0.5 / halfSqrt3);   // = x - 0.57735*y
-                    float fv = p.y / halfSqrt3;                 // = y / 0.866
+                    // Transform to barycentric coordinates using inverse matrix
+                    // For a perfect equilateral grid, we use three coordinates that sum to 0 or 1
+                    float x = p.x;
+                    float y = p.y;
                     
-                    // integer cell and barycentric weights
-                    float iu = floor(fu);
-                    float iv = floor(fv);
-                    float u_frac = fu - iu;
-                    float v_frac = fv - iv;
+                    // Three axis directions at 60 degrees:
+                    // u axis (0°): (1, 0)
+                    // v axis (60°): (0.5, √3/2)
+                    // w axis (120°): (-0.5, √3/2) = -(u + v)
                     
-                    // barycentric coordinates (two triangles per rhombus)
+                    // Convert to barycentric-like coordinates
+                    float u = x;
+                    float v = (y / halfSqrt3) - (x * 0.5);
+                    float w = -u - v;  // This ensures u + v + w = 0 in continuous space
+                    
+                    // Get integer cell and fractional parts for triangle selection
+                    float iu = floor(u);
+                    float iv = floor(v);
+                    float iw = floor(w);
+                    
+                    // Fractional parts tell us where we are in the triangle
+                    float fu = u - iu;
+                    float fv = v - iv;
+                    float fw = w - iw;
+                    
+                    // Determine which sub-triangle we're in (there are 6 per hexagon)
+                    // But for barycentric grid, we want the three edge distances
                     vec3 bary;
-                    if (u_frac + v_frac < 1.0) {
-                        // lower triangle
-                        bary = vec3(1.0 - u_frac - v_frac, u_frac, v_frac);
-                    } else {
-                        // upper triangle (complement)
-                        float u2 = 1.0 - u_frac;
-                        float v2 = 1.0 - v_frac;
-                        bary = vec3(1.0 - u2 - v2, u2, v2);
-                    }
                     
-                    // distance to edges (barycentric coordinates themselves)
-                    float d0 = bary.x;
-                    float d1 = bary.y;
-                    float d2 = bary.z;
+                    // For an equilateral triangle grid, each point has barycentric coordinates
+                    // relative to the three triangle edges. We can compute these from (u,v,w)
+                    // The magic: distance to each edge is min(fu, 1-fu, fv, 1-fv, fw, 1-fw) but oriented
                     
-                    float minDist = min(min(d0, d1), d2);
+                    // Better: compute distances to the three sets of parallel lines
+                    float du = abs(fu - 0.5);  // distance to nearest u-line
+                    float dv = abs(fv - 0.5);  // distance to nearest v-line
+                    float dw = abs(fw - 0.5);  // distance to nearest w-line
                     
-                    // --- CRITICAL FIX: Convert world-space distance to screen-space pixels ---
-                    // Calculate how much world position changes per pixel
+                    // These give us the three edge distances (0 at lines, 0.5 in triangle centers)
+                    float d1 = min(du, 1.0 - du) * 2.0;
+                    float d2 = min(dv, 1.0 - dv) * 2.0;
+                    float d3 = min(dw, 1.0 - dw) * 2.0;
+                    
+                    // Now d1,d2,d3 are 0 at edges, 1 at triangle centers
+                    float minDist = min(min(d1, d2), d3);
+                    
+                    // --- Screen-space pixel calculation ---
                     vec2 worldPerPixel = vec2(2.0 * uScale / uResolution.x, 2.0 * uScale / uResolution.y);
+                    float deriv = length(worldPerPixel) * 1.2;  // Slightly adjusted factor
                     
-                    // Approximate how much minDist changes per pixel based on world-space derivatives
-                    // The barycentric coordinates change at rate ~1.0 per world unit (since cell size is ~1)
-                    float deriv = length(worldPerPixel) * 1.5;  // 1.5 accounts for triangle orientation
-                    
-                    // Fixed pixel width - always uLineWidth pixels wide lines
+                    // Line width in screen pixels
                     float pixelWidth = uLineWidth * deriv;
                     
-                    // Smoothstep with fixed pixel width - lines stay exactly uLineWidth pixels wide at any zoom
+                    // Invert so lines are dark (0 = line, 1 = background)
                     float line = smoothstep(0.0, pixelWidth, minDist);
                     
-                    // subtle pattern based on integer cell
-                    float pattern = fract(iu * 0.7 + iv * 0.4);
-                    vec3 baseColor = mix(uColorA, uColorB, pattern * 0.4);
+                    // Triangle center glow using the barycentric coordinates
+                    float centerDist = length(vec3(d1, d2, d3) - vec3(1.0));
+                    float glow = exp(-centerDist * 4.0) * 0.3;
                     
-                    // faint glow near incenter
-                    float incenterDist = length(bary - vec3(1.0/3.0));
-                    float glow = exp(-incenterDist * 8.0) * 0.25;
+                    // Subtle cell variation using integer coordinates
+                    float pattern = fract(iu * 0.5 + iv * 0.7 + iw * 0.3);
+                    vec3 baseColor = mix(uColorA, uColorB, pattern * 0.3);
                     
                     vec3 finalColor = mix(baseColor + glow * uColorB, uEdgeColor, line);
                     
-                    // gamma
+                    // Gamma
                     finalColor = pow(finalColor, vec3(1.0/2.2));
                     
                     gl_FragColor = vec4(finalColor, 1.0);
