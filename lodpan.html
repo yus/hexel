@@ -1,0 +1,530 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>🗺️ LOD RHOMBILLE · UNFOLDED PLANE · INFINITE PAN</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+        body {
+            background: #0c101a;
+            overflow: hidden;
+            font-family: 'Courier New', monospace;
+        }
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            background: #070b12;
+        }
+        #hud {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(12, 18, 28, 0.95);
+            border: 2px solid #4a6c8c;
+            border-radius: 40px;
+            padding: 12px 32px;
+            display: flex;
+            gap: 32px;
+            color: #cde;
+            font-size: 14px;
+            z-index: 100;
+            box-shadow: 0 0 30px #1a3a5a;
+            backdrop-filter: blur(8px);
+            letter-spacing: 0.5px;
+        }
+        #hud .label {
+            color: #f9b;
+            text-shadow: 0 0 8px #f0a;
+        }
+        #hud .value {
+            background: #1e2a3a;
+            padding: 4px 14px;
+            border-radius: 30px;
+            margin-left: 10px;
+            border: 1px solid #6a8cb0;
+            color: white;
+        }
+        #controls {
+            position: fixed;
+            top: 24px;
+            left: 24px;
+            background: rgba(12, 18, 28, 0.9);
+            border: 1px solid #4a6c8c;
+            border-radius: 40px;
+            padding: 12px 28px;
+            display: flex;
+            gap: 30px;
+            color: #cde;
+            font-size: 13px;
+            z-index: 100;
+            backdrop-filter: blur(8px);
+        }
+        #controls .slider {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        #controls input {
+            width: 120px;
+            height: 4px;
+            background: #253545;
+            border-radius: 4px;
+            -webkit-appearance: none;
+        }
+        #controls input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 18px;
+            height: 18px;
+            background: #f9b;
+            border-radius: 18px;
+            border: 2px solid white;
+            box-shadow: 0 0 15px #f0f;
+            cursor: pointer;
+        }
+        #controls span {
+            min-width: 45px;
+            color: #fcf;
+            font-weight: 600;
+        }
+        #stats {
+            position: fixed;
+            top: 24px;
+            right: 24px;
+            background: rgba(12, 18, 28, 0.9);
+            border: 1px solid #4a6c8c;
+            border-radius: 40px;
+            padding: 10px 24px;
+            color: #8cf;
+            font-family: monospace;
+            font-size: 13px;
+            z-index: 100;
+        }
+        #minimap {
+            position: fixed;
+            bottom: 120px;
+            right: 24px;
+            width: 160px;
+            height: 160px;
+            background: rgba(0,0,0,0.5);
+            border: 2px solid #4a6c8c;
+            border-radius: 12px;
+            z-index: 100;
+            overflow: hidden;
+            box-shadow: 0 0 20px #1a3a5a;
+        }
+        #minimap canvas {
+            width: 100%;
+            height: 100%;
+            background: #0a0f18;
+        }
+    </style>
+</head>
+<body>
+    <div id="minimap">
+        <canvas id="mapCanvas" width="160" height="160"></canvas>
+    </div>
+
+    <div id="hud">
+        <span class="label">🗺️ LOD RHOMBILLE PLANE</span>
+        <span>LOD <span class="value" id="lodValue">4.0</span></span>
+        <span>PAN <span class="value" id="panValue">0,0</span></span>
+    </div>
+
+    <div id="controls">
+        <div class="slider">
+            <label>BASE LOD</label>
+            <input type="range" id="baseLod" min="1" max="8" step="0.1" value="4.0">
+            <span id="baseLodVal">4.0</span>
+        </div>
+        <div class="slider">
+            <label>FALLOFF</label>
+            <input type="range" id="falloff" min="0.2" max="2.0" step="0.01" value="1.0">
+            <span id="falloffVal">1.0</span>
+        </div>
+    </div>
+
+    <div id="stats">
+        ⚡ <span id="fps">60</span> fps · <span id="cellEst">1024</span> cells/ view
+    </div>
+
+    <script id="vs" type="x-shader/x-vertex">
+        attribute vec2 aPos;
+        varying vec2 vUv;
+        varying vec2 vScreenPos;
+        
+        uniform vec2 uResolution;
+        
+        void main() {
+            gl_Position = vec4(aPos, 0.0, 1.0);
+            vUv = aPos * 0.5 + 0.5;
+            vScreenPos = aPos;
+        }
+    </script>
+
+    <script id="fs" type="x-shader/x-fragment">
+        precision highp float;
+        
+        varying vec2 vUv;
+        varying vec2 vScreenPos;
+        
+        uniform float uTime;
+        uniform float uBaseLod;
+        uniform float uFalloff;
+        uniform vec2 uPan;
+        uniform vec2 uResolution;
+        
+        // Rotate 60 degrees
+        mat2 rot60 = mat2(0.5, -0.8660254, 0.8660254, 0.5);
+        
+        // Hash for variation
+        float hash(vec2 p) {
+            return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453);
+        }
+        
+        void main() {
+            // Convert to world space on plane (infinite)
+            vec2 worldPos = (vScreenPos * 0.5 + 0.5) * 10.0 + uPan;
+            
+            // Calculate LOD based on distance from screen center
+            vec2 centerVec = vUv - 0.5;
+            float distFromCenter = length(centerVec);
+            
+            // LOD falls off from center (higher res in middle)
+            float lodScale = pow(1.0 - distFromCenter * 0.9, uFalloff);
+            lodScale = max(0.2, lodScale); // minimum 20% detail at edges
+            
+            float effectiveLod = uBaseLod * lodScale;
+            
+            // Generate rhombille tiling on plane
+            // Two hexagonal layers with offset
+            
+            // Scale by LOD (higher LOD = smaller hexagons)
+            float scale = effectiveLod * 1.5;
+            
+            // Layer 1 (red edges) - base hex grid
+            vec2 grid1 = worldPos * scale;
+            
+            // Layer 2 (blue edges) - offset by half cell
+            vec2 grid2 = (worldPos + vec2(0.5, 0.3)) * scale;
+            
+            // Apply 60° rotation to both grids
+            vec2 hex1 = rot60 * grid1;
+            vec2 hex2 = rot60 * grid2;
+            
+            // Get fractional parts for edge detection
+            vec2 f1 = fract(hex1) - 0.5;
+            vec2 f2 = fract(hex2) - 0.5;
+            
+            // Edge distances for layer 1 (red)
+            float edge1_x = abs(f1.x);
+            float edge1_y = abs(f1.y);
+            float edge1_diag = abs(f1.x + f1.y);
+            float redEdge = min(min(edge1_x, edge1_y), edge1_diag);
+            
+            // Edge distances for layer 2 (blue)
+            float edge2_x = abs(f2.x);
+            float edge2_y = abs(f2.y);
+            float edge2_diag = abs(f2.x + f2.y);
+            float blueEdge = min(min(edge2_x, edge2_y), edge2_diag);
+            
+            // Adaptive edge thickness (finer at higher LOD)
+            float edgeWidth = 0.08 / effectiveLod;
+            
+            float red = 1.0 - smoothstep(0.0, edgeWidth, redEdge);
+            float blue = 1.0 - smoothstep(0.0, edgeWidth, blueEdge);
+            
+            // Cell fills (transparent)
+            float cellFill1 = 1.0 - length(f1) * 1.2;
+            float cellFill2 = 1.0 - length(f2) * 1.2;
+            
+            // Background
+            vec3 bg = vec3(0.02, 0.02, 0.04);
+            
+            // Cell colors
+            vec3 fill1 = vec3(0.5, 0.1, 0.1);
+            vec3 fill2 = vec3(0.1, 0.1, 0.5);
+            
+            vec3 color = bg;
+            
+            // Add transparent fills
+            color = mix(color, fill1, cellFill1 * 0.1);
+            color = mix(color, fill2, cellFill2 * 0.1);
+            
+            // Add edges
+            color = mix(color, vec3(1.0, 0.2, 0.2), red * 0.95);
+            color = mix(color, vec3(0.2, 0.4, 1.0), blue * 0.95);
+            
+            // Magenta where both overlap
+            float both = red * blue;
+            color = mix(color, vec3(1.0, 0.2, 1.0), both * 0.8);
+            
+            // Distance fog (fades at edges of view)
+            float fog = 1.0 - distFromCenter * 0.3;
+            color *= fog;
+            
+            // Subtle vignette
+            float vignette = 1.0 - 0.2 * length(vUv - 0.5);
+            color *= vignette;
+            
+            // Grid lines for LOD boundaries (debug visualization - optional)
+            // float lodBoundary = mod(effectiveLod, 1.0);
+            // if (lodBoundary < 0.05) color = mix(color, vec3(0.5), 0.3);
+            
+            gl_FragColor = vec4(color, 1.0);
+        }
+    </script>
+
+    <script>
+        (function() {
+            "use strict";
+            
+            // Main canvas
+            const canvas = document.createElement('canvas');
+            document.body.appendChild(canvas);
+            
+            const gl = canvas.getContext('webgl', {
+                antialias: true,
+                depth: false,
+                alpha: false,
+                powerPreference: "high-performance"
+            });
+            
+            if (!gl) {
+                alert('WebGL required');
+                return;
+            }
+            
+            // State
+            const State = {
+                baseLod: 4.0,
+                falloff: 1.0,
+                pan: [0.0, 0.0],
+                dragging: false,
+                lastMouse: [0, 0],
+                time: 0
+            };
+            
+            // Compile shaders
+            function compileShader(type, sourceId) {
+                const source = document.getElementById(sourceId).text;
+                const shader = gl.createShader(type);
+                gl.shaderSource(shader, source);
+                gl.compileShader(shader);
+                return shader;
+            }
+            
+            const vs = compileShader(gl.VERTEX_SHADER, 'vs');
+            const fs = compileShader(gl.FRAGMENT_SHADER, 'fs');
+            
+            const program = gl.createProgram();
+            gl.attachShader(program, vs);
+            gl.attachShader(program, fs);
+            gl.linkProgram(program);
+            gl.useProgram(program);
+            
+            // Fullscreen quad
+            const vertices = new Float32Array([-1,-1, 1,-1, -1,1, -1,1, 1,-1, 1,1]);
+            const buffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+            gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+            
+            const aPos = gl.getAttribLocation(program, 'aPos');
+            gl.enableVertexAttribArray(aPos);
+            gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 0, 0);
+            
+            // Uniforms
+            const uniforms = {
+                resolution: gl.getUniformLocation(program, 'uResolution'),
+                time: gl.getUniformLocation(program, 'uTime'),
+                baseLod: gl.getUniformLocation(program, 'uBaseLod'),
+                falloff: gl.getUniformLocation(program, 'uFalloff'),
+                pan: gl.getUniformLocation(program, 'uPan')
+            };
+            
+            // UI elements
+            const baseLodSlider = document.getElementById('baseLod');
+            const falloffSlider = document.getElementById('falloff');
+            const baseLodVal = document.getElementById('baseLodVal');
+            const falloffVal = document.getElementById('falloffVal');
+            const lodValue = document.getElementById('lodValue');
+            const panValue = document.getElementById('panValue');
+            const fpsSpan = document.getElementById('fps');
+            const cellEst = document.getElementById('cellEst');
+            
+            baseLodSlider.addEventListener('input', (e) => {
+                State.baseLod = parseFloat(e.target.value);
+                baseLodVal.textContent = State.baseLod.toFixed(1);
+                lodValue.textContent = State.baseLod.toFixed(1);
+                updateEstimates();
+            });
+            
+            falloffSlider.addEventListener('input', (e) => {
+                State.falloff = parseFloat(e.target.value);
+                falloffVal.textContent = State.falloff.toFixed(2);
+            });
+            
+            function updateEstimates() {
+                let cells = Math.round(400 * State.baseLod);
+                cellEst.textContent = cells;
+            }
+            
+            // Minimap setup
+            const mapCanvas = document.getElementById('mapCanvas');
+            const mapCtx = mapCanvas.getContext('2d');
+            
+            function drawMinimap() {
+                mapCtx.fillStyle = '#0a0f18';
+                mapCtx.fillRect(0, 0, 160, 160);
+                
+                // Draw view rectangle
+                mapCtx.strokeStyle = '#f9b';
+                mapCtx.lineWidth = 2;
+                mapCtx.strokeRect(70, 70, 20, 20);
+                
+                // Draw pan position
+                mapCtx.fillStyle = '#f9b';
+                mapCtx.beginPath();
+                let x = 80 + (State.pan[0] * 4) % 160;
+                let y = 80 + (State.pan[1] * 4) % 160;
+                mapCtx.arc(x, y, 3, 0, 2*Math.PI);
+                mapCtx.fill();
+                
+                // Draw LOD gradient indicator
+                let grad = mapCtx.createRadialGradient(80, 80, 10, 80, 80, 60);
+                grad.addColorStop(0, '#f9b20');
+                grad.addColorStop(1, '#4a6c8c00');
+                mapCtx.fillStyle = grad;
+                mapCtx.fillRect(0, 0, 160, 160);
+            }
+            
+            // Resize
+            function resize() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight;
+                gl.viewport(0, 0, canvas.width, canvas.height);
+            }
+            resize();
+            window.addEventListener('resize', resize);
+            
+            // Mouse/Touch for infinite pan
+            canvas.addEventListener('mousedown', (e) => {
+                State.dragging = true;
+                State.lastMouse = [e.clientX, e.clientY];
+                canvas.style.cursor = 'grabbing';
+            });
+            
+            window.addEventListener('mousemove', (e) => {
+                if (!State.dragging) return;
+                
+                // Pan speed scales with LOD (finer control at high zoom)
+                let panSpeed = 0.01 / (State.baseLod * 0.5);
+                
+                const dx = (e.clientX - State.lastMouse[0]) * panSpeed;
+                const dy = (e.clientY - State.lastMouse[1]) * panSpeed;
+                
+                State.pan[0] -= dx;  // Invert for intuitive drag
+                State.pan[1] -= dy;
+                
+                // No bounds - infinite pan!
+                
+                State.lastMouse = [e.clientX, e.clientY];
+                panValue.textContent = `${State.pan[0].toFixed(1)},${State.pan[1].toFixed(1)}`;
+                drawMinimap();
+            });
+            
+            window.addEventListener('mouseup', () => {
+                State.dragging = false;
+                canvas.style.cursor = 'default';
+            });
+            
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                // Zoom changes LOD
+                State.baseLod *= (e.deltaY > 0 ? 0.95 : 1.05);
+                State.baseLod = Math.max(1.0, Math.min(8.0, State.baseLod));
+                baseLodSlider.value = State.baseLod;
+                baseLodVal.textContent = State.baseLod.toFixed(1);
+                lodValue.textContent = State.baseLod.toFixed(1);
+                updateEstimates();
+                drawMinimap();
+            }, { passive: false });
+            
+            // Touch support
+            canvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                if (e.touches.length === 1) {
+                    State.dragging = true;
+                    State.lastMouse = [e.touches[0].clientX, e.touches[0].clientY];
+                }
+            });
+            
+            canvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                if (State.dragging && e.touches.length === 1) {
+                    let panSpeed = 0.01 / (State.baseLod * 0.5);
+                    const dx = (e.touches[0].clientX - State.lastMouse[0]) * panSpeed;
+                    const dy = (e.touches[0].clientY - State.lastMouse[1]) * panSpeed;
+                    State.pan[0] -= dx;
+                    State.pan[1] -= dy;
+                    State.lastMouse = [e.touches[0].clientX, e.touches[0].clientY];
+                    panValue.textContent = `${State.pan[0].toFixed(1)},${State.pan[1].toFixed(1)}`;
+                    drawMinimap();
+                }
+            });
+            
+            canvas.addEventListener('touchend', (e) => e.preventDefault());
+            
+            // FPS counter
+            let frameCount = 0;
+            let lastFpsUpdate = performance.now();
+            
+            // Render loop
+            function render(now) {
+                now *= 0.001;
+                State.time = now;
+                
+                // FPS
+                frameCount++;
+                const current = performance.now();
+                if (current - lastFpsUpdate >= 1000) {
+                    fpsSpan.textContent = frameCount;
+                    frameCount = 0;
+                    lastFpsUpdate = current;
+                }
+                
+                // Update uniforms
+                gl.uniform2f(uniforms.resolution, canvas.width, canvas.height);
+                gl.uniform1f(uniforms.time, now);
+                gl.uniform1f(uniforms.baseLod, State.baseLod);
+                gl.uniform1f(uniforms.falloff, State.falloff);
+                gl.uniform2f(uniforms.pan, State.pan[0], State.pan[1]);
+                
+                // Clear
+                gl.clearColor(0.02, 0.02, 0.04, 1.0);
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                
+                // Draw
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
+                
+                requestAnimationFrame(render);
+            }
+            
+            // Initialize
+            updateEstimates();
+            panValue.textContent = '0.0,0.0';
+            drawMinimap();
+            setInterval(drawMinimap, 100); // Update minimap periodically
+            
+            requestAnimationFrame(render);
+        })();
+    </script>
+</body>
+</html>
