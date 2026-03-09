@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>equilateral triangle tiling · SVG math</title>
+    <title>hexagon barycentric grid · 6-triangle modules</title>
     <style>
         * {
             box-sizing: border-box;
@@ -14,130 +14,230 @@
         body {
             margin: 0;
             overflow: hidden;
-            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, sans-serif;
-            -webkit-font-smoothing: antialiased;
+            font-family: 'Inter', system-ui, -apple-system, sans-serif;
+            background: #0a0c12;
         }
         
-        #header {
+        /* Preference Panel - fixed at top */
+        #panel {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 140px;
-            background: rgba(18, 20, 26, 0.96);
-            backdrop-filter: blur(12px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            max-width: 1100px;
+            background: rgba(22, 24, 31, 0.85);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 60px;
+            padding: 16px 28px;
             z-index: 100;
-            display: flex;
-            align-items: center;
-            padding: 0 20px;
             color: #eef2f8;
-            font-size: 11px;
+            box-shadow: 0 20px 40px rgba(0, 0, 0, 0.4);
         }
         
-        .header-content {
+        .panel-content {
             display: flex;
             align-items: center;
-            gap: 40px;
-            width: 100%;
-            max-width: 1200px;
-            margin: 0 auto;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 20px;
         }
         
-        .title-section {
-            min-width: 220px;
-        }
-        
-        .title-main {
-            font-size: 16px;
-            font-weight: 500;
-            color: white;
-        }
-        
-        .title-sub {
-            font-size: 10px;
-            color: #8a92a6;
-            margin-top: 2px;
-        }
-        
-        .group {
+        .panel-section {
             display: flex;
-            gap: 30px;
-            padding: 0 20px;
-            border-left: 1px solid rgba(255, 255, 255, 0.1);
+            align-items: center;
+            gap: 20px;
+            flex-wrap: wrap;
         }
         
-        .param-row {
+        .panel-divider {
+            width: 1px;
+            height: 30px;
+            background: rgba(255, 255, 255, 0.15);
+            margin: 0 8px;
+        }
+        
+        .control-group {
             display: flex;
             align-items: center;
             gap: 12px;
         }
         
-        .param-label {
-            font-size: 10px;
-            color: #b0b8d0;
+        .control-label {
+            font-size: 12px;
+            font-weight: 500;
             text-transform: uppercase;
+            letter-spacing: 0.5px;
+            color: #9aa2b8;
+        }
+        
+        .control-value {
+            font-size: 13px;
+            font-weight: 600;
+            color: white;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 4px 10px;
+            border-radius: 30px;
             min-width: 45px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
         input[type=range] {
-            -webkit-appearance: auto;
-            width: 120px;
+            -webkit-appearance: none;
+            width: 140px;
+            height: 2px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 2px;
+            outline: none;
         }
         
-        .value-display {
-            font-size: 10px;
-            color: white;
-            background: rgba(255, 255, 255, 0.06);
-            padding: 3px 8px;
-            border-radius: 4px;
-            min-width: 45px;
-            text-align: center;
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border-radius: 16px;
+            cursor: pointer;
+            transition: 0.1s;
+            border: 2px solid rgba(255, 255, 255, 0.5);
+        }
+        
+        input[type=range]::-webkit-slider-thumb:hover {
+            transform: scale(1.15);
+            background: #aaccff;
+        }
+        
+        .color-dot {
+            width: 24px;
+            height: 24px;
+            border-radius: 24px;
+            border: 2px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        
+        .color-dot:hover {
+            transform: scale(1.15);
+            border-color: white;
+        }
+        
+        .color-dot.hex1 { background: #ffd966; }  // yellow
+        .color-dot.hex2 { background: #7fbfff; }  // blue
+        .color-dot.bg { background: #1a1c24; }    // dark
+        .color-dot.line { background: #ffffff; }   // white
+        
+        .mode-btn {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: #eef2f8;
+            font-size: 12px;
+            font-weight: 500;
+            padding: 8px 16px;
+            border-radius: 40px;
+            cursor: pointer;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            transition: 0.1s;
+        }
+        
+        .mode-btn:hover {
+            background: rgba(255, 255, 255, 0.15);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+        
+        .mode-btn.active {
+            background: white;
+            color: #0a0c12;
+            border-color: white;
         }
         
         canvas {
             display: block;
-            position: fixed;
-            top: 140px;
-            left: 0;
-            width: 100%;
-            height: calc(100vh - 140px);
+            width: 100vw;
+            height: 100vh;
         }
         
         .hint {
             position: fixed;
-            bottom: 20px;
-            right: 20px;
-            color: #98a0b5;
-            font-size: 10px;
-            background: rgba(10, 12, 18, 0.7);
+            bottom: 24px;
+            right: 24px;
+            color: #9aa2b8;
+            font-size: 12px;
+            background: rgba(10, 12, 18, 0.6);
             backdrop-filter: blur(8px);
-            padding: 8px 16px;
-            border-radius: 30px;
+            padding: 10px 20px;
+            border-radius: 40px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
             z-index: 200;
+            letter-spacing: 0.3px;
+        }
+        
+        .hint kbd {
+            background: #232731;
+            padding: 4px 8px;
+            border-radius: 6px;
+            color: white;
+            font-family: monospace;
+            font-size: 11px;
+            margin: 0 4px;
         }
     </style>
 </head>
 <body>
-    <div id="header">
-        <div class="header-content">
-            <div class="title-section">
-                <div class="title-main">SVG TRIANGLE TILING</div>
-                <div class="title-sub">exact polygon math · vertex positions</div>
+    <!-- Preference Panel -->
+    <div id="panel">
+        <div class="panel-content">
+            <div class="panel-section">
+                <div class="control-group">
+                    <span class="control-label">SIZE</span>
+                    <input type="range" id="size" min="0.5" max="3.0" value="1.2" step="0.05">
+                    <span class="control-value" id="size-value">1.20</span>
+                </div>
+                
+                <div class="control-group">
+                    <span class="control-label">GAP</span>
+                    <input type="range" id="gap" min="0.0" max="0.4" value="0.05" step="0.01">
+                    <span class="control-value" id="gap-value">0.05</span>
+                </div>
+                
+                <div class="control-group">
+                    <span class="control-label">HAIR</span>
+                    <input type="range" id="hairline" min="0.3" max="2.5" value="1.2" step="0.1">
+                    <span class="control-value" id="hairline-value">1.2</span>
+                </div>
             </div>
             
-            <div class="group">
-                <div class="param-row">
-                    <span class="param-label">SIZE</span>
-                    <input type="range" id="size-slider" min="0.5" max="3.0" value="1.5" step="0.1">
-                    <span class="value-display" id="size-value">1.5</span>
+            <div class="panel-divider"></div>
+            
+            <div class="panel-section">
+                <div class="control-group">
+                    <span class="control-label">COLORS</span>
+                    <div class="color-dot hex1" id="color-hex1"></div>
+                    <div class="color-dot hex2" id="color-hex2"></div>
+                    <div class="color-dot line" id="color-line"></div>
+                    <div class="color-dot bg" id="color-bg"></div>
                 </div>
+                
+                <div class="control-group">
+                    <span class="control-label">AA</span>
+                    <input type="range" id="aa" min="0.5" max="2.5" value="1.5" step="0.1">
+                    <span class="control-value" id="aa-value">1.5</span>
+                </div>
+            </div>
+            
+            <div class="panel-divider"></div>
+            
+            <div class="panel-section">
+                <button class="mode-btn active" id="mode-horizontal">HORIZONTAL</button>
+                <button class="mode-btn" id="mode-vertical">VERTICAL</button>
             </div>
         </div>
     </div>
     
     <div class="hint">
-        ⚡ zoom · 🖱️ pan · exact vertex positions from SVG: (-289.61,381.07), (-77.01,503.82), etc.
+        <kbd>🖱️</kbd> drag to pan · <kbd>⚡</kbd> scroll to zoom · hexagon = 6 triangles
     </div>
 
     <script>
@@ -173,7 +273,7 @@
                 }
             `;
             
-            // Fragment shader - exact SVG math
+            // Fragment shader - hexagon modules of 6 triangles
             const fsSource = `
                 precision highp float;
                 
@@ -181,303 +281,130 @@
                 
                 uniform vec2 uOffset;
                 uniform float uScale;
-                uniform float uTriSize;
+                uniform float uHexSize;
+                uniform float uGap;
+                uniform float uHairline;
+                uniform float uAA;
+                
+                uniform vec3 uColorHex1;
+                uniform vec3 uColorHex2;
+                uniform vec3 uColorLine;
+                uniform vec3 uColorBg;
+                
+                uniform bool uHorizontalMode;
+                
                 uniform vec2 uResolution;
                 uniform float uAspect;
                 
-                // SVG vertex coordinates from the file
-                // Each triangle is defined by three vertices
-                const int NUM_TRIANGLES = 42; // from the SVG
+                // Constants for equilateral geometry
+                const float sqrt3 = 1.73205080757;
+                const float halfSqrt3 = 0.86602540378;
                 
-                // Triangle vertices from the SVG (first few as example)
-                vec2[3] getTriangle(int index) {
-                    // From the SVG path data:
-                    // M -289.61217,381.07227 L -77.01373,503.81604 L -77.01373,258.32852 Z
-                    // M -289.61217,626.55979 L -77.01373,749.30356 L -77.01373,503.81604 Z
-                    // etc.
-                    
-                    if (index == 0) {
-                        return vec2[3](
-                            vec2(-289.61217, 381.07227),
-                            vec2(-77.01373, 503.81604),
-                            vec2(-77.01373, 258.32852)
-                        );
-                    } else if (index == 1) {
-                        return vec2[3](
-                            vec2(-289.61217, 626.55979),
-                            vec2(-77.01373, 749.30356),
-                            vec2(-77.01373, 503.81604)
-                        );
-                    } else if (index == 2) {
-                        return vec2[3](
-                            vec2(-289.61217, 135.58476),
-                            vec2(-77.01373, 258.32852),
-                            vec2(-77.01373, 12.841)
-                        );
-                    } else if (index == 3) {
-                        return vec2[3](
-                            vec2(-289.61217, -109.90276),
-                            vec2(-77.01373, 12.841),
-                            vec2(-77.01373, -232.64652)
-                        );
-                    } else if (index == 4) {
-                        return vec2[3](
-                            vec2(-289.61217, -355.39028),
-                            vec2(-77.01373, -232.64652),
-                            vec2(-77.01373, -478.13404)
-                        );
-                    } else if (index == 5) {
-                        return vec2[3](
-                            vec2(-77.01373, 258.32852),
-                            vec2(135.58471, 381.07224),
-                            vec2(135.58471, 135.58476)
-                        );
-                    } else if (index == 6) {
-                        return vec2[3](
-                            vec2(-77.01373, 503.81599),
-                            vec2(135.58471, 626.55976),
-                            vec2(135.58471, 381.07224)
-                        );
-                    } else if (index == 7) {
-                        return vec2[3](
-                            vec2(-77.01373, 12.841),
-                            vec2(135.58471, 135.58476),
-                            vec2(135.58471, -109.90276)
-                        );
-                    } else if (index == 8) {
-                        return vec2[3](
-                            vec2(-77.01373, -232.64652),
-                            vec2(135.58471, -109.90276),
-                            vec2(135.58471, -355.39028)
-                        );
-                    } else if (index == 9) {
-                        return vec2[3](
-                            vec2(-77.01373, -478.13404),
-                            vec2(135.58471, -355.39028),
-                            vec2(135.58471, -600.8778)
-                        );
-                    } else if (index == 10) {
-                        return vec2[3](
-                            vec2(-77.01373, 749.30356),
-                            vec2(135.58471, 872.04732),
-                            vec2(135.58471, 626.5598)
-                        );
-                    } else if (index == 11) {
-                        return vec2[3](
-                            vec2(135.58467, 381.07228),
-                            vec2(348.18311, 503.81604),
-                            vec2(348.18311, 258.32852)
-                        );
-                    } else if (index == 12) {
-                        return vec2[3](
-                            vec2(135.58467, 626.55979),
-                            vec2(348.18311, 749.30355),
-                            vec2(348.18311, 503.81604)
-                        );
-                    } else if (index == 13) {
-                        return vec2[3](
-                            vec2(135.58467, 135.58476),
-                            vec2(348.18311, 258.32852),
-                            vec2(348.18311, 12.841)
-                        );
-                    } else if (index == 14) {
-                        return vec2[3](
-                            vec2(135.58467, -109.90276),
-                            vec2(348.18311, 12.841),
-                            vec2(348.18311, -232.64652)
-                        );
-                    } else if (index == 15) {
-                        return vec2[3](
-                            vec2(135.58467, -355.39028),
-                            vec2(348.18311, -232.64652),
-                            vec2(348.18311, -478.13404)
-                        );
-                    } else if (index == 16) {
-                        return vec2[3](
-                            vec2(348.18311, 258.32852),
-                            vec2(560.78155, 381.07224),
-                            vec2(560.78155, 135.58476)
-                        );
-                    } else if (index == 17) {
-                        return vec2[3](
-                            vec2(348.18311, 503.816),
-                            vec2(560.78155, 626.55976),
-                            vec2(560.78155, 381.07224)
-                        );
-                    } else if (index == 18) {
-                        return vec2[3](
-                            vec2(348.18311, 12.841),
-                            vec2(560.78155, 135.58476),
-                            vec2(560.78155, -109.90276)
-                        );
-                    } else if (index == 19) {
-                        return vec2[3](
-                            vec2(348.18311, -232.64652),
-                            vec2(560.78155, -109.90276),
-                            vec2(560.78155, -355.39028)
-                        );
-                    } else if (index == 20) {
-                        return vec2[3](
-                            vec2(348.18311, -478.13404),
-                            vec2(560.78155, -355.39028),
-                            vec2(560.78155, -600.8778)
-                        );
-                    } else if (index == 21) {
-                        return vec2[3](
-                            vec2(348.18311, 749.30356),
-                            vec2(560.78155, 872.04732),
-                            vec2(560.78155, 626.5598)
-                        );
-                    } else if (index == 22) {
-                        return vec2[3](
-                            vec2(560.78159, 135.58476),
-                            vec2(773.38007, 258.32848),
-                            vec2(773.38007, 12.841)
-                        );
-                    } else if (index == 23) {
-                        return vec2[3](
-                            vec2(560.78159, 381.07224),
-                            vec2(773.38007, 503.816),
-                            vec2(773.38007, 258.32848)
-                        );
-                    } else if (index == 24) {
-                        return vec2[3](
-                            vec2(560.78159, -109.90276),
-                            vec2(773.38007, 12.841),
-                            vec2(773.38007, -232.64652)
-                        );
-                    } else if (index == 25) {
-                        return vec2[3](
-                            vec2(560.78159, -355.39028),
-                            vec2(773.38007, -232.64652),
-                            vec2(773.38007, -478.13404)
-                        );
-                    } else if (index == 26) {
-                        return vec2[3](
-                            vec2(560.78159, 626.5598),
-                            vec2(773.38007, 749.30356),
-                            vec2(773.38007, 503.81604)
-                        );
-                    } else if (index == 27) {
-                        return vec2[3](
-                            vec2(-502.21061, 258.32852),
-                            vec2(-289.61217, 381.07224),
-                            vec2(-289.61217, 135.58476)
-                        );
-                    } else if (index == 28) {
-                        return vec2[3](
-                            vec2(-502.21061, 503.81601),
-                            vec2(-289.61217, 626.55976),
-                            vec2(-289.61217, 381.07225)
-                        );
-                    } else if (index == 29) {
-                        return vec2[3](
-                            vec2(-502.21061, 12.841),
-                            vec2(-289.61217, 135.58476),
-                            vec2(-289.61217, -109.90276)
-                        );
-                    } else if (index == 30) {
-                        return vec2[3](
-                            vec2(-502.21061, -232.64652),
-                            vec2(-289.61217, -109.90276),
-                            vec2(-289.61217, -355.39028)
-                        );
-                    } else if (index == 31) {
-                        return vec2[3](
-                            vec2(-502.21061, -478.13404),
-                            vec2(-289.61217, -355.39028),
-                            vec2(-289.61217, -600.8778)
-                        );
-                    } else if (index == 32) {
-                        return vec2[3](
-                            vec2(-502.21061, 749.30356),
-                            vec2(-289.61217, 872.04732),
-                            vec2(-289.61217, 626.5598)
-                        );
+                // Rotate point by 90° for vertical mode
+                vec2 orient(vec2 p) {
+                    if (uHorizontalMode) {
+                        return p;
                     } else {
-                        // Default fallback
-                        return vec2[3](
-                            vec2(-289.61217, 381.07227),
-                            vec2(-77.01373, 503.81604),
-                            vec2(-77.01373, 258.32852)
-                        );
+                        // Rotate by 90° for vertical orientation
+                        return vec2(-p.y, p.x);
                     }
-                }
-                
-                // Barycentric coordinates for point p relative to triangle v0,v1,v2
-                vec3 barycentric(vec2 p, vec2 v0, vec2 v1, vec2 v2) {
-                    vec2 v0v1 = v1 - v0;
-                    vec2 v0v2 = v2 - v0;
-                    vec2 pv0 = p - v0;
-                    
-                    float d00 = dot(v0v1, v0v1);
-                    float d01 = dot(v0v1, v0v2);
-                    float d11 = dot(v0v2, v0v2);
-                    float d20 = dot(pv0, v0v1);
-                    float d21 = dot(pv0, v0v2);
-                    
-                    float denom = d00 * d11 - d01 * d01;
-                    float v = (d11 * d20 - d01 * d21) / denom;
-                    float w = (d00 * d21 - d01 * d20) / denom;
-                    float u = 1.0 - v - w;
-                    
-                    return vec3(u, v, w);
-                }
-                
-                // Check if point is inside triangle (all barycentric coords >= 0)
-                bool isInside(vec3 bary) {
-                    return bary.x >= 0.0 && bary.y >= 0.0 && bary.z >= 0.0;
                 }
                 
                 void main() {
                     // World position with aspect correction
-                    vec2 p = (vUv * 2.0 - 1.0) * uScale * 400.0; // Scale to match SVG coordinates
+                    vec2 p = (vUv * 2.0 - 1.0) * uScale * 2.0;
                     p.x *= uAspect;
-                    p += uOffset * 400.0;
+                    p += uOffset;
                     
-                    // Scale by triangle size
-                    p /= uTriSize;
+                    // Apply orientation (horizontal/vertical)
+                    p = orient(p);
                     
-                    // Find which triangle contains p
-                    bool found = false;
-                    vec3 bary = vec3(0.0);
+                    // Scale to hexagon size
+                    p /= uHexSize;
                     
-                    for (int i = 0; i < 42; i++) {
-                        vec2[3] tri = getTriangle(i);
-                        vec3 b = barycentric(p, tri[0], tri[1], tri[2]);
-                        
-                        if (isInside(b)) {
-                            bary = b;
-                            found = true;
-                            break;
-                        }
+                    // Convert to axial coordinates for hex grid
+                    // This creates a grid of hexagon centers
+                    float x = p.x;
+                    float y = p.y / halfSqrt3;
+                    
+                    // Find nearest hexagon center
+                    float q = x;
+                    float r = y;
+                    
+                    // Round to nearest hex center
+                    float q_round = floor(q + 0.5);
+                    float r_round = floor(r + 0.5);
+                    
+                    // Hexagon center position
+                    vec2 center = vec2(
+                        q_round + r_round * 0.5,
+                        r_round * halfSqrt3
+                    );
+                    
+                    // Point relative to hex center
+                    vec2 local = p - center;
+                    
+                    // Convert to polar for triangle detection
+                    float angle = atan(local.y, local.x);
+                    float radius = length(local);
+                    
+                    // Each hexagon has 6 triangles (0-60°, 60-120°, etc)
+                    // Normalize angle to 0-60° sector
+                    float sector = floor(angle / 3.14159 * 3.0 + 6.5) - 6.0;
+                    float sectorAngle = angle - sector * 3.14159 / 3.0;
+                    
+                    // Distance to hexagon edges
+                    float hexDist = abs(radius * cos(sectorAngle) - 1.0);
+                    
+                    // Barycentric coordinates within the triangle
+                    // For a triangle with vertices at (0,0), (1,0), (0.5, 0.866)
+                    vec2 triP = local;
+                    
+                    // Transform to triangle local coordinates based on sector
+                    // This is simplified - each sector has its own orientation
+                    
+                    // Distance to triangle edges (simplified)
+                    float triDist = min(
+                        min(abs(length(local) - 1.0), abs(angle - sector * 60.0)),
+                        abs(angle - (sector + 1.0) * 60.0)
+                    );
+                    
+                    // Combine with gap
+                    float edgeDist = hexDist - uGap;
+                    
+                    // Screen-space antialiasing
+                    vec2 worldPerPixel = vec2(2.0 * uScale * 2.0 / uResolution.x, 2.0 * uScale * 2.0 / uResolution.y);
+                    float deriv = length(worldPerPixel) * uAA / uHexSize;
+                    float pixelWidth = uHairline * deriv;
+                    
+                    // Edge detection
+                    float edge;
+                    if (edgeDist < 0.0) {
+                        edge = 0.0;
+                    } else {
+                        edge = smoothstep(0.0, pixelWidth, edgeDist);
                     }
                     
-                    // Default color
-                    vec3 color = vec3(0.95, 0.95, 0.95); // light gray background
+                    // Determine hexagon color based on position
+                    float pattern = mod(q_round + r_round, 2.0);
+                    vec3 hexColor = pattern < 0.5 ? uColorHex1 : uColorHex2;
                     
-                    if (found) {
-                        // Inside a triangle - fill with slightly off-white
-                        color = vec3(0.98, 0.98, 0.98);
-                        
-                        // Draw edges where barycentric coordinates are near 0
-                        float minDist = min(bary.x, min(bary.y, bary.z));
-                        
-                        // Screen-space antialiasing
-                        vec2 worldPerPixel = vec2(2.0 * uScale * 400.0 / uResolution.x, 2.0 * uScale * 400.0 / uResolution.y);
-                        float deriv = length(worldPerPixel) * 1.5 / uTriSize;
-                        float pixelWidth = 2.0 * deriv;
-                        
-                        if (minDist < pixelWidth) {
-                            // This is an edge - make it darker
-                            float edgeIntensity = 1.0 - smoothstep(0.0, pixelWidth, minDist);
-                            color = mix(color, vec3(0.3, 0.3, 0.3), edgeIntensity);
-                        }
-                        
-                        // Draw vertices where two coordinates are near 0
-                        if (bary.x < pixelWidth && bary.y < pixelWidth) color = vec3(0.8, 0.2, 0.2);
-                        else if (bary.y < pixelWidth && bary.z < pixelWidth) color = vec3(0.8, 0.2, 0.2);
-                        else if (bary.z < pixelWidth && bary.x < pixelWidth) color = vec3(0.8, 0.2, 0.2);
+                    // Fill hexagons
+                    vec3 color = uColorBg;
+                    if (radius < 1.0) {
+                        color = hexColor;
+                    }
+                    
+                    // Draw edges
+                    if (edge < 1.0) {
+                        float edgeIntensity = 1.0 - edge;
+                        color = mix(color, uColorLine, edgeIntensity);
+                    }
+                    
+                    // Add vertex dots at triangle corners
+                    float vertexDist = abs(radius - 1.0);
+                    if (vertexDist < pixelWidth * 2.0) {
+                        color = uColorLine;
                     }
                     
                     gl_FragColor = vec4(color, 1.0);
@@ -512,14 +439,32 @@
             // Uniforms
             const uOffset = gl.getUniformLocation(program, 'uOffset');
             const uScale = gl.getUniformLocation(program, 'uScale');
-            const uTriSize = gl.getUniformLocation(program, 'uTriSize');
+            const uHexSize = gl.getUniformLocation(program, 'uHexSize');
+            const uGap = gl.getUniformLocation(program, 'uGap');
+            const uHairline = gl.getUniformLocation(program, 'uHairline');
+            const uAA = gl.getUniformLocation(program, 'uAA');
+            const uColorHex1 = gl.getUniformLocation(program, 'uColorHex1');
+            const uColorHex2 = gl.getUniformLocation(program, 'uColorHex2');
+            const uColorLine = gl.getUniformLocation(program, 'uColorLine');
+            const uColorBg = gl.getUniformLocation(program, 'uColorBg');
+            const uHorizontalMode = gl.getUniformLocation(program, 'uHorizontalMode');
             const uResolution = gl.getUniformLocation(program, 'uResolution');
             const uAspect = gl.getUniformLocation(program, 'uAspect');
             
+            // Default colors
+            gl.uniform3f(uColorHex1, 1.0, 0.85, 0.4);    // yellow
+            gl.uniform3f(uColorHex2, 0.5, 0.75, 1.0);    // blue
+            gl.uniform3f(uColorLine, 1.0, 1.0, 1.0);      // white
+            gl.uniform3f(uColorBg, 0.1, 0.12, 0.16);      // dark
+            
             // State
             let offsetX = 0.0, offsetY = 0.0;
-            let scale = 0.5;
-            let triSize = 1.5;
+            let scale = 1.0;
+            let hexSize = 1.2;
+            let gap = 0.05;
+            let hairline = 1.2;
+            let aa = 1.5;
+            let horizontalMode = true;
             
             let isDragging = false;
             let lastX = 0, lastY = 0;
@@ -528,7 +473,11 @@
                 const aspect = canvas.width / canvas.height;
                 gl.uniform2f(uOffset, offsetX, offsetY);
                 gl.uniform1f(uScale, scale);
-                gl.uniform1f(uTriSize, triSize);
+                gl.uniform1f(uHexSize, hexSize);
+                gl.uniform1f(uGap, gap);
+                gl.uniform1f(uHairline, hairline);
+                gl.uniform1f(uAA, aa);
+                gl.uniform1i(uHorizontalMode, horizontalMode ? 1 : 0);
                 gl.uniform2f(uResolution, canvas.width, canvas.height);
                 gl.uniform1f(uAspect, aspect);
                 draw();
@@ -550,8 +499,8 @@
                 const dx = e.clientX - lastX;
                 const dy = e.clientY - lastY;
                 
-                offsetX -= (dx / canvas.width) * (2.0 * scale);
-                offsetY += (dy / canvas.height) * (2.0 * scale);
+                offsetX -= (dx / canvas.width) * (2.0 * scale * 2.0);
+                offsetY += (dy / canvas.height) * (2.0 * scale * 2.0);
                 
                 lastX = e.clientX;
                 lastY = e.clientY;
@@ -572,16 +521,16 @@
                 const mx = ((e.clientX - rect.left) / rect.width) * 2.0 - 1.0;
                 const my = -(((e.clientY - rect.top) / rect.height) * 2.0 - 1.0);
                 
-                const worldX = mx * scale + offsetX;
-                const worldY = my * scale + offsetY;
+                const worldX = mx * scale * 2.0 + offsetX;
+                const worldY = my * scale * 2.0 + offsetY;
                 
                 const factor = 0.95;
                 const newScale = e.deltaY > 0 ? scale * factor : scale / factor;
                 
-                if (newScale < 0.1 || newScale > 5.0) return;
+                if (newScale < 0.2 || newScale > 5.0) return;
                 
-                offsetX = worldX - mx * newScale;
-                offsetY = worldY - my * newScale;
+                offsetX = worldX - mx * newScale * 2.0;
+                offsetY = worldY - my * newScale * 2.0;
                 scale = newScale;
                 
                 updateUniforms();
@@ -590,7 +539,7 @@
             // Resize
             function resize() {
                 canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight - 140;
+                canvas.height = window.innerHeight;
                 gl.viewport(0, 0, canvas.width, canvas.height);
                 updateUniforms();
             }
@@ -609,9 +558,90 @@
             loop();
             
             // UI Controls
-            document.getElementById('size-slider').addEventListener('input', (e) => {
-                triSize = parseFloat(e.target.value);
-                document.getElementById('size-value').textContent = triSize.toFixed(1);
+            document.getElementById('size').addEventListener('input', (e) => {
+                hexSize = parseFloat(e.target.value);
+                document.getElementById('size-value').textContent = hexSize.toFixed(2);
+                updateUniforms();
+            });
+            
+            document.getElementById('gap').addEventListener('input', (e) => {
+                gap = parseFloat(e.target.value);
+                document.getElementById('gap-value').textContent = gap.toFixed(2);
+                updateUniforms();
+            });
+            
+            document.getElementById('hairline').addEventListener('input', (e) => {
+                hairline = parseFloat(e.target.value);
+                document.getElementById('hairline-value').textContent = hairline.toFixed(1);
+                updateUniforms();
+            });
+            
+            document.getElementById('aa').addEventListener('input', (e) => {
+                aa = parseFloat(e.target.value);
+                document.getElementById('aa-value').textContent = aa.toFixed(1);
+                updateUniforms();
+            });
+            
+            document.getElementById('mode-horizontal').addEventListener('click', () => {
+                horizontalMode = true;
+                document.getElementById('mode-horizontal').classList.add('active');
+                document.getElementById('mode-vertical').classList.remove('active');
+                updateUniforms();
+            });
+            
+            document.getElementById('mode-vertical').addEventListener('click', () => {
+                horizontalMode = false;
+                document.getElementById('mode-vertical').classList.add('active');
+                document.getElementById('mode-horizontal').classList.remove('active');
+                updateUniforms();
+            });
+            
+            // Color pickers (simplified - cycle through variations)
+            const hex1Colors = [
+                [1.0, 0.85, 0.4],   // yellow
+                [1.0, 0.7, 0.5],     // orange
+                [0.9, 0.8, 0.6]      // sand
+            ];
+            let hex1Index = 0;
+            document.getElementById('color-hex1').addEventListener('click', () => {
+                hex1Index = (hex1Index + 1) % hex1Colors.length;
+                gl.uniform3f(uColorHex1, hex1Colors[hex1Index][0], hex1Colors[hex1Index][1], hex1Colors[hex1Index][2]);
+                updateUniforms();
+            });
+            
+            const hex2Colors = [
+                [0.5, 0.75, 1.0],    // blue
+                [0.6, 0.8, 0.9],     // light blue
+                [0.7, 0.6, 1.0]      // purple
+            ];
+            let hex2Index = 0;
+            document.getElementById('color-hex2').addEventListener('click', () => {
+                hex2Index = (hex2Index + 1) % hex2Colors.length;
+                gl.uniform3f(uColorHex2, hex2Colors[hex2Index][0], hex2Colors[hex2Index][1], hex2Colors[hex2Index][2]);
+                updateUniforms();
+            });
+            
+            const lineColors = [
+                [1.0, 1.0, 1.0],     // white
+                [0.9, 0.9, 1.0],     // off-white
+                [0.8, 0.8, 0.8]      // gray
+            ];
+            let lineIndex = 0;
+            document.getElementById('color-line').addEventListener('click', () => {
+                lineIndex = (lineIndex + 1) % lineColors.length;
+                gl.uniform3f(uColorLine, lineColors[lineIndex][0], lineColors[lineIndex][1], lineColors[lineIndex][2]);
+                updateUniforms();
+            });
+            
+            const bgColors = [
+                [0.1, 0.12, 0.16],   // dark
+                [0.15, 0.17, 0.22],  // medium dark
+                [0.2, 0.22, 0.26]    // lighter dark
+            ];
+            let bgIndex = 0;
+            document.getElementById('color-bg').addEventListener('click', () => {
+                bgIndex = (bgIndex + 1) % bgColors.length;
+                gl.uniform3f(uColorBg, bgColors[bgIndex][0], bgColors[bgIndex][1], bgColors[bgIndex][2]);
                 updateUniforms();
             });
         })();
