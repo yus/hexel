@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>infinite barycentric grid · full controls</title>
+    <title>infinite barycentric grid · 60° precision</title>
     <style>
         * {
             box-sizing: border-box;
@@ -17,7 +17,6 @@
             font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         }
         
-        /* Minimalist header panel - 150px height, full width */
         #header {
             position: fixed;
             top: 0;
@@ -32,10 +31,8 @@
             align-items: center;
             padding: 0 30px;
             color: #e0e4f0;
-            letter-spacing: 0.3px;
         }
         
-        /* Content container for header */
         .header-content {
             display: flex;
             align-items: center;
@@ -46,7 +43,6 @@
             flex-wrap: wrap;
         }
         
-        /* Title section */
         .title-section {
             display: flex;
             flex-direction: column;
@@ -67,7 +63,6 @@
             font-weight: 400;
         }
         
-        /* Control sections */
         .control-group {
             display: flex;
             align-items: center;
@@ -103,7 +98,6 @@
             font-size: 13px;
         }
         
-        /* Slider styling */
         .slider-row {
             display: flex;
             align-items: center;
@@ -130,19 +124,6 @@
             transition: background 0.1s;
         }
         
-        input[type=range]::-webkit-slider-thumb:hover {
-            background: #aaccff;
-        }
-        
-        input[type=range]::-moz-range-thumb {
-            width: 14px;
-            height: 14px;
-            background: white;
-            border: none;
-            border-radius: 0;
-            cursor: pointer;
-        }
-        
         .value-display {
             font-size: 14px;
             color: white;
@@ -155,7 +136,6 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
         }
         
-        /* Checkbox styling */
         .checkbox-item {
             display: flex;
             align-items: center;
@@ -181,7 +161,16 @@
             accent-color: white;
         }
         
-        /* Status indicator */
+        .key-hint {
+            font-size: 11px;
+            color: #5f6778;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: monospace;
+            margin-left: 8px;
+        }
+        
         .status {
             display: flex;
             align-items: center;
@@ -198,7 +187,6 @@
             border-radius: 0;
         }
         
-        /* Canvas positioning */
         canvas {
             display: block;
             position: fixed;
@@ -208,7 +196,6 @@
             height: calc(100vh - 150px);
         }
         
-        /* Hint */
         .hint {
             position: fixed;
             bottom: 20px;
@@ -217,24 +204,31 @@
             font-size: 11px;
             background: rgba(10, 12, 18, 0.6);
             backdrop-filter: blur(4px);
-            padding: 6px 14px;
+            padding: 8px 16px;
             border-radius: 30px;
             border: 1px solid rgba(255, 255, 255, 0.06);
             z-index: 200;
             letter-spacing: 0.3px;
+            line-height: 1.6;
+        }
+        
+        .hint kbd {
+            background: #2a2f3a;
+            padding: 2px 6px;
+            border-radius: 4px;
+            color: #e0e4f0;
         }
     </style>
 </head>
 <body>
-    <!-- Minimalist header panel 150px with three controls -->
     <div id="header">
         <div class="header-content">
             <div class="title-section">
                 <div class="title-main">BARYCENTRIC GRID</div>
-                <div class="title-sub">equilateral · 60° · webgl</div>
+                <div class="title-sub">60° · equilateral · precise</div>
             </div>
             
-            <!-- Control Group 1: Hairline Width -->
+            <!-- Control 1: Hairline Width -->
             <div class="control-group">
                 <div class="control-item">
                     <div class="control-label">
@@ -247,34 +241,24 @@
                 </div>
             </div>
             
-            <!-- Control Group 2: Vertical Shift / Diagonal Skew -->
+            <!-- Control 2: Parallel Shift (shifts parallels relative to diagonals) -->
             <div class="control-group">
                 <div class="control-item">
                     <div class="control-label">
-                        VERTICAL SHIFT <span id="shift-preview">0.0</span>
+                        PARALLEL SHIFT <span id="shift-preview">0.0</span>
                     </div>
                     <div class="slider-row">
-                        <input type="range" id="shift-slider" min="-0.5" max="0.5" step="0.01" value="0.0">
+                        <input type="range" id="shift-slider" min="0.0" max="1.0" step="0.01" value="0.0">
                         <div class="value-display" id="shift-value">0.00</div>
                     </div>
                 </div>
             </div>
             
-            <!-- Control Group 3: Rotation Angle & Horizontal Mode -->
+            <!-- Control 3: 30° Snap Checkbox -->
             <div class="control-group">
-                <div class="control-item">
-                    <div class="control-label">
-                        ROTATION <span id="rotate-preview">0°</span>
-                    </div>
-                    <div class="slider-row">
-                        <input type="range" id="rotate-slider" min="0" max="360" step="1" value="0">
-                        <div class="value-display" id="rotate-value">0°</div>
-                    </div>
-                </div>
-                
                 <div class="checkbox-item">
-                    <input type="checkbox" id="horizontal-mode">
-                    <label for="horizontal-mode">HORIZONTAL MODE</label>
+                    <input type="checkbox" id="snap-30">
+                    <label for="snap-30">SNAP TO 30° <span class="key-hint">ALT+SHIFT+PAN</span></label>
                 </div>
             </div>
             
@@ -285,13 +269,15 @@
         </div>
     </div>
     
-    <div class="hint">🖱️ drag · ⚡ zoom · ⇢ hairline | shift | rotate | horizontal</div>
+    <div class="hint">
+        <kbd>ALT</kbd> + drag → rotate freely · <kbd>ALT</kbd> + <kbd>SHIFT</kbd> + drag → snap 30°<br>
+        ↕️ pan · ⚡ zoom · PARALLEL SHIFT moves parallels between diagonals
+    </div>
 
     <script>
         (function() {
             "use strict";
 
-            // --- setup canvas & WebGL context ---
             const canvas = document.createElement('canvas');
             document.body.appendChild(canvas);
 
@@ -301,7 +287,7 @@
                 return;
             }
 
-            // --- fullscreen quad geometry ---
+            // Geometry
             const vertices = new Float32Array([
                 -1, -1,  0, 0,
                  1, -1,  1, 0,
@@ -315,7 +301,7 @@
             gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
             gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
 
-            // --- vertex shader ---
+            // Vertex shader
             const vsSource = `
                 attribute vec2 aPos;
                 attribute vec2 aUv;
@@ -326,7 +312,7 @@
                 }
             `;
 
-            // --- fragment shader with perfect 60-degree and all controls ---
+            // Fragment shader with perfect 60° geometry
             const fsSource = `
                 precision highp float;
                 
@@ -338,13 +324,13 @@
                 uniform vec3  uColorB;
                 uniform vec3  uEdgeColor;
                 uniform float uLineWidth;
-                uniform float uShift;        // Vertical shift / diagonal skew
-                uniform float uRotate;        // Rotation angle in radians
-                uniform bool  uHorizontalMode; // Horizontal mode toggle
+                uniform float uParallelShift;  // Shifts parallels relative to diagonals (0-1)
+                uniform float uRotate;          // Rotation angle in radians
+                uniform bool  uSnap30;          // Snap to 30° increments
                 uniform vec2  uResolution;
-                uniform float uAspect;        // Screen aspect ratio (width/height)
+                uniform float uAspect;
                 
-                // 2D rotation matrix
+                // Rotation matrix
                 vec2 rotate(vec2 p, float angle) {
                     float s = sin(angle);
                     float c = cos(angle);
@@ -352,74 +338,64 @@
                 }
                 
                 void main() {
-                    // Base world position
-                    vec2 p = (vUv * 2.0 - 1.0) * uScale + uOffset;
-                    
-                    // Apply aspect correction to keep triangles equilateral on screen
+                    // Base world position with aspect correction
+                    vec2 p = (vUv * 2.0 - 1.0) * uScale;
                     p.x *= uAspect;
+                    p += uOffset;
                     
                     // Apply rotation
                     p = rotate(p, uRotate);
                     
-                    // Apply vertical shift (affects diagonal intersections)
-                    p.y += uShift * 2.0;
-                    
-                    // Perfect 60-degree equilateral triangle grid
+                    // PERFECT 60° TRIANGLE GRID
+                    // Using proper basis vectors for equilateral triangles
                     const float sqrt3 = 1.73205080757;
                     const float halfSqrt3 = 0.86602540378;
                     
-                    // Three axis directions at 60 degrees
-                    float x = p.x;
-                    float y = p.y;
+                    // Transform to barycentric space with proper 60° axes
+                    // u axis: horizontal (0°)
+                    // v axis: 60° up
+                    // w axis: 120° up (which is -u-v in this space)
+                    float u = p.x;
+                    float v = p.y / halfSqrt3 + p.x * 0.5;
                     
-                    // Convert to barycentric-like coordinates
-                    float u, v, w;
+                    // Apply parallel shift - moves the v/w axes relative to u
+                    // This shifts the parallels while keeping diagonals fixed
+                    v += uParallelShift * 0.5;
                     
-                    if (uHorizontalMode) {
-                        // Horizontal mode: align triangles with horizontal axis
-                        u = x;
-                        v = (y / halfSqrt3) - (x * 0.5);
-                        w = -u - v;
-                    } else {
-                        // Standard orientation
-                        u = x;
-                        v = (y / halfSqrt3) - (x * 0.5);
-                        w = -u - v;
-                        // Add 30-degree rotation for classic look
-                        float temp = u;
-                        u = u * 0.866 - v * 0.5;
-                        v = temp * 0.5 + v * 0.866;
-                        w = -u - v;
-                    }
+                    float w = -u - v;
                     
-                    // Get fractional parts
+                    // Get fractional parts for distance calculation
                     float fu = fract(u);
                     float fv = fract(v);
                     float fw = fract(w);
                     
-                    // Distances to the three sets of parallel lines
-                    float du = min(fu, 1.0 - fu) * 2.0;
-                    float dv = min(fv, 1.0 - fv) * 2.0;
-                    float dw = min(fw, 1.0 - fw) * 2.0;
+                    // Distance to each set of parallel lines (0 at lines, 0.5 at centers)
+                    float du = min(fu, 1.0 - fu);
+                    float dv = min(fv, 1.0 - fv);
+                    float dw = min(fw, 1.0 - fw);
                     
-                    // Now du,dv,dw are 0 at edges, 1 at triangle centers
-                    float minDist = min(min(du, dv), dw);
+                    // Scale to 0-1 range where 1 = center of triangle
+                    float d1 = du * 2.0;
+                    float d2 = dv * 2.0;
+                    float d3 = dw * 2.0;
                     
-                    // Screen-space pixel calculation with aspect correction
+                    // The three diagonals are at 60° to each other
+                    // The minimum distance gives us the grid lines
+                    float minDist = min(min(d1, d2), d3);
+                    
+                    // Screen-space pixel calculation
                     vec2 worldPerPixel = vec2(2.0 * uScale / uResolution.x, 2.0 * uScale / uResolution.y);
                     float deriv = length(worldPerPixel) * 1.5;
-                    
-                    // Line width in screen pixels
                     float pixelWidth = uLineWidth * deriv;
                     
                     // Invert so lines are dark
                     float line = smoothstep(0.0, pixelWidth, minDist);
                     
                     // Triangle center glow
-                    float centerDist = length(vec3(du, dv, dw) - vec3(1.0));
-                    float glow = exp(-centerDist * 5.0) * 0.3;
+                    float centerDist = length(vec3(d1, d2, d3) - vec3(1.0));
+                    float glow = exp(-centerDist * 5.0) * 0.25;
                     
-                    // Cell variation using floor
+                    // Cell variation
                     float iu = floor(u + 0.5);
                     float iv = floor(v + 0.5);
                     float pattern = fract(iu * 0.5 + iv * 0.7);
@@ -434,7 +410,7 @@
                 }
             `;
 
-            // --- compile shader ---
+            // Compile shader
             function compileShader(gl, source, type) {
                 const shader = gl.createShader(type);
                 gl.shaderSource(shader, source);
@@ -453,19 +429,14 @@
             gl.attachShader(program, vs);
             gl.attachShader(program, fs);
             gl.linkProgram(program);
-            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-                console.error(gl.getProgramInfoLog(program));
-            }
-
             gl.useProgram(program);
 
-            // --- attributes & uniforms ---
+            // Attributes & uniforms
             const aPos = gl.getAttribLocation(program, 'aPos');
             const aUv = gl.getAttribLocation(program, 'aUv');
 
             gl.enableVertexAttribArray(aPos);
             gl.enableVertexAttribArray(aUv);
-
             gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 16, 0);
             gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, 16, 8);
 
@@ -475,9 +446,9 @@
             const uColorB = gl.getUniformLocation(program, 'uColorB');
             const uEdgeColor = gl.getUniformLocation(program, 'uEdgeColor');
             const uLineWidth = gl.getUniformLocation(program, 'uLineWidth');
-            const uShift = gl.getUniformLocation(program, 'uShift');
+            const uParallelShift = gl.getUniformLocation(program, 'uParallelShift');
             const uRotate = gl.getUniformLocation(program, 'uRotate');
-            const uHorizontalMode = gl.getUniformLocation(program, 'uHorizontalMode');
+            const uSnap30 = gl.getUniformLocation(program, 'uSnap30');
             const uResolution = gl.getUniformLocation(program, 'uResolution');
             const uAspect = gl.getUniformLocation(program, 'uAspect');
 
@@ -487,24 +458,29 @@
             
             // Initial values
             let currentLineWidth = 0.6;
-            let currentShift = 0.0;
+            let currentParallelShift = 0.0;
             let currentRotate = 0.0;
-            let currentHorizontalMode = false;
+            let snap30Enabled = false;
             
             gl.uniform1f(uLineWidth, currentLineWidth);
-            gl.uniform1f(uShift, currentShift);
-            gl.uniform1f(uRotate, currentRotate * Math.PI / 180.0);
-            gl.uniform1i(uHorizontalMode, currentHorizontalMode ? 1 : 0);
+            gl.uniform1f(uParallelShift, currentParallelShift);
+            gl.uniform1f(uRotate, currentRotate);
+            gl.uniform1i(uSnap30, snap30Enabled ? 1 : 0);
 
-            // --- interaction state ---
+            // Interaction state
             let offsetX = 1.5, offsetY = -1.0;
             let scale = 2.8;
             let isDragging = false;
             let lastMouseX = 0, lastMouseY = 0;
+            
+            // Rotation state
+            let isAltDown = false;
+            let isShiftDown = false;
+            let dragStartRotate = 0;
+            let dragStartX = 0, dragStartY = 0;
 
             function updateUniforms() {
                 const aspect = canvas.width / canvas.height;
-                
                 gl.uniform2f(uOffset, offsetX, offsetY);
                 gl.uniform1f(uScale, scale);
                 gl.uniform2f(uResolution, canvas.width, canvas.height);
@@ -512,42 +488,95 @@
                 draw();
             }
 
-            // --- mouse pan ---
+            // Keyboard modifiers
+            window.addEventListener('keydown', (e) => {
+                if (e.key === 'Alt') {
+                    isAltDown = true;
+                    canvas.style.cursor = 'grab';
+                }
+                if (e.key === 'Shift') {
+                    isShiftDown = true;
+                }
+            });
+
+            window.addEventListener('keyup', (e) => {
+                if (e.key === 'Alt') {
+                    isAltDown = false;
+                    canvas.style.cursor = 'default';
+                }
+                if (e.key === 'Shift') {
+                    isShiftDown = false;
+                }
+            });
+
+            // Mouse events with rotation
             canvas.addEventListener('mousedown', (e) => {
                 if (e.button === 0) {
                     isDragging = true;
                     lastMouseX = e.clientX;
                     lastMouseY = e.clientY;
-                    canvas.style.cursor = 'grabbing';
+                    
+                    if (isAltDown) {
+                        // Rotation mode
+                        canvas.style.cursor = 'grabbing';
+                        dragStartRotate = currentRotate;
+                        dragStartX = e.clientX;
+                        dragStartY = e.clientY;
+                    } else {
+                        // Pan mode
+                        canvas.style.cursor = 'grabbing';
+                    }
                 }
             });
 
             window.addEventListener('mousemove', (e) => {
                 if (!isDragging) return;
                 
-                const dx = e.clientX - lastMouseX;
-                const dy = e.clientY - lastMouseY;
-                
-                const worldDeltaX = (dx / canvas.clientWidth) * (2.0 * scale);
-                const worldDeltaY = -(dy / canvas.clientHeight) * (2.0 * scale);
-                
-                offsetX -= worldDeltaX;
-                offsetY -= worldDeltaY;
-                
-                lastMouseX = e.clientX;
-                lastMouseY = e.clientY;
-                
-                updateUniforms();
+                if (isAltDown) {
+                    // Rotation
+                    const dx = e.clientX - dragStartX;
+                    const dy = e.clientY - dragStartY;
+                    
+                    // Convert to rotation angle (sensitive)
+                    let angleDelta = (dx - dy) * 0.01;
+                    
+                    if (isShiftDown && snap30Enabled) {
+                        // Snap to 30° increments (π/6 = 0.5236 rad)
+                        const snap = Math.PI / 6;
+                        let newRotate = dragStartRotate + angleDelta;
+                        currentRotate = Math.round(newRotate / snap) * snap;
+                    } else {
+                        currentRotate = dragStartRotate + angleDelta;
+                    }
+                    
+                    gl.uniform1f(uRotate, currentRotate);
+                    draw();
+                } else {
+                    // Pan
+                    const dx = e.clientX - lastMouseX;
+                    const dy = e.clientY - lastMouseY;
+                    
+                    const worldDeltaX = (dx / canvas.clientWidth) * (2.0 * scale);
+                    const worldDeltaY = -(dy / canvas.clientHeight) * (2.0 * scale);
+                    
+                    offsetX -= worldDeltaX;
+                    offsetY -= worldDeltaY;
+                    
+                    lastMouseX = e.clientX;
+                    lastMouseY = e.clientY;
+                    
+                    updateUniforms();
+                }
             });
 
             window.addEventListener('mouseup', (e) => {
                 if (e.button === 0) {
                     isDragging = false;
-                    canvas.style.cursor = 'default';
+                    canvas.style.cursor = isAltDown ? 'grab' : 'default';
                 }
             });
 
-            // --- wheel zoom (cursor-anchored) ---
+            // Wheel zoom
             canvas.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 
@@ -572,7 +601,7 @@
 
             canvas.addEventListener('dragstart', (e) => e.preventDefault());
 
-            // --- resize ---
+            // Resize
             function resizeCanvas() {
                 canvas.width = window.innerWidth;
                 canvas.height = window.innerHeight - 150;
@@ -582,7 +611,7 @@
             window.addEventListener('resize', resizeCanvas);
             resizeCanvas();
 
-            // --- draw loop ---
+            // Draw loop
             function draw() {
                 gl.clear(gl.COLOR_BUFFER_BIT);
                 gl.drawArrays(gl.TRIANGLES, 0, 6);
@@ -594,8 +623,7 @@
             }
             loop();
 
-            // --- UI Controls ---
-            // Hairline slider
+            // UI Controls
             const hairlineSlider = document.getElementById('hairline-slider');
             const hairlineValue = document.getElementById('hairline-value');
             const hairlinePreview = document.getElementById('hairline-preview');
@@ -608,7 +636,7 @@
                 draw();
             });
             
-            // Shift slider
+            // Parallel Shift slider (0-1 range)
             const shiftSlider = document.getElementById('shift-slider');
             const shiftValue = document.getElementById('shift-value');
             const shiftPreview = document.getElementById('shift-preview');
@@ -617,38 +645,31 @@
                 const val = parseFloat(e.target.value);
                 shiftValue.textContent = val.toFixed(2);
                 shiftPreview.textContent = val.toFixed(2);
-                gl.uniform1f(uShift, val);
+                gl.uniform1f(uParallelShift, val);
                 draw();
             });
             
-            // Rotation slider
-            const rotateSlider = document.getElementById('rotate-slider');
-            const rotateValue = document.getElementById('rotate-value');
-            const rotatePreview = document.getElementById('rotate-preview');
+            // Snap 30° checkbox
+            const snapCheck = document.getElementById('snap-30');
             
-            rotateSlider.addEventListener('input', (e) => {
-                const val = parseInt(e.target.value);
-                rotateValue.textContent = val + '°';
-                rotatePreview.textContent = val + '°';
-                gl.uniform1f(uRotate, val * Math.PI / 180.0);
-                draw();
-            });
-            
-            // Horizontal mode checkbox
-            const horizontalCheck = document.getElementById('horizontal-mode');
-            
-            horizontalCheck.addEventListener('change', (e) => {
-                gl.uniform1i(uHorizontalMode, e.target.checked ? 1 : 0);
-                draw();
+            snapCheck.addEventListener('change', (e) => {
+                snap30Enabled = e.target.checked;
+                gl.uniform1i(uSnap30, snap30Enabled ? 1 : 0);
+                
+                if (snap30Enabled) {
+                    // Snap current rotation to nearest 30°
+                    const snap = Math.PI / 6;
+                    currentRotate = Math.round(currentRotate / snap) * snap;
+                    gl.uniform1f(uRotate, currentRotate);
+                    draw();
+                }
             });
             
             // Initialize displays
             hairlineValue.textContent = currentLineWidth.toFixed(2);
             hairlinePreview.textContent = currentLineWidth.toFixed(2);
-            shiftValue.textContent = currentShift.toFixed(2);
-            shiftPreview.textContent = currentShift.toFixed(2);
-            rotateValue.textContent = currentRotate + '°';
-            rotatePreview.textContent = currentRotate + '°';
+            shiftValue.textContent = currentParallelShift.toFixed(2);
+            shiftPreview.textContent = currentParallelShift.toFixed(2);
         })();
     </script>
 </body>
