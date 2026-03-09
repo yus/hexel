@@ -3,55 +3,69 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WebGL Barycentric Grid - Maximum Performance</title>
+    <title>WebGL Barycentric Grid - Fixed</title>
     <style>
         body {
             margin: 0;
             overflow: hidden;
             font-family: 'Courier New', monospace;
+            background: #111;
         }
         #info {
             position: absolute;
             top: 20px;
             left: 20px;
             color: white;
-            background: rgba(0,0,0,0.7);
+            background: rgba(0,0,0,0.8);
             padding: 10px 20px;
             border-radius: 4px;
             pointer-events: none;
             z-index: 10;
             font-size: 14px;
-            border: 1px solid #444;
+            border: 1px solid #00ffff;
+            box-shadow: 0 0 10px rgba(0,255,255,0.3);
         }
         #stats {
             position: absolute;
             top: 20px;
             right: 20px;
-            color: #0f0;
-            background: rgba(0,0,0,0.7);
+            color: #00ff00;
+            background: rgba(0,0,0,0.8);
             padding: 10px 20px;
             border-radius: 4px;
             font-family: monospace;
             font-size: 14px;
-            border: 1px solid #0f0;
+            border: 1px solid #00ff00;
             z-index: 10;
+            box-shadow: 0 0 10px rgba(0,255,0,0.3);
         }
         canvas {
             display: block;
+            background: #0a0a1a;
+        }
+        .error {
+            color: #ff5555;
+            background: rgba(0,0,0,0.9);
+            padding: 5px 10px;
+            border-radius: 4px;
+            font-size: 12px;
         }
     </style>
 </head>
 <body>
     <div id="info">
-        <strong>BARYCENTRIC GRID</strong> | 6 triangles/hexagon | drag to pan | scroll to zoom
+        <span style="color:#00ffff;">⚡ BARYCENTRIC GRID</span> | 6 triangles/hex | drag to pan | scroll to zoom
     </div>
-    <div id="stats">FPS: <span id="fps-count">60</span> | Triangles: <span id="tri-count">0</span></div>
+    <div id="stats">
+        FPS: <span id="fps-count">0</span> | 
+        Tris: <span id="tri-count">0</span> | 
+        Hex: <span id="hex-count">0</span>
+    </div>
 
-    <!-- Vertex Shader - Optimized for barycentric calculations -->
     <script id="vertex-shader" type="x-shader/x-vertex">
-        attribute vec2 a_position;        // Vertex position
-        attribute vec3 a_barycentric;     // Barycentric coordinates (1,0,0), (0,1,0), or (0,0,1)
-        attribute float a_hexId;           // Hexagon ID for color variation
+        attribute vec2 a_position;
+        attribute vec3 a_barycentric;
+        attribute float a_hexId;
         
         uniform vec2 u_translation;
         uniform float u_scale;
@@ -62,25 +76,21 @@
         varying vec2 v_position;
         
         void main() {
-            // Apply pan and zoom transforms
             vec2 pos = a_position * u_scale + u_translation;
             
             // Convert to clip space
             vec2 zeroToOne = pos / u_resolution;
-            vec2 zeroToTwo = zeroToOne * 2.0;
-            vec2 clipSpace = zeroToTwo - 1.0;
+            vec2 clipSpace = zeroToOne * 2.0 - 1.0;
             
-            // Flip Y (WebGL clip space)
+            // Flip Y for WebGL
             gl_Position = vec4(clipSpace.x, -clipSpace.y, 0.0, 1.0);
             
-            // Pass varyings to fragment shader
             v_barycentric = a_barycentric;
             v_hexId = a_hexId;
             v_position = a_position;
         }
     </script>
 
-    <!-- Fragment Shader - Pure barycentric coloring -->
     <script id="fragment-shader" type="x-shader/x-fragment">
         precision highp float;
         
@@ -93,38 +103,38 @@
         uniform float u_line;
         
         void main() {
-            // Find minimum distance to edges (barycentric coordinates = distances to opposite edges)
+            // Find minimum barycentric coordinate (distance to edge)
             float minDist = min(v_barycentric.x, min(v_barycentric.y, v_barycentric.z));
             
-            // Create grid lines based on distance to edges
+            // Grid lines
             float lineWidth = u_line * 0.15;
-            float grid = smoothstep(0.0, lineWidth, minDist);
+            float grid = 1.0 - smoothstep(0.0, lineWidth, minDist);
             
-            // Generate vibrant colors based on barycentric coordinates and hex ID
-            vec3 color1 = vec3(1.0, 0.3, 0.3); // Red
-            vec3 color2 = vec3(0.3, 1.0, 0.3); // Green  
-            vec3 color3 = vec3(0.3, 0.3, 1.0); // Blue
+            // Generate vibrant colors based on barycentric coordinates
+            vec3 color1 = vec3(1.0, 0.2, 0.2); // Red
+            vec3 color2 = vec3(0.2, 1.0, 0.2); // Green  
+            vec3 color3 = vec3(0.2, 0.2, 1.0); // Blue
             
             // Mix colors based on barycentric coordinates
             vec3 triangleColor = v_barycentric.x * color1 + 
                                 v_barycentric.y * color2 + 
                                 v_barycentric.z * color3;
             
-            // Add subtle variation based on hex ID
-            float hexVar = fract(v_hexId * 0.317) * 0.2 + 0.8;
+            // Add variation based on hex ID
+            float hexVar = fract(v_hexId * 0.618) * 0.3 + 0.7;
             triangleColor *= hexVar;
             
-            // Apply gap effect (darken edges)
+            // Apply gap effect
             float gapSize = u_gap * 2.0;
-            float edgeMask = smoothstep(0.0, gapSize, minDist);
-            triangleColor *= (0.7 + 0.3 * edgeMask);
+            float edgeMask = 1.0 - smoothstep(0.0, gapSize, minDist);
+            triangleColor = mix(triangleColor, vec3(0.0), edgeMask * 0.5);
             
-            // Final color with grid lines
-            vec3 finalColor = mix(vec3(0.1, 0.1, 0.1), triangleColor, grid);
+            // Mix grid lines
+            vec3 finalColor = mix(triangleColor, vec3(0.9, 0.9, 1.0), grid);
             
-            // Add subtle highlight at the very edges
-            if (minDist < 0.02) {
-                finalColor = mix(vec3(1.0, 1.0, 1.0), finalColor, 0.5);
+            // Add subtle edge highlight
+            if (minDist < 0.01) {
+                finalColor = vec3(1.0);
             }
             
             gl_FragColor = vec4(finalColor, 1.0);
@@ -134,121 +144,40 @@
     <script>
         (function() {
             // ================================================
-            // PERFORMANCE OPTIMIZED WEBGL BARYCENTRIC GRID
+            // CONFIGURATION
             // ================================================
-            
-            // Configuration
             const CONFIG = {
                 HEX_SIZE: 1.5,
-                GAP: 0.05,
+                GAP: 0.08,
                 LINE_WIDTH: 0.9,
-                VISIBLE_RADIUS: 25,  // Hexagons visible in each direction
-                MAX_HEXAGONS: 3000,   // Maximum hexagons to render (safety limit)
+                VISIBLE_RADIUS: 15,  // Reduced for 16-bit index safety
             };
             
-            // State
+            // ================================================
+            // WEBGL SETUP
+            // ================================================
             let gl, canvas;
             let program;
             let vertexBuffer, indexBuffer;
-            let translation = [400, 300];  // Center of screen initially
-            let scale = 20.0;               // Zoom level
+            let translation = [400, 300];
+            let scale = 25.0;
             let isDragging = false;
             let lastMousePos = [0, 0];
             
             // Performance monitoring
             let frameCount = 0;
             let lastTime = performance.now();
-            let fps = 60;
+            let fps = 0;
             
-            // WebGL buffers data
+            // Geometry data
             let vertexData = [];
             let indexData = [];
             let triangleCount = 0;
+            let hexCount = 0;
             
             // ================================================
-            // 1. GEOMETRY GENERATION (CPU - once at start)
+            // GEOMETRY GENERATION (16-bit indices safe)
             // ================================================
-            
-            function generateHexagonVertices(centerX, centerY, size, hexId) {
-                const vertices = [];
-                const indices = [];
-                const startVertexIndex = vertexData.length / 6; // Each vertex has 6 floats (2 pos + 3 bary + 1 hexId)
-                
-                // Center vertex (barycentric = 1/3, 1/3, 1/3? No - for edge distance, we want corners)
-                // For proper barycentric edge distances, each corner gets (1,0,0), (0,1,0), (0,0,1)
-                // Center will be calculated per triangle in indices
-                
-                // Generate 6 outer vertices (A-F) with pure barycentric corners
-                const outerVerts = [];
-                for (let i = 0; i < 6; i++) {
-                    const angle = i * Math.PI / 3; // 60° increments
-                    const x = centerX + size * Math.cos(angle);
-                    const y = centerY + size * Math.sin(angle);
-                    
-                    // Barycentric corner: (1,0,0), (0,1,0), (0,0,1) depending on position
-                    // But for shared vertices, we need to duplicate for each triangle
-                    // For simplicity, we'll store outer vertices with neutral barycentric
-                    // and handle triangles in indices
-                    outerVerts.push({x, y});
-                }
-                
-                // Generate 6 triangles (center + two consecutive outer vertices)
-                for (let tri = 0; tri < 6; tri++) {
-                    const nextTri = (tri + 1) % 6;
-                    
-                    // Center vertex (with varying barycentric per triangle? No - center is shared)
-                    // Better: Create 3 vertices per triangle for maximum performance
-                    // This avoids vertex shader branches and allows simple barycentric attributes
-                    
-                    // Triangle vertices with proper barycentric coordinates
-                    // Vertex 1: Center (all edges equally distant? No - for edge distance, center should have min distance = 0.5)
-                    // Actually for perfect edge lines, each vertex gets (1,0,0) etc relative to its opposite edge
-                    
-                    // We'll assign barycentric as:
-                    // - First vertex (center) gets (0.33, 0.33, 0.33) - equal distance to all edges? No, that's wrong
-                    // Better approach: For each triangle, vertices get:
-                    //   Vertex A (center): (0.5, 0.5, 0.0) - equidistant from two edges
-                    //   Vertex B (outer1): (1.0, 0.0, 0.0) - on first edge
-                    //   Vertex C (outer2): (0.0, 1.0, 0.0) - on second edge
-                    
-                    // But for perfect interpolation, we need consistent scheme
-                    // Let's use: v_barycentric = distance to opposite edges
-                    // At center: (0.5, 0.5, 0.0) for triangle 0-1
-                    
-                    // For simplicity and performance, we'll duplicate vertices per triangle
-                    // This gives us perfect barycentric control
-                    
-                    // Triangle 0: center, outer[0], outer[1]
-                    // Vertex A (center) - barycentric (1,0,0) relative to edge 0-1? No
-                    
-                    // SIMPLIFIED: Use corner-based barycentric
-                    // For triangle (center, A, B):
-                    // - center: (0.33, 0.33, 0.33)
-                    // - A: (1,0,0)
-                    // - B: (0,1,0)
-                    
-                    // Add center vertex for this triangle
-                    vertexData.push(centerX, centerY);  // position
-                    vertexData.push(0.33, 0.33, 0.33);  // barycentric
-                    vertexData.push(hexId);              // hexId
-                    
-                    // Add outer vertex A (tri)
-                    vertexData.push(outerVerts[tri].x, outerVerts[tri].y);
-                    vertexData.push(1.0, 0.0, 0.0);
-                    vertexData.push(hexId);
-                    
-                    // Add outer vertex B (nextTri)
-                    vertexData.push(outerVerts[nextTri].x, outerVerts[nextTri].y);
-                    vertexData.push(0.0, 1.0, 0.0);
-                    vertexData.push(hexId);
-                    
-                    // Add indices for this triangle
-                    const baseIdx = startVertexIndex + tri * 3;
-                    indexData.push(baseIdx, baseIdx + 1, baseIdx + 2);
-                }
-                
-                return { vertices: vertexData, indices: indexData };
-            }
             
             function generateGrid() {
                 console.log("Generating grid geometry...");
@@ -256,59 +185,103 @@
                 indexData = [];
                 
                 const radius = CONFIG.VISIBLE_RADIUS;
-                let hexCount = 0;
+                hexCount = 0;
                 
+                // Pre-calculate hex centers
                 for (let j = -radius; j <= radius; j++) {
                     for (let i = -radius; i <= radius; i++) {
-                        // Calculate center position using hex grid formula
                         const centerX = CONFIG.HEX_SIZE * (i + j/2);
                         const centerY = CONFIG.HEX_SIZE * (j * Math.sqrt(3)/2);
                         
-                        // Generate hexagon (6 triangles)
-                        const hexId = (i + j * 1000) / 2000 + 0.5; // Unique ID for color variation
-                        generateHexagonVertices(centerX, centerY, CONFIG.HEX_SIZE, hexId);
+                        // Generate 6 outer vertices
+                        const outerVerts = [];
+                        for (let k = 0; k < 6; k++) {
+                            const angle = k * Math.PI / 3;
+                            outerVerts.push({
+                                x: centerX + CONFIG.HEX_SIZE * Math.cos(angle),
+                                y: centerY + CONFIG.HEX_SIZE * Math.sin(angle)
+                            });
+                        }
+                        
+                        // Hex ID for color variation
+                        const hexId = (i * 7 + j * 31) / 100.0;
+                        
+                        // Generate 6 triangles
+                        for (let tri = 0; tri < 6; tri++) {
+                            const next = (tri + 1) % 6;
+                            
+                            // Vertex 0: Center (equal barycentric)
+                            vertexData.push(centerX, centerY);
+                            vertexData.push(0.33, 0.33, 0.33);
+                            vertexData.push(hexId);
+                            
+                            // Vertex 1: Outer vertex tri
+                            vertexData.push(outerVerts[tri].x, outerVerts[tri].y);
+                            vertexData.push(1.0, 0.0, 0.0);
+                            vertexData.push(hexId);
+                            
+                            // Vertex 2: Outer vertex next
+                            vertexData.push(outerVerts[next].x, outerVerts[next].y);
+                            vertexData.push(0.0, 1.0, 0.0);
+                            vertexData.push(hexId);
+                            
+                            // Add indices (using UNSIGNED_SHORT)
+                            const baseIdx = (hexCount * 18) + (tri * 3);
+                            indexData.push(baseIdx, baseIdx + 1, baseIdx + 2);
+                        }
                         
                         hexCount++;
-                        if (hexCount >= CONFIG.MAX_HEXAGONS) {
-                            console.warn("Max hexagons reached");
-                            break;
-                        }
                     }
                 }
                 
                 triangleCount = indexData.length;
                 document.getElementById('tri-count').textContent = triangleCount.toLocaleString();
+                document.getElementById('hex-count').textContent = hexCount;
+                
                 console.log(`Generated ${hexCount} hexagons (${triangleCount} triangles)`);
+                console.log(`Vertices: ${vertexData.length / 6}`);
+                
+                // Verify 16-bit index safety
+                if (hexCount * 18 > 65535) {
+                    console.warn("Too many vertices for 16-bit indices!");
+                }
             }
             
             // ================================================
-            // 2. WEBGL SETUP
+            // WEBGL INIT
             // ================================================
             
             function initWebGL() {
                 canvas = document.createElement('canvas');
                 document.body.appendChild(canvas);
                 
+                // Request WebGL with explicit settings
                 gl = canvas.getContext('webgl', {
                     antialias: true,
                     depth: false,
-                    stencil: false,
                     alpha: false,
-                    premultipliedAlpha: false,
                     preserveDrawingBuffer: false
                 });
                 
                 if (!gl) {
-                    alert('WebGL not supported');
+                    document.body.innerHTML += '<div class="error">WebGL not supported</div>';
                     return;
                 }
+                
+                // Log WebGL info
+                console.log("WebGL Renderer:", gl.getParameter(gl.RENDERER));
+                console.log("WebGL Version:", gl.getParameter(gl.VERSION));
                 
                 resizeCanvas();
                 window.addEventListener('resize', resizeCanvas);
                 
                 // Compile shaders
-                const vs = compileShader(gl.VERTEX_SHADER, document.getElementById('vertex-shader').text);
-                const fs = compileShader(gl.FRAGMENT_SHADER, document.getElementById('fragment-shader').text);
+                const vs = compileShader(gl.VERTEX_SHADER, 
+                    document.getElementById('vertex-shader').text);
+                const fs = compileShader(gl.FRAGMENT_SHADER, 
+                    document.getElementById('fragment-shader').text);
+                
+                if (!vs || !fs) return;
                 
                 program = gl.createProgram();
                 gl.attachShader(program, vs);
@@ -336,11 +309,11 @@
                 program.u_gap = gl.getUniformLocation(program, 'u_gap');
                 program.u_line = gl.getUniformLocation(program, 'u_line');
                 
-                // Set constant uniforms
+                // Set uniforms
                 gl.uniform1f(program.u_gap, CONFIG.GAP);
                 gl.uniform1f(program.u_line, CONFIG.LINE_WIDTH);
                 
-                // Setup input events
+                // Setup events
                 setupEvents();
                 
                 // Start render loop
@@ -354,6 +327,7 @@
                 
                 if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
                     console.error('Shader compile error:', gl.getShaderInfoLog(shader));
+                    console.error('Source:', source);
                     gl.deleteShader(shader);
                     return null;
                 }
@@ -362,17 +336,17 @@
             }
             
             function setupBuffers() {
-                // Vertex buffer (interleaved for better cache performance)
+                // Vertex buffer
                 vertexBuffer = gl.createBuffer();
                 gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
                 gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexData), gl.STATIC_DRAW);
                 
-                // Index buffer
+                // Index buffer - USING UNSIGNED_SHORT (16-bit)
                 indexBuffer = gl.createBuffer();
                 gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
-                gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint32Array(indexData), gl.STATIC_DRAW);
+                gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, new Uint16Array(indexData), gl.STATIC_DRAW);
                 
-                // Setup attributes (interleaved: pos(2) + bary(3) + hexId(1) = 6 floats per vertex)
+                // Setup attributes
                 const stride = 6 * 4; // 6 floats * 4 bytes
                 
                 // a_position (location 0)
@@ -386,16 +360,22 @@
                 // a_hexId (location 2)
                 gl.vertexAttribPointer(2, 1, gl.FLOAT, false, stride, 5 * 4);
                 gl.enableVertexAttribArray(2);
+                
+                // Check for errors
+                const error = gl.getError();
+                if (error !== gl.NO_ERROR) {
+                    console.error("WebGL error:", error);
+                }
             }
             
             // ================================================
-            // 3. RENDER LOOP
+            // RENDER LOOP
             // ================================================
             
             function render(time) {
-                time *= 0.001; // Convert to seconds
+                time *= 0.001;
                 
-                // Performance monitoring
+                // FPS counter
                 frameCount++;
                 const now = performance.now();
                 const delta = now - lastTime;
@@ -407,14 +387,15 @@
                     lastTime = now;
                 }
                 
-                // Resize viewport if needed
-                if (canvas.width !== canvas.clientWidth || canvas.height !== canvas.clientHeight) {
+                // Resize if needed
+                if (canvas.width !== canvas.clientWidth || 
+                    canvas.height !== canvas.clientHeight) {
                     resizeCanvas();
                 }
                 
-                // Clear
+                // Clear with dark blue
                 gl.viewport(0, 0, canvas.width, canvas.height);
-                gl.clearColor(0.05, 0.05, 0.1, 1.0);
+                gl.clearColor(0.05, 0.05, 0.15, 1.0);
                 gl.clear(gl.COLOR_BUFFER_BIT);
                 
                 // Update uniforms
@@ -424,13 +405,14 @@
                 gl.uniform1f(program.u_time, time);
                 
                 // Draw
-                gl.drawElements(gl.TRIANGLES, indexData.length, gl.UNSIGNED_INT, 0);
+                gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, indexBuffer);
+                gl.drawElements(gl.TRIANGLES, indexData.length, gl.UNSIGNED_SHORT, 0);
                 
                 requestAnimationFrame(render);
             }
             
             // ================================================
-            // 4. INTERACTION HANDLERS
+            // INTERACTION
             // ================================================
             
             function setupEvents() {
@@ -443,12 +425,8 @@
                 window.addEventListener('mousemove', (e) => {
                     if (!isDragging) return;
                     
-                    const dx = e.clientX - lastMousePos[0];
-                    const dy = e.clientY - lastMousePos[1];
-                    
-                    translation[0] += dx;
-                    translation[1] += dy;
-                    
+                    translation[0] += e.clientX - lastMousePos[0];
+                    translation[1] += e.clientY - lastMousePos[1];
                     lastMousePos = [e.clientX, e.clientY];
                 });
                 
@@ -460,10 +438,7 @@
                 canvas.addEventListener('wheel', (e) => {
                     e.preventDefault();
                     const delta = e.deltaY > 0 ? 0.9 : 1.1;
-                    scale *= delta;
-                    
-                    // Limit zoom
-                    scale = Math.max(5, Math.min(100, scale));
+                    scale = Math.max(5, Math.min(100, scale * delta));
                 }, { passive: false });
                 
                 // Touch support
@@ -478,12 +453,8 @@
                 canvas.addEventListener('touchmove', (e) => {
                     e.preventDefault();
                     if (isDragging && e.touches.length === 1) {
-                        const dx = e.touches[0].clientX - lastMousePos[0];
-                        const dy = e.touches[0].clientY - lastMousePos[1];
-                        
-                        translation[0] += dx;
-                        translation[1] += dy;
-                        
+                        translation[0] += e.touches[0].clientX - lastMousePos[0];
+                        translation[1] += e.touches[0].clientY - lastMousePos[1];
                         lastMousePos = [e.touches[0].clientX, e.touches[0].clientY];
                     }
                 });
@@ -504,11 +475,16 @@
             }
             
             // ================================================
-            // 5. START APPLICATION
+            // START
             // ================================================
             
             window.onload = () => {
-                initWebGL();
+                try {
+                    initWebGL();
+                } catch (e) {
+                    console.error("Init failed:", e);
+                    document.body.innerHTML += `<div class="error">Error: ${e.message}</div>`;
+                }
             };
         })();
     </script>
