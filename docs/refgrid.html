@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>perfect equilateral triangle tiling</title>
+    <title>divided triangle grid · 90° vertex diagonals</title>
     <style>
         * {
             box-sizing: border-box;
@@ -45,7 +45,7 @@
         }
         
         .title-section {
-            min-width: 220px;
+            min-width: 240px;
         }
         
         .title-main {
@@ -122,8 +122,8 @@
     <div id="header">
         <div class="header-content">
             <div class="title-section">
-                <div class="title-main">PERFECT EQUILATERAL TILING</div>
-                <div class="title-sub">hexagons · exact 60° proportions</div>
+                <div class="title-main">DIVIDED TRIANGLE GRID</div>
+                <div class="title-sub">90° vertex diagonals · each triangle split in two</div>
             </div>
             
             <div class="group">
@@ -135,15 +135,21 @@
                 
                 <div class="param-row">
                     <span class="param-label">GAP</span>
-                    <input type="range" id="gap-slider" min="0.0" max="0.4" value="0.1" step="0.01">
-                    <span class="value-display" id="gap-value">0.10</span>
+                    <input type="range" id="gap-slider" min="0.0" max="0.3" value="0.05" step="0.01">
+                    <span class="value-display" id="gap-value">0.05</span>
+                </div>
+                
+                <div class="param-row">
+                    <span class="param-label">DIAG</span>
+                    <input type="range" id="diag-slider" min="0.0" max="1.0" value="0.5" step="0.01">
+                    <span class="value-display" id="diag-value">0.50</span>
                 </div>
             </div>
         </div>
     </div>
     
     <div class="hint">
-        ⚡ zoom · 🖱️ pan · perfect equilateral triangles · hexagons formed by 6 triangles
+        ⚡ zoom · 🖱️ pan · each triangle divided from 90° vertex · DIAG slider controls diagonal weight
     </div>
 
     <script>
@@ -179,7 +185,7 @@
                 }
             `;
             
-            // Fragment shader - perfect equilateral triangle tiling
+            // Fragment shader - triangles divided by diagonal from 90° vertex
             const fsSource = `
                 precision highp float;
                 
@@ -189,6 +195,7 @@
                 uniform float uScale;
                 uniform float uTriSize;
                 uniform float uGap;
+                uniform float uDiagWeight;  // Controls visibility of diagonal lines
                 uniform vec2 uResolution;
                 uniform float uAspect;
                 
@@ -201,18 +208,15 @@
                     // Scale to triangle size
                     p /= uTriSize;
                     
-                    // FIXED: Perfect equilateral triangle basis
-                    // Height of equilateral triangle with side length 1 = √3/2 ≈ 0.8660254
+                    // Perfect equilateral triangle basis
                     const float sqrt3 = 1.73205080757;
                     const float halfSqrt3 = 0.86602540378;
                     
-                    // Grid coordinates - using rhombus tiling with correct aspect
-                    // The key fix: proper scaling of the vertical coordinate
+                    // Transform to grid coordinates
                     float x = p.x;
-                    float y = p.y / halfSqrt3;  // This corrects the aspect ratio
+                    float y = p.y / halfSqrt3;  // Correct aspect for equilateral
                     
-                    // Now transform to triangle grid
-                    // Each rhombus is made of two triangles
+                    // Grid coordinates for triangle tiling
                     float u = x;
                     float v = y;
                     
@@ -222,60 +226,104 @@
                     float fu = u - i;
                     float fv = v - j;
                     
-                    // Barycentric coordinates within the rhombus
-                    vec3 bary;
-                    float triType;
+                    // Determine which triangle we're in
+                    bool isLower = (fu + fv) < 1.0;
                     
-                    if (fu + fv < 1.0) {
-                        // Lower triangle (pointing up) - these form upward pointing triangles
+                    // Barycentric coordinates for the base triangle
+                    vec3 bary;
+                    if (isLower) {
+                        // Lower triangle (pointing up)
                         bary = vec3(1.0 - fu - fv, fu, fv);
-                        triType = 0.0;
                     } else {
                         // Upper triangle (pointing down)
                         float fu2 = 1.0 - fu;
                         float fv2 = 1.0 - fv;
                         bary = vec3(1.0 - fu2 - fv2, fu2, fv2);
-                        triType = 1.0;
                     }
                     
-                    // Distance to triangle edges (0 at edges, 0.5 at center)
+                    // Distance to triangle edges (original triangle)
                     float minDist = min(bary.x, min(bary.y, bary.z));
                     
-                    // Apply gap
-                    float gapAdjusted = minDist - uGap;
+                    // NOW ADD THE DIAGONAL FROM THE 90° VERTEX
+                    // In an equilateral triangle, the 90° vertex doesn't exist naturally
+                    // But we can create a diagonal line from one vertex to the opposite edge
+                    
+                    // For each triangle, we want a line from the vertex where bary.x = 1
+                    // to the midpoint of the opposite edge (where bary.y = bary.z = 0.5)
+                    
+                    // This creates a line that splits the triangle into two smaller triangles
+                    
+                    // Compute distance to this diagonal line
+                    float diagDist = 1.0;
+                    
+                    if (isLower) {
+                        // For lower triangle, vertex at (1,0,0) is the top vertex
+                        // The opposite edge is between (0,1,0) and (0,0,1)
+                        // Midpoint of that edge is at (0, 0.5, 0.5)
+                        
+                        // Parameterize the diagonal: from (1,0,0) to (0,0.5,0.5)
+                        // In barycentric space, this is a line where bary.x goes from 1 to 0,
+                        // and bary.y and bary.z go from 0 to 0.5 each
+                        
+                        // Distance to this line in barycentric space
+                        // We can compute using the fact that on the line, bary.y == bary.z
+                        // So distance = abs(bary.y - bary.z)
+                        diagDist = abs(bary.y - bary.z);
+                    } else {
+                        // For upper triangle, the geometry is different
+                        // The vertex at (1,0,0) in the transformed coordinates
+                        // is actually the bottom vertex of the upper triangle
+                        float baryY = bary.y;
+                        float baryZ = bary.z;
+                        diagDist = abs(baryY - baryZ);
+                    }
+                    
+                    // Scale diagonal distance to be comparable to edge distances
+                    diagDist = diagDist * 2.0;
                     
                     // Screen-space antialiasing
                     vec2 worldPerPixel = vec2(2.0 * uScale / uResolution.x, 2.0 * uScale / uResolution.y);
                     float deriv = length(worldPerPixel) * 1.5 / uTriSize;
                     float pixelWidth = 1.2 * deriv;
                     
-                    // Grid intensity
-                    float grid;
-                    if (gapAdjusted < 0.0) {
-                        grid = 1.0;
+                    // Combine original triangle edges with diagonal
+                    // uDiagWeight controls how prominent the diagonal is (0-1)
+                    float edgeDist = minDist - uGap;
+                    float diagEffective = diagDist - (uGap * 0.5);
+                    
+                    // Grid intensity: 0 on lines, 1 elsewhere
+                    float grid = 1.0;
+                    
+                    if (edgeDist < 0.0) {
+                        grid = 0.0;
                     } else {
-                        grid = smoothstep(0.0, pixelWidth, gapAdjusted);
+                        // Smoothstep for original edges
+                        grid = smoothstep(0.0, pixelWidth, edgeDist);
                     }
                     
-                    // Color scheme to highlight hexagons (6 triangles)
-                    // Each hexagon center is at integer coordinates where (i + j) mod 2 == 0
-                    float hexId = mod(i + j, 2.0);
-                    
-                    // Also vary by triangle orientation to make the pattern clear
-                    vec3 colorBase;
-                    if (triType < 0.5) {
-                        // Upward triangles
-                        colorBase = mix(vec3(0.75, 0.8, 0.9), vec3(0.65, 0.7, 0.85), hexId);
+                    // Blend in diagonal lines
+                    if (diagEffective < 0.0) {
+                        // Diagonal line is active - mix based on weight
+                        grid = min(grid, 1.0 - uDiagWeight);
                     } else {
-                        // Downward triangles
-                        colorBase = mix(vec3(0.7, 0.75, 0.88), vec3(0.6, 0.65, 0.82), hexId);
+                        float diagFactor = smoothstep(0.0, pixelWidth, diagEffective);
+                        grid = min(grid, mix(diagFactor, 1.0, 1.0 - uDiagWeight));
                     }
                     
-                    // Add subtle center glow for hexagons
-                    float hexCenterDist = length(vec2(fu - 0.5, fv - 0.5));
-                    float hexGlow = exp(-hexCenterDist * 3.0) * 0.15;
+                    // Color scheme
+                    float pattern = mod(i + j, 2.0);
+                    vec3 color1 = vec3(0.75, 0.8, 0.9);
+                    vec3 color2 = vec3(0.6, 0.65, 0.8);
+                    vec3 baseColor = mix(color1, color2, pattern);
                     
-                    vec3 finalColor = mix(vec3(0.08, 0.08, 0.12), colorBase + hexGlow, grid);
+                    // Add variation for the two subtriangles
+                    if (diagDist < 0.3) {
+                        // Near the diagonal, slightly different color
+                        baseColor = mix(baseColor, vec3(0.8, 0.85, 0.95), 0.2);
+                    }
+                    
+                    // Final color
+                    vec3 finalColor = mix(vec3(0.08, 0.08, 0.12), baseColor, grid);
                     
                     // Gamma
                     finalColor = pow(finalColor, vec3(1.0/2.2));
@@ -314,6 +362,7 @@
             const uScale = gl.getUniformLocation(program, 'uScale');
             const uTriSize = gl.getUniformLocation(program, 'uTriSize');
             const uGap = gl.getUniformLocation(program, 'uGap');
+            const uDiagWeight = gl.getUniformLocation(program, 'uDiagWeight');
             const uResolution = gl.getUniformLocation(program, 'uResolution');
             const uAspect = gl.getUniformLocation(program, 'uAspect');
             
@@ -321,7 +370,8 @@
             let offsetX = 0.0, offsetY = 0.0;
             let scale = 3.0;
             let triSize = 1.5;
-            let gap = 0.1;
+            let gap = 0.05;
+            let diagWeight = 0.5;
             
             let isDragging = false;
             let lastX = 0, lastY = 0;
@@ -332,6 +382,7 @@
                 gl.uniform1f(uScale, scale);
                 gl.uniform1f(uTriSize, triSize);
                 gl.uniform1f(uGap, gap);
+                gl.uniform1f(uDiagWeight, diagWeight);
                 gl.uniform2f(uResolution, canvas.width, canvas.height);
                 gl.uniform1f(uAspect, aspect);
                 draw();
@@ -421,6 +472,12 @@
             document.getElementById('gap-slider').addEventListener('input', (e) => {
                 gap = parseFloat(e.target.value);
                 document.getElementById('gap-value').textContent = gap.toFixed(2);
+                updateUniforms();
+            });
+            
+            document.getElementById('diag-slider').addEventListener('input', (e) => {
+                diagWeight = parseFloat(e.target.value);
+                document.getElementById('diag-value').textContent = diagWeight.toFixed(2);
                 updateUniforms();
             });
         })();
