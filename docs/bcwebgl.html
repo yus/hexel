@@ -395,7 +395,7 @@
                 }
             `;
 
-            // Fragment shader - preserves hexel with adaptive reds
+            // Fragment shader - preserves all 7 vertices and 6 triangles
             const fsSource = `
                 precision highp float;
                 
@@ -435,38 +435,34 @@
                     
                     if (uVMode) {
                         // VMode rotates so A—D is horizontal
-                        // In base orientation, A is at (1,0), D at (-1,0) - already horizontal
-                        // So VMode actually does nothing in this orientation
+                        // In base orientation, rotate by -90° to make A—D horizontal
+                        p = rotate(p, -1.5708); // -90 degrees
                     }
                     
-                    // Define vertices of the base hexagon (from Python code)
+                    // Define the SEVEN vertices of the hexagon with center O
+                    // O is at (0,0)
                     // A (1,0), B (0.5,0.866), C (-0.5,0.866)
                     // D (-1,0), E (-0.5,-0.866), F (0.5,-0.866)
                     
-                    // Apply skew to vertices to preserve hexel
                     float skew = uSkew * 0.8;
                     
-                    // Skewed vertex positions
-                    vec2 A = vec2(1.0, 0.0);
-                    vec2 B = vec2(0.5, 0.8660254);
-                    vec2 C = vec2(-0.5, 0.8660254);
-                    vec2 D = vec2(-1.0, 0.0);
-                    vec2 E = vec2(-0.5, -0.8660254);
-                    vec2 F = vec2(0.5, -0.8660254);
-                    
-                    // Apply skew transformation to vertices
+                    // Apply skew transformation to ALL vertices
                     // Skew matrix: [1, skew; 0, 1]
-                    A = vec2(A.x + skew * A.y, A.y);
-                    B = vec2(B.x + skew * B.y, B.y);
-                    C = vec2(C.x + skew * C.y, C.y);
-                    D = vec2(D.x + skew * D.y, D.y);
-                    E = vec2(E.x + skew * E.y, E.y);
-                    F = vec2(F.x + skew * F.y, F.y);
+                    vec2 O = vec2(0.0, 0.0);
+                    vec2 A = vec2(1.0 + skew * 0.0, 0.0);
+                    vec2 B = vec2(0.5 + skew * 0.8660254, 0.8660254);
+                    vec2 C = vec2(-0.5 + skew * 0.8660254, 0.8660254);
+                    vec2 D = vec2(-1.0 + skew * 0.0, 0.0);
+                    vec2 E = vec2(-0.5 + skew * -0.8660254, -0.8660254);
+                    vec2 F = vec2(0.5 + skew * -0.8660254, -0.8660254);
                     
-                    // Direction vectors for each axis (through origin)
-                    vec2 dirAD = normalize(D - A);  // Should be roughly horizontal
-                    vec2 dirBE = normalize(E - B);
-                    vec2 dirCF = normalize(F - C);
+                    // Now we have THREE axis pairs that must ALL pass through O
+                    // A-D axis (red), B-E axis (blue), C-F axis (green)
+                    
+                    // Calculate direction vectors for each axis (from one vertex through O to opposite)
+                    vec2 dirAD = normalize(D - A);  // Vector from A to D
+                    vec2 dirBE = normalize(E - B);  // Vector from B to E
+                    vec2 dirCF = normalize(F - C);  // Vector from C to F
                     
                     // Perpendicular normals for distance measurement
                     vec2 normalAD = vec2(dirAD.y, -dirAD.x);
@@ -474,21 +470,28 @@
                     vec2 normalCF = vec2(dirCF.y, -dirCF.x);
                     
                     // Calculate grid spacing based on vertex distances
-                    // For A—D axis, the distance between lines should be such that
-                    // vertices A and D lie on grid lines
-                    float distA_AD = dot(A, normalAD);
-                    float distD_AD = dot(D, normalAD);
-                    float spacingAD = abs(distA_AD - distD_AD) / 2.0;  // Divide by 2 to get half-period
+                    // For each axis, we need lines at positions that hit ALL vertices
+                    // The vertices on each axis: O (0), A (+1), D (-1) in axis-aligned coordinates
                     
-                    float distB_BE = dot(B, normalBE);
-                    float distE_BE = dot(E, normalBE);
-                    float spacingBE = abs(distB_BE - distE_BE) / 2.0;
+                    // Project vertices onto normals to find their positions along each axis family
+                    float projA_AD = dot(A, normalAD);
+                    float projD_AD = dot(D, normalAD);
+                    float projO_AD = dot(O, normalAD);
                     
-                    float distC_CF = dot(C, normalCF);
-                    float distF_CF = dot(F, normalCF);
-                    float spacingCF = abs(distC_CF - distF_CF) / 2.0;
+                    float projB_BE = dot(B, normalBE);
+                    float projE_BE = dot(E, normalBE);
+                    float projO_BE = dot(O, normalBE);
                     
-                    // FIX: Ensure spacing is never zero or too small
+                    float projC_CF = dot(C, normalCF);
+                    float projF_CF = dot(F, normalCF);
+                    float projO_CF = dot(O, normalCF);
+                    
+                    // The spacing should be consistent: distance from O to A should equal distance from O to D
+                    float spacingAD = abs(projA_AD - projO_AD) * 2.0;
+                    float spacingBE = abs(projB_BE - projO_BE) * 2.0;
+                    float spacingCF = abs(projC_CF - projO_CF) * 2.0;
+                    
+                    // Ensure spacing is valid
                     if (spacingAD < 0.001) spacingAD = 1.0;
                     if (spacingBE < 0.001) spacingBE = 1.0;
                     if (spacingCF < 0.001) spacingCF = 1.0;
@@ -499,9 +502,10 @@
                     float distCF = dot(p, normalCF);
                     
                     // Convert to grid coordinates using adaptive spacing
-                    float gridAD = abs(fract(distAD / spacingAD + 0.5) - 0.5) * 2.0;
-                    float gridBE = abs(fract(distBE / spacingBE + 0.5) - 0.5) * 2.0;
-                    float gridCF = abs(fract(distCF / spacingCF + 0.5) - 0.5) * 2.0;
+                    // Add 0.5 to center the grid on O
+                    float gridAD = abs(fract((distAD - projO_AD) / spacingAD + 0.5) - 0.5) * 2.0;
+                    float gridBE = abs(fract((distBE - projO_BE) / spacingBE + 0.5) - 0.5) * 2.0;
+                    float gridCF = abs(fract((distCF - projO_CF) / spacingCF + 0.5) - 0.5) * 2.0;
                     
                     // Screen-space antialiasing
                     vec2 worldPerPixel = vec2(2.0 * uScale / uResolution.x, 2.0 * uScale / uResolution.y);
@@ -513,7 +517,7 @@
                     float lineBE = smoothstep(0.0, pixelWidth, gridBE);
                     float lineCF = smoothstep(0.0, pixelWidth, gridCF);
                     
-                    // Color mixing
+                    // Color mixing - each axis pair gets its color
                     vec3 color = uColorBg;
                     
                     color = mix(color, uColorAD, (1.0 - lineAD) * 0.9);
