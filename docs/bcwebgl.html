@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>hexagon gizmo · A B C D E F o</title>
+    <title>hexagon gizmo · hexel-preserving skew</title>
     <style>
         * {
             box-sizing: border-box;
@@ -15,7 +15,6 @@
             margin: 0;
             overflow: hidden;
             font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
-            font-weight: 400;
             -webkit-font-smoothing: antialiased;
         }
         
@@ -46,7 +45,7 @@
         }
         
         .title-section {
-            min-width: 140px;
+            min-width: 160px;
             padding-top: 4px;
         }
         
@@ -57,21 +56,21 @@
             letter-spacing: 0.3px;
         }
         
-        .title-sub {
-            font-size: 9px;
-            color: #8a92a6;
-            text-transform: uppercase;
-            letter-spacing: 0.5px;
-            margin-top: 2px;
-        }
-        
-        .hexagon-display {
+        .hexagon-badge {
             display: flex;
-            gap: 4px;
-            font-size: 11px;
+            gap: 8px;
+            font-size: 10px;
             font-family: monospace;
             color: #c8d0f0;
             margin-top: 4px;
+            background: rgba(255,255,255,0.05);
+            padding: 4px 8px;
+            border-radius: 20px;
+        }
+        
+        .badge-o {
+            color: #ffd966;
+            font-weight: bold;
         }
         
         .group {
@@ -80,7 +79,7 @@
             gap: 10px;
             padding: 8px 16px;
             border-left: 1px solid rgba(255, 255, 255, 0.1);
-            min-width: 200px;
+            min-width: 240px;
         }
         
         .group-header {
@@ -98,7 +97,7 @@
             display: flex;
             align-items: center;
             justify-content: space-between;
-            height: 24px;
+            height: 28px;
         }
         
         .param-label {
@@ -139,20 +138,20 @@
             color: white;
             background: rgba(255, 255, 255, 0.06);
             padding: 2px 6px;
-            border-radius: 20px;
+            border-radius: 0;
             min-width: 45px;
             text-align: center;
-            border: 1px solid rgba(255, 255, 255, 0.1);
+            border: 0px solid rgba(255, 255, 255, 0.1);
         }
         
         .number-input {
-            width: 50px;
+            width: 72px;
             background: rgba(0, 0, 0, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.2);
             color: white;
             font-size: 10px;
-            padding: 3px 5px;
-            border-radius: 4px;
+            padding: 7px 4px 7px 4px;
+            border-radius: 0;
             font-family: monospace;
             text-align: center;
         }
@@ -161,12 +160,13 @@
             background: rgba(255, 255, 255, 0.1);
             border: none;
             color: #b0b8d0;
-            font-size: 9px;
-            padding: 2px 8px;
-            border-radius: 12px;
+            font-size: 16px;
+            padding: 0px 4px 2px 4px;
+            border-radius: 2px;
             cursor: pointer;
             text-transform: uppercase;
             letter-spacing: 0.5px;
+            vertical-align: middle;
         }
         
         .reset-btn:hover {
@@ -177,21 +177,21 @@
         .axis-row {
             display: flex;
             align-items: center;
-            gap: 12px;
+            gap: 16px;
             margin: 2px 0;
         }
         
         .axis-pair {
             display: flex;
             align-items: center;
-            gap: 4px;
+            gap: 6px;
             font-size: 10px;
             color: #c8d0f0;
         }
         
         .axis-pair span {
             font-weight: 600;
-            width: 20px;
+            width: 30px;
         }
         
         .color-picker {
@@ -201,10 +201,22 @@
             cursor: pointer;
         }
         
-        .color-picker.ad { background: #ff7f7f; }  /* A-D: red */
-        .color-picker.be { background: #7fbfff; }  /* B-E: blue */
-        .color-picker.cf { background: #7fff7f; }  /* C-F: green */
-        .color-picker.bg { background: #16181f; }
+        .color-picker.ad {
+            background: #ff7f7f;
+            background-color: rgb(255, 127, 127);
+        }
+        .color-picker.be {
+            background: #7fbfff;
+            background-color: rgb(127, 191, 255);
+        }
+        .color-picker.cf {
+            background: #7fff7f;
+            background-color: rgb(127, 255, 127);
+        }
+        .color-picker.bg {
+            background: #16181f;
+            background-color: rgb(22, 24, 31);
+        }
         
         .checkbox-item {
             display: flex;
@@ -270,7 +282,11 @@
         <div class="header-content">
             <div class="title-section">
                 <div class="title-main">HEXAGON GIZMO</div>
-                <div class="hexagon-display">A—D  B—E  C—F  •o</div>
+                <div class="hexagon-badge">
+                    <span class="badge-o">O</span>
+                    <span>A</span><span>B</span><span>C</span>
+                    <span>D</span><span>E</span><span>F</span>
+                </div>
             </div>
             
             <!-- GROUP 1: HAIRLINE -->
@@ -282,9 +298,9 @@
                 <div class="param-row">
                     <span class="param-label">SIZE</span>
                     <div class="slider-row">
-                        <input type="range" id="hairline-slider" min="0.3" max="2.0" step="0.05" value="0.9">
-                        <input type="number" id="hairline-input" class="number-input" min="0.3" max="2.0" step="0.05" value="0.9">
-                        <span class="value-display" id="hairline-value">0.90</span>
+                        <input type="range" id="hairline-slider" min="0.3" max="2.0" step="0.05" value="2.0">
+                        <input type="number" id="hairline-input" class="number-input" min="0.3" max="2.0" step="0.05" value="2.0">
+                        <span class="value-display" id="hairline-value">2.00</span>
                     </div>
                 </div>
             </div>
@@ -320,7 +336,7 @@
             <!-- GROUP 3: AXIS COLORS -->
             <div class="group">
                 <div class="group-header">
-                    COLORS
+                    AXES
                     <button class="reset-btn" id="reset-colors">↺</button>
                 </div>
                 <div class="axis-row">
@@ -335,13 +351,13 @@
             
             <div class="status">
                 <div class="status-dot"></div>
-                <span>A·D B·E C·F •o</span>
+                <span>hexel · O A B C D E F</span>
             </div>
         </div>
     </div>
     
     <div class="hint">
-        <kbd>ALT</kbd>+drag rotate · skew preserves A,B,C,D,E,F and center o
+        <kbd>ALT</kbd>+drag rotate · skew preserves hexel with adaptive reds
     </div>
 
     <script>
@@ -379,7 +395,7 @@
                 }
             `;
 
-            // Fragment shader - preserves all hexagon vertices through skew
+            // Fragment shader - preserves hexel with adaptive reds
             const fsSource = `
                 precision highp float;
                 
@@ -414,100 +430,69 @@
                     p.x *= uAspect;
                     p += uOffset;
                     
-                    // Apply transformations
+                    // Center a hexel at origin for reference
+                    // This ensures we always have a visible hexagon at the center
+                    
+                    // Apply rotations
                     p = rotate(p, uRotate);
                     
                     if (uVMode) {
-                        // Rotate so A—D axis becomes horizontal
-                        // In base orientation, A—D is at 90° (vertical)
-                        p = rotate(p, -1.5708); // -90 degrees
+                        // In base orientation, A is at (1,0), D at (-1,0)
+                        // Already horizontal, so no rotation needed
                     }
                     
-                    // Define the three axes of the hexagon
-                    // In local space after VMode:
-                    // A—D is horizontal (1, 0)
-                    // B—E is at +60°
-                    // C—F is at -60°
+                    // Define vertices of the base hexagon (from Python code)
+                    // A (1,0), B (0.5,0.866), C (-0.5,0.866)
+                    // D (-1,0), E (-0.5,-0.866), F (0.5,-0.866)
                     
-                    float baseAngle = 60.0 * 3.14159 / 180.0;
-                    
-                    // Base directions
-                    vec2 dirAD_base = vec2(1.0, 0.0);
-                    vec2 dirBE_base = vec2(cos(baseAngle), sin(baseAngle));
-                    vec2 dirCF_base = vec2(cos(-baseAngle), sin(-baseAngle));
-                    
-                    // CRITICAL: Apply skew while preserving vertices
-                    // Skew factor moves B—E and C—F horizontally
-                    // But must keep A, B, C, D, E, F as valid intersections
-                    
-                    // The key insight: in a regular hexagon, the six points are at:
-                    // A = (1, 0) * scale
-                    // B = (cos60, sin60) * scale
-                    // C = (cos120, sin120) * scale = (-cos60, sin60)
-                    // D = -A, E = -B, F = -C
-                    
-                    // When skewing, we want to maintain these as valid intersection points
-                    // of the three line families. This means the line families must still
-                    // intersect at these six points.
-                    
-                    // For a skew transformation that shifts horizontally:
-                    // x' = x + skew * y
-                    // y' = y
-                    
-                    // This transforms the points but keeps them as intersections
-                    // of the transformed line families.
-                    
-                    // So we apply the skew to the directions and also adjust
-                    // the line spacing to maintain the vertices
-                    
+                    // Apply skew to vertices to preserve hexel
                     float skew = uSkew * 0.8;
                     
-                    // Apply skew to the diagonal directions
-                    // The skew matrix [1, skew; 0, 1] applied to direction vectors
-                    vec2 dirBE = vec2(
-                        dirBE_base.x + skew * dirBE_base.y,
-                        dirBE_base.y
-                    );
+                    // Skewed vertex positions
+                    vec2 A = vec2(1.0 + skew * 0.0, 0.0);
+                    vec2 B = vec2(0.5 + skew * 0.866, 0.866);
+                    vec2 C = vec2(-0.5 + skew * 0.866, 0.866);
+                    vec2 D = vec2(-1.0 + skew * 0.0, 0.0);
+                    vec2 E = vec2(-0.5 + skew * -0.866, -0.866);
+                    vec2 F = vec2(0.5 + skew * -0.866, -0.866);
                     
-                    vec2 dirCF = vec2(
-                        dirCF_base.x + skew * dirCF_base.y,
-                        dirCF_base.y
-                    );
+                    // CRITICAL: For A—D axis (reds), the grid lines must be parallel to the line through A and D
+                    // But the spacing must adapt to maintain the hexagon sides
                     
-                    // Normalize to preserve line quality
-                    dirBE = normalize(dirBE);
-                    dirCF = normalize(dirCF);
+                    // Direction vectors for each axis
+                    vec2 dirAD = normalize(D - A);  // Should be horizontal
+                    vec2 dirBE = normalize(E - B);
+                    vec2 dirCF = normalize(F - C);
                     
-                    // For the perpendicular distances, we need the normals
-                    vec2 normalAD = vec2(0.0, 1.0);  // perpendicular to (1,0)
-                    
-                    // For BE and CF, normals are perpendicular to their directions
+                    // Perpendicular normals for distance measurement
+                    vec2 normalAD = vec2(dirAD.y, -dirAD.x);
                     vec2 normalBE = vec2(dirBE.y, -dirBE.x);
                     vec2 normalCF = vec2(dirCF.y, -dirCF.x);
                     
                     // Normalize normals
+                    normalAD = normalize(normalAD);
                     normalBE = normalize(normalBE);
                     normalCF = normalize(normalCF);
                     
-                    // Calculate signed distances to each axis through origin
+                    // The grid spacing should be such that vertices lie at integer coordinates
+                    // For A—D axis, vertices A and D are 2 units apart, so grid spacing should be 2
+                    // But we want lines every 1 unit for the hexagon sides
+                    
+                    // Calculate distances from point p to each axis through origin
                     float distAD = dot(p, normalAD);
                     float distBE = dot(p, normalBE);
                     float distCF = dot(p, normalCF);
                     
-                    // The grid spacing should be such that the vertices lie at integer coordinates
-                    // In the regular hexagon, vertices are at combinations of (1,0), (0,1), (-1,-1) etc.
-                    // After skew, we need to adjust spacing to maintain vertices
+                    // Adjust spacing based on vertex distances
+                    // The distance between A and D along normalAD is |dot(A, normalAD) - dot(D, normalAD)|
+                    float spacingAD = abs(dot(A, normalAD) - dot(D, normalAD));
+                    float spacingBE = abs(dot(B, normalBE) - dot(E, normalBE));
+                    float spacingCF = abs(dot(C, normalCF) - dot(F, normalCF));
                     
-                    // For a point to be a vertex, two of the distances should be integers
-                    // and the third should also be an integer (since vertices are intersections)
-                    
-                    // With our current distances, the vertices will naturally fall at
-                    // integer combinations if we use the right basis
-                    
-                    // Convert to grid line distances (0 = on line, 0.5 = between lines)
-                    float gridAD = abs(fract(distAD + 0.5) - 0.5) * 2.0;
-                    float gridBE = abs(fract(distBE + 0.5) - 0.5) * 2.0;
-                    float gridCF = abs(fract(distCF + 0.5) - 0.5) * 2.0;
+                    // Normalize distances by spacing to get grid coordinates
+                    float gridAD = abs(fract(distAD / spacingAD + 0.5) - 0.5) * 2.0;
+                    float gridBE = abs(fract(distBE / spacingBE + 0.5) - 0.5) * 2.0;
+                    float gridCF = abs(fract(distCF / spacingCF + 0.5) - 0.5) * 2.0;
                     
                     // Screen-space antialiasing
                     vec2 worldPerPixel = vec2(2.0 * uScale / uResolution.x, 2.0 * uScale / uResolution.y);
@@ -522,14 +507,9 @@
                     // Color mixing
                     vec3 color = uColorBg;
                     
-                    // Each axis pair contributes its color
-                    float adIntensity = 1.0 - lineAD;
-                    float beIntensity = 1.0 - lineBE;
-                    float cfIntensity = 1.0 - lineCF;
-                    
-                    color = mix(color, uColorAD, adIntensity * 0.9);
-                    color = mix(color, uColorBE, beIntensity * 0.8);
-                    color = mix(color, uColorCF, cfIntensity * 0.8);
+                    color = mix(color, uColorAD, (1.0 - lineAD) * 0.9);
+                    color = mix(color, uColorBE, (1.0 - lineBE) * 0.8);
+                    color = mix(color, uColorCF, (1.0 - lineCF) * 0.8);
                     
                     // Dark grid lines at intersections
                     float allLines = min(min(lineAD, lineBE), lineCF);
@@ -585,12 +565,12 @@
             const uResolution = gl.getUniformLocation(program, 'uResolution');
             const uAspect = gl.getUniformLocation(program, 'uAspect');
 
-            // Default colors
+            // Default colors - using your RGB values
             const defaultColors = {
-                ad: [1.0, 0.5, 0.5],    // red for A—D
-                be: [0.5, 0.7, 1.0],    // blue for B—E
-                cf: [0.5, 1.0, 0.5],    // green for C—F
-                bg: [0.08, 0.09, 0.12]  // dark
+                ad: [1.0, 0.5, 0.5],    // #ff7f7f
+                be: [0.5, 0.75, 1.0],   // #7fbfff
+                cf: [0.5, 1.0, 0.5],    // #7fff7f
+                bg: [0.086, 0.094, 0.122] // #16181f
             };
             
             gl.uniform3f(uColorAD, defaultColors.ad[0], defaultColors.ad[1], defaultColors.ad[2]);
@@ -598,8 +578,8 @@
             gl.uniform3f(uColorCF, defaultColors.cf[0], defaultColors.cf[1], defaultColors.cf[2]);
             gl.uniform3f(uColorBg, defaultColors.bg[0], defaultColors.bg[1], defaultColors.bg[2]);
             
-            // Initial values
-            let currentHairline = 0.9;
+            // Initial values - hairline at 2.0 for best aliasing
+            let currentHairline = 2.0;
             let currentRotate = 0.0;
             let currentSkew = 0.0;
             let vmodeEnabled = false;
@@ -772,7 +752,7 @@
                 updateHairline(val);
             });
             
-            document.getElementById('reset-hair').addEventListener('click', () => updateHairline(0.9));
+            document.getElementById('reset-hair').addEventListener('click', () => updateHairline(2.0));
             
             // Rotate
             const rotateSlider = document.getElementById('rotate-slider');
@@ -837,12 +817,11 @@
                 draw();
             });
             
-            // Color pickers
+            // Color pickers with cycling
             const adColors = [
-                [1.0, 0.5, 0.5],  // red
-                [1.0, 0.7, 0.5],  // orange
-                [1.0, 0.5, 0.7],  // pink
-                [0.9, 0.6, 0.6]   // light red
+                [1.0, 0.5, 0.5],  // #ff7f7f
+                [1.0, 0.6, 0.6],  // slightly lighter
+                [0.9, 0.4, 0.4],  // slightly darker
             ];
             let adIndex = 0;
             document.getElementById('color-ad').addEventListener('click', () => {
@@ -855,10 +834,9 @@
             });
             
             const beColors = [
-                [0.5, 0.7, 1.0],  // blue
-                [0.5, 0.9, 1.0],  // cyan
-                [0.6, 0.5, 1.0],  // purple
-                [0.4, 0.8, 1.0]   // sky
+                [0.5, 0.75, 1.0],  // #7fbfff
+                [0.6, 0.8, 1.0],   // lighter
+                [0.4, 0.7, 1.0],   // darker
             ];
             let beIndex = 0;
             document.getElementById('color-be').addEventListener('click', () => {
@@ -871,10 +849,9 @@
             });
             
             const cfColors = [
-                [0.5, 1.0, 0.5],  // green
-                [0.7, 1.0, 0.5],  // lime
-                [0.5, 1.0, 0.7],  // mint
-                [0.6, 0.9, 0.5]   // leaf
+                [0.5, 1.0, 0.5],  // #7fff7f
+                [0.6, 1.0, 0.6],  // lighter
+                [0.4, 0.9, 0.4],  // darker
             ];
             let cfIndex = 0;
             document.getElementById('color-cf').addEventListener('click', () => {
@@ -887,10 +864,9 @@
             });
             
             const bgColors = [
-                [0.08, 0.09, 0.12],
-                [0.12, 0.14, 0.18],
-                [0.18, 0.20, 0.24],
-                [0.05, 0.06, 0.08]
+                [0.086, 0.094, 0.122],  // #16181f
+                [0.12, 0.13, 0.16],
+                [0.15, 0.16, 0.19],
             ];
             let bgIndex = 0;
             document.getElementById('color-bg').addEventListener('click', () => {
