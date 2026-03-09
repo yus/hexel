@@ -3,318 +3,517 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>infinite barycentric grid · no extensions</title>
+    <title>infinite barycentric grid · hairline control</title>
     <style>
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+        
         body {
             margin: 0;
             overflow: hidden;
-            background: #0b0d12;
-            font-family: 'SF Mono', 'Fira Code', monospace;
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
         }
-        #info {
-            position: absolute;
-            bottom: 16px;
-            left: 16px;
-            color: #c0c6d0;
-            background: rgba(10, 12, 18, 0.7);
-            backdrop-filter: blur(4px);
-            padding: 6px 14px;
-            border-radius: 40px;
-            font-size: 13px;
+        
+        /* Minimalist header panel - 150px height, full width */
+        #header {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 150px;
+            background: rgba(15, 17, 22, 0.95);
+            backdrop-filter: blur(8px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            z-index: 100;
+            display: flex;
+            align-items: center;
+            padding: 0 40px;
+            color: #e0e4f0;
             letter-spacing: 0.3px;
-            border: 1px solid #2f3540;
-            pointer-events: none;
-            z-index: 10;
         }
-        #controls-note {
-            position: absolute;
-            bottom: 16px;
-            right: 16px;
-            color: #7f8798;
-            background: rgba(10, 12, 18, 0.5);
-            backdrop-filter: blur(4px);
+        
+        /* Content container for header */
+        .header-content {
+            display: flex;
+            align-items: center;
+            gap: 60px;
+            width: 100%;
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        /* Title section */
+        .title-section {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+        }
+        
+        .title-main {
+            font-size: 22px;
+            font-weight: 400;
+            color: white;
+            letter-spacing: 1px;
+        }
+        
+        .title-sub {
+            font-size: 13px;
+            color: #8892a6;
+            font-weight: 400;
+        }
+        
+        /* Control section */
+        .control-section {
+            display: flex;
+            align-items: center;
+            gap: 30px;
+            flex-wrap: wrap;
+        }
+        
+        /* Slider container - minimalist style */
+        .slider-container {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+            min-width: 300px;
+        }
+        
+        .slider-label {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-size: 14px;
+            color: #a0a8ba;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+        }
+        
+        .slider-label span {
+            color: white;
+            font-weight: 500;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 15px;
+        }
+        
+        /* Minimalist slider styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            width: 200px;
+            height: 1px;
+            background: rgba(255, 255, 255, 0.2);
+            border-radius: 0;
+            outline: none;
+        }
+        
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 16px;
+            height: 16px;
+            background: white;
+            border: none;
+            border-radius: 0;
+            cursor: pointer;
+            transition: background 0.1s;
+        }
+        
+        input[type=range]::-webkit-slider-thumb:hover {
+            background: #aaccff;
+        }
+        
+        input[type=range]::-moz-range-thumb {
+            width: 16px;
+            height: 16px;
+            background: white;
+            border: none;
+            border-radius: 0;
+            cursor: pointer;
+        }
+        
+        input[type=range]::-moz-range-track {
+            background: rgba(255, 255, 255, 0.2);
+            height: 1px;
+        }
+        
+        /* Value display */
+        .value-display {
+            font-size: 15px;
+            color: white;
+            background: rgba(255, 255, 255, 0.06);
             padding: 6px 14px;
-            border-radius: 40px;
-            font-size: 12px;
-            border: 1px solid #2a2f38;
-            pointer-events: none;
-            z-index: 10;
+            border-radius: 30px;
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            min-width: 60px;
+            text-align: center;
+            border: 1px solid rgba(255, 255, 255, 0.1);
         }
+        
+        /* Status indicator */
+        .status {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 13px;
+            color: #7f8798;
+            margin-left: auto;
+        }
+        
+        .status-dot {
+            width: 6px;
+            height: 6px;
+            background: #6bffb8;
+            border-radius: 0;
+        }
+        
+        /* Canvas positioning */
         canvas {
             display: block;
+            position: fixed;
+            top: 150px;
+            left: 0;
+            width: 100%;
+            height: calc(100vh - 150px);
+        }
+        
+        /* Small hint */
+        .hint {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            color: #8892a6;
+            font-size: 12px;
+            background: rgba(10, 12, 18, 0.6);
+            backdrop-filter: blur(4px);
+            padding: 6px 14px;
+            border-radius: 30px;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            z-index: 200;
+            letter-spacing: 0.3px;
         }
     </style>
 </head>
 <body>
-    <div id="info">△ BARYCENTRIC GRID · PURE WEBGL 1.0 (NO EXT)</div>
-    <div id="controls-note">🖱️ drag to pan · ⚡ scroll to zoom</div>
+    <!-- Minimalist header panel 150px -->
+    <div id="header">
+        <div class="header-content">
+            <div class="title-section">
+                <div class="title-main">BARYCENTRIC GRID</div>
+                <div class="title-sub">infinite · webgl · hairline</div>
+            </div>
+            
+            <div class="control-section">
+                <div class="slider-container">
+                    <div class="slider-label">
+                        HAIRLINE <span id="value-preview">0.6</span>
+                    </div>
+                    <input type="range" id="hairline-slider" min="0.1" max="1.0" step="0.01" value="0.6">
+                    <div class="value-display" id="slider-value">0.60</div>
+                </div>
+            </div>
+            
+            <div class="status">
+                <div class="status-dot"></div>
+                <span>live</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="hint">🖱️ drag to pan · ⚡ scroll to zoom · ⇢ slider controls hairline</div>
 
     <script>
-(function() {
-    "use strict";
+        (function() {
+            "use strict";
 
-    // --- setup canvas & WebGL context ---
-    const canvas = document.createElement('canvas');
-    canvas.style.width = '100%';
-    canvas.style.height = '100%';
-    document.body.appendChild(canvas);
+            // --- setup canvas & WebGL context ---
+            const canvas = document.createElement('canvas');
+            document.body.appendChild(canvas);
 
-    const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-    if (!gl) {
-        document.body.innerHTML = '<h2 style="color:#fff;">WebGL not supported</h2>';
-        return;
-    }
+            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            if (!gl) {
+                document.body.innerHTML = '<h2 style="color:#fff;">WebGL not supported</h2>';
+                return;
+            }
 
-    // --- fullscreen quad geometry ---
-    const vertices = new Float32Array([
-        -1, -1,  0, 0,
-         1, -1,  1, 0,
-         1,  1,  1, 1,
-        -1, -1,  0, 0,
-         1,  1,  1, 1,
-        -1,  1,  0, 1
-    ]);
+            // --- fullscreen quad geometry ---
+            const vertices = new Float32Array([
+                -1, -1,  0, 0,
+                 1, -1,  1, 0,
+                 1,  1,  1, 1,
+                -1, -1,  0, 0,
+                 1,  1,  1, 1,
+                -1,  1,  0, 1
+            ]);
 
-    const vertexBuffer = gl.createBuffer();
-    gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
-    gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
+            const vertexBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+            gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
 
-    // --- vertex shader ---
-    const vsSource = `
-        attribute vec2 aPos;
-        attribute vec2 aUv;
-        varying vec2 vUv;
-        void main() {
-            gl_Position = vec4(aPos, 0.0, 1.0);
-            vUv = aUv;
-        }
-    `;
+            // --- vertex shader ---
+            const vsSource = `
+                attribute vec2 aPos;
+                attribute vec2 aUv;
+                varying vec2 vUv;
+                void main() {
+                    gl_Position = vec4(aPos, 0.0, 1.0);
+                    vUv = aUv;
+                }
+            `;
 
-    // --- fragment shader with proper screen-space hairline rendering ---
-    const fsSource = `
-        precision highp float;
-        
-        varying vec2 vUv;
-        
-        uniform vec2  uOffset;
-        uniform float uScale;
-        uniform vec3  uColorA;
-        uniform vec3  uColorB;
-        uniform vec3  uEdgeColor;
-        uniform float uLineWidth;
-        uniform vec2  uResolution;
-        
-        void main() {
-            // World position on plane z=0
-            vec2 p = (vUv * 2.0 - 1.0) * uScale + uOffset;
+            // --- fragment shader with proper screen-space hairline rendering ---
+            const fsSource = `
+                precision highp float;
+                
+                varying vec2 vUv;
+                
+                uniform vec2  uOffset;
+                uniform float uScale;
+                uniform vec3  uColorA;
+                uniform vec3  uColorB;
+                uniform vec3  uEdgeColor;
+                uniform float uLineWidth;
+                uniform vec2  uResolution;
+                
+                void main() {
+                    // World position on plane z=0
+                    vec2 p = (vUv * 2.0 - 1.0) * uScale + uOffset;
+                    
+                    // equilateral triangle basis
+                    const float halfSqrt3 = 0.86602540378;  // √3/2
+                    
+                    // transform to lattice coordinates
+                    float fu = p.x - p.y * (0.5 / halfSqrt3);   // = x - 0.57735*y
+                    float fv = p.y / halfSqrt3;                 // = y / 0.866
+                    
+                    // integer cell and barycentric weights
+                    float iu = floor(fu);
+                    float iv = floor(fv);
+                    float u_frac = fu - iu;
+                    float v_frac = fv - iv;
+                    
+                    // barycentric coordinates (two triangles per rhombus)
+                    vec3 bary;
+                    if (u_frac + v_frac < 1.0) {
+                        // lower triangle
+                        bary = vec3(1.0 - u_frac - v_frac, u_frac, v_frac);
+                    } else {
+                        // upper triangle (complement)
+                        float u2 = 1.0 - u_frac;
+                        float v2 = 1.0 - v_frac;
+                        bary = vec3(1.0 - u2 - v2, u2, v2);
+                    }
+                    
+                    // distance to edges (barycentric coordinates themselves)
+                    float d0 = bary.x;
+                    float d1 = bary.y;
+                    float d2 = bary.z;
+                    
+                    float minDist = min(min(d0, d1), d2);
+                    
+                    // --- CRITICAL FIX: Convert world-space distance to screen-space pixels ---
+                    // Calculate how much world position changes per pixel
+                    vec2 worldPerPixel = vec2(2.0 * uScale / uResolution.x, 2.0 * uScale / uResolution.y);
+                    
+                    // Approximate how much minDist changes per pixel based on world-space derivatives
+                    // The barycentric coordinates change at rate ~1.0 per world unit (since cell size is ~1)
+                    float deriv = length(worldPerPixel) * 1.5;  // 1.5 accounts for triangle orientation
+                    
+                    // Fixed pixel width - always uLineWidth pixels wide lines
+                    float pixelWidth = uLineWidth * deriv;
+                    
+                    // Smoothstep with fixed pixel width - lines stay exactly uLineWidth pixels wide at any zoom
+                    float line = smoothstep(0.0, pixelWidth, minDist);
+                    
+                    // subtle pattern based on integer cell
+                    float pattern = fract(iu * 0.7 + iv * 0.4);
+                    vec3 baseColor = mix(uColorA, uColorB, pattern * 0.4);
+                    
+                    // faint glow near incenter
+                    float incenterDist = length(bary - vec3(1.0/3.0));
+                    float glow = exp(-incenterDist * 8.0) * 0.25;
+                    
+                    vec3 finalColor = mix(baseColor + glow * uColorB, uEdgeColor, line);
+                    
+                    // gamma
+                    finalColor = pow(finalColor, vec3(1.0/2.2));
+                    
+                    gl_FragColor = vec4(finalColor, 1.0);
+                }
+            `;
+
+            // --- compile shader ---
+            function compileShader(gl, source, type) {
+                const shader = gl.createShader(type);
+                gl.shaderSource(shader, source);
+                gl.compileShader(shader);
+                if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                    console.error(gl.getShaderInfoLog(shader));
+                    return null;
+                }
+                return shader;
+            }
+
+            const vs = compileShader(gl, vsSource, gl.VERTEX_SHADER);
+            const fs = compileShader(gl, fsSource, gl.FRAGMENT_SHADER);
+
+            const program = gl.createProgram();
+            gl.attachShader(program, vs);
+            gl.attachShader(program, fs);
+            gl.linkProgram(program);
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                console.error(gl.getProgramInfoLog(program));
+            }
+
+            gl.useProgram(program);
+
+            // --- attributes & uniforms ---
+            const aPos = gl.getAttribLocation(program, 'aPos');
+            const aUv = gl.getAttribLocation(program, 'aUv');
+
+            gl.enableVertexAttribArray(aPos);
+            gl.enableVertexAttribArray(aUv);
+
+            gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 16, 0);
+            gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, 16, 8);
+
+            const uOffset = gl.getUniformLocation(program, 'uOffset');
+            const uScale = gl.getUniformLocation(program, 'uScale');
+            const uColorA = gl.getUniformLocation(program, 'uColorA');
+            const uColorB = gl.getUniformLocation(program, 'uColorB');
+            const uEdgeColor = gl.getUniformLocation(program, 'uEdgeColor');
+            const uLineWidth = gl.getUniformLocation(program, 'uLineWidth');
+            const uResolution = gl.getUniformLocation(program, 'uResolution');
+
+            gl.uniform3f(uColorA, 0.15, 0.17, 0.22);
+            gl.uniform3f(uColorB, 0.75, 0.85, 1.0);
+            gl.uniform3f(uEdgeColor, 0.04, 0.04, 0.05);
             
-            // equilateral triangle basis
-            const float halfSqrt3 = 0.86602540378;  // √3/2
+            // Initial line width - will be controlled by slider
+            let currentLineWidth = 0.6;
+            gl.uniform1f(uLineWidth, currentLineWidth);
+
+            // --- interaction state ---
+            let offsetX = 1.5, offsetY = -1.0;
+            let scale = 2.8;
+            let isDragging = false;
+            let lastMouseX = 0, lastMouseY = 0;
+
+            function updateUniforms() {
+                gl.uniform2f(uOffset, offsetX, offsetY);
+                gl.uniform1f(uScale, scale);
+                gl.uniform2f(uResolution, canvas.width, canvas.height);
+                draw();
+            }
+
+            // --- mouse pan ---
+            canvas.addEventListener('mousedown', (e) => {
+                if (e.button === 0) {
+                    isDragging = true;
+                    lastMouseX = e.clientX;
+                    lastMouseY = e.clientY;
+                    canvas.style.cursor = 'grabbing';
+                }
+            });
+
+            window.addEventListener('mousemove', (e) => {
+                if (!isDragging) return;
+                
+                const dx = e.clientX - lastMouseX;
+                const dy = e.clientY - lastMouseY;
+                
+                const worldDeltaX = (dx / canvas.clientWidth) * (2.0 * scale);
+                const worldDeltaY = -(dy / canvas.clientHeight) * (2.0 * scale);
+                
+                offsetX -= worldDeltaX;
+                offsetY -= worldDeltaY;
+                
+                lastMouseX = e.clientX;
+                lastMouseY = e.clientY;
+                
+                updateUniforms();
+            });
+
+            window.addEventListener('mouseup', (e) => {
+                if (e.button === 0) {
+                    isDragging = false;
+                    canvas.style.cursor = 'default';
+                }
+            });
+
+            // --- wheel zoom (cursor-anchored) ---
+            canvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                
+                const rect = canvas.getBoundingClientRect();
+                const mx = ((e.clientX - rect.left) / rect.width) * 2.0 - 1.0;
+                const my = -(((e.clientY - rect.top) / rect.height) * 2.0 - 1.0);
+                
+                const worldX = mx * scale + offsetX;
+                const worldY = my * scale + offsetY;
+                
+                const zoomFactor = 0.95;
+                const newScale = e.deltaY > 0 ? scale * zoomFactor : scale / zoomFactor;
+                
+                if (newScale < 0.25 || newScale > 18.0) return;
+                
+                offsetX = worldX - mx * newScale;
+                offsetY = worldY - my * newScale;
+                scale = newScale;
+                
+                updateUniforms();
+            }, { passive: false });
+
+            canvas.addEventListener('dragstart', (e) => e.preventDefault());
+
+            // --- resize ---
+            function resizeCanvas() {
+                canvas.width = window.innerWidth;
+                canvas.height = window.innerHeight - 150; // Subtract header height
+                gl.viewport(0, 0, canvas.width, canvas.height);
+                updateUniforms();
+            }
+            window.addEventListener('resize', resizeCanvas);
+            resizeCanvas();
+
+            // --- draw loop ---
+            function draw() {
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                gl.drawArrays(gl.TRIANGLES, 0, 6);
+            }
+
+            function loop() {
+                draw();
+                requestAnimationFrame(loop);
+            }
+            loop();
+
+            // --- UI Controls ---
+            const slider = document.getElementById('hairline-slider');
+            const sliderValue = document.getElementById('slider-value');
+            const valuePreview = document.getElementById('value-preview');
             
-            // transform to lattice coordinates
-            float fu = p.x - p.y * (0.5 / halfSqrt3);   // = x - 0.57735*y
-            float fv = p.y / halfSqrt3;                 // = y / 0.866
-            
-            // integer cell and barycentric weights
-            float iu = floor(fu);
-            float iv = floor(fv);
-            float u_frac = fu - iu;
-            float v_frac = fv - iv;
-            
-            // barycentric coordinates (two triangles per rhombus)
-            vec3 bary;
-            if (u_frac + v_frac < 1.0) {
-                // lower triangle
-                bary = vec3(1.0 - u_frac - v_frac, u_frac, v_frac);
-            } else {
-                // upper triangle (complement)
-                float u2 = 1.0 - u_frac;
-                float v2 = 1.0 - v_frac;
-                bary = vec3(1.0 - u2 - v2, u2, v2);
+            // Update slider display and uniform
+            function updateHairline(value) {
+                const numValue = parseFloat(value).toFixed(2);
+                sliderValue.textContent = numValue;
+                valuePreview.textContent = numValue;
+                
+                // Update WebGL uniform
+                gl.uniform1f(uLineWidth, parseFloat(value));
+                draw(); // Immediate redraw
             }
             
-            // distance to edges (barycentric coordinates themselves)
-            float d0 = bary.x;
-            float d1 = bary.y;
-            float d2 = bary.z;
+            slider.addEventListener('input', (e) => {
+                updateHairline(e.target.value);
+            });
             
-            float minDist = min(min(d0, d1), d2);
-            
-            // --- CRITICAL FIX: Convert world-space distance to screen-space pixels ---
-            // Calculate how much world position changes per pixel
-            vec2 worldPerPixel = vec2(2.0 * uScale / uResolution.x, 2.0 * uScale / uResolution.y);
-            
-            // Approximate how much minDist changes per pixel based on world-space derivatives
-            // The barycentric coordinates change at rate ~1.0 per world unit (since cell size is ~1)
-            float deriv = length(worldPerPixel) * 1.5;  // 1.5 accounts for triangle orientation
-            
-            // Fixed pixel width - always 1.0 pixel wide lines
-            float pixelWidth = uLineWidth * deriv;
-            
-            // Smoothstep with fixed pixel width - lines stay exactly 1 pixel wide at any zoom
-            float line = smoothstep(0.0, pixelWidth, minDist);
-            
-            // subtle pattern based on integer cell
-            float pattern = fract(iu * 0.7 + iv * 0.4);
-            vec3 baseColor = mix(uColorA, uColorB, pattern * 0.4);
-            
-            // faint glow near incenter
-            float incenterDist = length(bary - vec3(1.0/3.0));
-            float glow = exp(-incenterDist * 8.0) * 0.25;
-            
-            vec3 finalColor = mix(baseColor + glow * uColorB, uEdgeColor, line);
-            
-            // gamma
-            finalColor = pow(finalColor, vec3(1.0/2.2));
-            
-            gl_FragColor = vec4(finalColor, 1.0);
-        }
-    `;
-
-    // --- compile shader ---
-    function compileShader(gl, source, type) {
-        const shader = gl.createShader(type);
-        gl.shaderSource(shader, source);
-        gl.compileShader(shader);
-        if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
-            console.error(gl.getShaderInfoLog(shader));
-            return null;
-        }
-        return shader;
-    }
-
-    const vs = compileShader(gl, vsSource, gl.VERTEX_SHADER);
-    const fs = compileShader(gl, fsSource, gl.FRAGMENT_SHADER);
-
-    const program = gl.createProgram();
-    gl.attachShader(program, vs);
-    gl.attachShader(program, fs);
-    gl.linkProgram(program);
-    if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-        console.error(gl.getProgramInfoLog(program));
-    }
-
-    gl.useProgram(program);
-
-    // --- attributes & uniforms ---
-    const aPos = gl.getAttribLocation(program, 'aPos');
-    const aUv = gl.getAttribLocation(program, 'aUv');
-
-    gl.enableVertexAttribArray(aPos);
-    gl.enableVertexAttribArray(aUv);
-
-    gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 16, 0);
-    gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, 16, 8);
-
-    const uOffset = gl.getUniformLocation(program, 'uOffset');
-    const uScale = gl.getUniformLocation(program, 'uScale');
-    const uColorA = gl.getUniformLocation(program, 'uColorA');
-    const uColorB = gl.getUniformLocation(program, 'uColorB');
-    const uEdgeColor = gl.getUniformLocation(program, 'uEdgeColor');
-    const uLineWidth = gl.getUniformLocation(program, 'uLineWidth');
-    const uResolution = gl.getUniformLocation(program, 'uResolution');
-
-    gl.uniform3f(uColorA, 0.15, 0.17, 0.22);
-    gl.uniform3f(uColorB, 0.75, 0.85, 1.0);
-    gl.uniform3f(uEdgeColor, 0.04, 0.04, 0.05);
-    gl.uniform1f(uLineWidth, 0.15);  // slightly wider for stability
-
-    // --- interaction state ---
-    let offsetX = 1.5, offsetY = -1.0;
-    let scale = 2.8;
-    let isDragging = false;
-    let lastMouseX = 0, lastMouseY = 0;
-
-    function updateUniforms() {
-        gl.uniform2f(uOffset, offsetX, offsetY);
-        gl.uniform1f(uScale, scale);
-        gl.uniform1f(uLineWidth, 1.0);  // Exactly 1 pixel wide lines
-        gl.uniform2f(uResolution, canvas.width, canvas.height);
-        draw();
-    }
-
-    // --- mouse pan ---
-    canvas.addEventListener('mousedown', (e) => {
-        if (e.button === 0) {
-            isDragging = true;
-            lastMouseX = e.clientX;
-            lastMouseY = e.clientY;
-            canvas.style.cursor = 'grabbing';
-        }
-    });
-
-    window.addEventListener('mousemove', (e) => {
-        if (!isDragging) return;
-        
-        const dx = e.clientX - lastMouseX;
-        const dy = e.clientY - lastMouseY;
-        
-        const worldDeltaX = (dx / canvas.clientWidth) * (2.0 * scale);
-        const worldDeltaY = -(dy / canvas.clientHeight) * (2.0 * scale);
-        
-        offsetX -= worldDeltaX;
-        offsetY -= worldDeltaY;
-        
-        lastMouseX = e.clientX;
-        lastMouseY = e.clientY;
-        
-        updateUniforms();
-    });
-
-    window.addEventListener('mouseup', (e) => {
-        if (e.button === 0) {
-            isDragging = false;
-            canvas.style.cursor = 'default';
-        }
-    });
-
-    // --- wheel zoom (cursor-anchored) ---
-    canvas.addEventListener('wheel', (e) => {
-        e.preventDefault();
-        
-        const rect = canvas.getBoundingClientRect();
-        const mx = ((e.clientX - rect.left) / rect.width) * 2.0 - 1.0;
-        const my = -(((e.clientY - rect.top) / rect.height) * 2.0 - 1.0);
-        
-        const worldX = mx * scale + offsetX;
-        const worldY = my * scale + offsetY;
-        
-        const zoomFactor = 0.95;
-        const newScale = e.deltaY > 0 ? scale * zoomFactor : scale / zoomFactor;
-        
-        if (newScale < 0.25 || newScale > 18.0) return;
-        
-        offsetX = worldX - mx * newScale;
-        offsetY = worldY - my * newScale;
-        scale = newScale;
-        
-        updateUniforms();
-    }, { passive: false });
-
-    canvas.addEventListener('dragstart', (e) => e.preventDefault());
-
-    // --- resize ---
-    function resizeCanvas() {
-        canvas.width = window.innerWidth;
-        canvas.height = window.innerHeight;
-        gl.viewport(0, 0, canvas.width, canvas.height);
-        updateUniforms();
-    }
-    window.addEventListener('resize', resizeCanvas);
-    resizeCanvas();
-
-    // --- draw loop ---
-    function draw() {
-        gl.clear(gl.COLOR_BUFFER_BIT);
-        gl.drawArrays(gl.TRIANGLES, 0, 6);
-    }
-
-    function loop() {
-        draw();
-        requestAnimationFrame(loop);
-    }
-    loop();
-})();
+            // Initialize display
+            updateHairline(currentLineWidth);
+        })();
     </script>
 </body>
 </html>
