@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>infinite barycentric grid · 60° precision</title>
+    <title>barycentric · 60° parallel/diagonal</title>
     <style>
         * {
             box-sizing: border-box;
@@ -14,99 +14,109 @@
         body {
             margin: 0;
             overflow: hidden;
-            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
+            font-weight: 400;
+            -webkit-font-smoothing: antialiased;
+            -moz-osx-font-smoothing: grayscale;
+            text-rendering: optimizeLegibility;
         }
         
+        /* Header - 150px, cleaner typography */
         #header {
             position: fixed;
             top: 0;
             left: 0;
             width: 100%;
             height: 150px;
-            background: rgba(15, 17, 22, 0.95);
-            backdrop-filter: blur(8px);
-            border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+            background: rgba(18, 20, 26, 0.96);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid rgba(255, 255, 255, 0.06);
             z-index: 100;
             display: flex;
             align-items: center;
-            padding: 0 30px;
-            color: #e0e4f0;
+            padding: 0 20px;
+            color: #eef2f8;
+            letter-spacing: 0.2px;
+            font-size: 11px;
         }
         
         .header-content {
             display: flex;
             align-items: center;
-            gap: 40px;
+            gap: 24px;
             width: 100%;
-            max-width: 1600px;
+            max-width: 1800px;
             margin: 0 auto;
-            flex-wrap: wrap;
         }
         
         .title-section {
             display: flex;
             flex-direction: column;
-            gap: 4px;
-            min-width: 180px;
+            gap: 2px;
+            min-width: 140px;
         }
         
         .title-main {
-            font-size: 20px;
-            font-weight: 400;
+            font-size: 15px;
+            font-weight: 500;
             color: white;
-            letter-spacing: 1px;
+            letter-spacing: 0.5px;
         }
         
         .title-sub {
-            font-size: 12px;
-            color: #8892a6;
+            font-size: 10px;
+            color: #8a92a6;
             font-weight: 400;
-        }
-        
-        .control-group {
-            display: flex;
-            align-items: center;
-            gap: 24px;
-            flex-wrap: wrap;
-            border-left: 1px solid rgba(255, 255, 255, 0.1);
-            padding-left: 24px;
-        }
-        
-        .control-item {
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-            min-width: 180px;
-        }
-        
-        .control-label {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            font-size: 12px;
-            color: #a0a8ba;
             text-transform: uppercase;
             letter-spacing: 0.8px;
         }
         
-        .control-label span {
-            color: white;
-            font-weight: 500;
-            background: rgba(255, 255, 255, 0.08);
-            padding: 3px 10px;
-            border-radius: 20px;
-            font-size: 13px;
+        /* Parameter groups - ultra compact */
+        .param-group {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            padding: 0 16px;
+            border-left: 1px solid rgba(255, 255, 255, 0.08);
+            height: 40px;
         }
         
+        .param-item {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            position: relative;
+        }
+        
+        .param-label {
+            font-size: 10px;
+            color: #98a0b5;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            font-weight: 500;
+            min-width: 55px;
+        }
+        
+        .param-label i {
+            color: #d0d8f0;
+            font-style: normal;
+            background: rgba(255, 255, 255, 0.08);
+            padding: 2px 6px;
+            border-radius: 20px;
+            margin-left: 4px;
+            font-size: 9px;
+        }
+        
+        /* Sliders - minimalist */
         .slider-row {
             display: flex;
             align-items: center;
-            gap: 15px;
+            gap: 8px;
         }
         
         input[type=range] {
             -webkit-appearance: none;
-            width: 160px;
+            width: 110px;
             height: 1px;
             background: rgba(255, 255, 255, 0.2);
             border-radius: 0;
@@ -115,74 +125,107 @@
         
         input[type=range]::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 14px;
-            height: 14px;
+            width: 12px;
+            height: 12px;
             background: white;
             border: none;
             border-radius: 0;
             cursor: pointer;
-            transition: background 0.1s;
+            transition: 0.1s;
+        }
+        
+        input[type=range]::-webkit-slider-thumb:hover {
+            background: #aaccff;
+            transform: scale(1.1);
         }
         
         .value-display {
-            font-size: 14px;
+            font-size: 11px;
             color: white;
             background: rgba(255, 255, 255, 0.06);
-            padding: 4px 12px;
-            border-radius: 30px;
-            font-weight: 500;
-            min-width: 55px;
+            padding: 3px 8px;
+            border-radius: 20px;
+            font-weight: 450;
+            min-width: 42px;
             text-align: center;
             border: 1px solid rgba(255, 255, 255, 0.1);
+            font-feature-settings: 'tnum';
         }
         
+        /* Color swatches */
+        .color-group {
+            display: flex;
+            gap: 8px;
+            margin-left: 4px;
+        }
+        
+        .color-swatch {
+            width: 20px;
+            height: 20px;
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        
+        .color-swatch:hover {
+            transform: scale(1.15);
+            border-color: white;
+        }
+        
+        .color-swatch.diag { background: #7f5af0; }  /* purple - diagonals */
+        .color-swatch.para { background: #2cb67d; }  /* green - parallels */
+        .color-swatch.bgnd { background: #16181f; }  /* dark - background */
+        .color-swatch.hlit { background: #fffffe; }  /* white - highlights */
+        
+        /* Checkbox - minimalist */
         .checkbox-item {
             display: flex;
             align-items: center;
-            gap: 12px;
-            margin-left: 10px;
+            gap: 6px;
         }
         
         .checkbox-item label {
-            font-size: 13px;
-            color: #a0a8ba;
+            font-size: 10px;
+            color: #b0b8d0;
             text-transform: uppercase;
-            letter-spacing: 0.8px;
+            letter-spacing: 0.5px;
             cursor: pointer;
         }
         
         input[type=checkbox] {
-            width: 18px;
-            height: 18px;
+            width: 14px;
+            height: 14px;
             background: transparent;
             border: 1px solid rgba(255, 255, 255, 0.3);
             border-radius: 2px;
             cursor: pointer;
-            accent-color: white;
+            accent-color: #7f5af0;
+            margin: 0;
         }
         
+        /* Key hint */
         .key-hint {
-            font-size: 11px;
+            font-size: 9px;
             color: #5f6778;
-            background: rgba(0, 0, 0, 0.3);
-            padding: 2px 6px;
+            background: rgba(0, 0, 0, 0.4);
+            padding: 2px 5px;
             border-radius: 4px;
-            font-family: monospace;
-            margin-left: 8px;
+            font-family: 'SF Mono', 'Fira Code', monospace;
+            letter-spacing: 0;
         }
         
         .status {
             display: flex;
             align-items: center;
-            gap: 8px;
-            font-size: 12px;
-            color: #7f8798;
+            gap: 6px;
             margin-left: auto;
+            font-size: 10px;
+            color: #8a92a6;
         }
         
         .status-dot {
-            width: 6px;
-            height: 6px;
+            width: 5px;
+            height: 5px;
             background: #6bffb8;
             border-radius: 0;
         }
@@ -200,23 +243,26 @@
             position: fixed;
             bottom: 20px;
             right: 20px;
-            color: #8892a6;
-            font-size: 11px;
-            background: rgba(10, 12, 18, 0.6);
-            backdrop-filter: blur(4px);
+            color: #98a0b5;
+            font-size: 10px;
+            background: rgba(10, 12, 18, 0.7);
+            backdrop-filter: blur(8px);
             padding: 8px 16px;
-            border-radius: 30px;
+            border-radius: 40px;
             border: 1px solid rgba(255, 255, 255, 0.06);
             z-index: 200;
-            letter-spacing: 0.3px;
-            line-height: 1.6;
+            letter-spacing: 0.2px;
+            line-height: 1.5;
+            font-weight: 400;
         }
         
         .hint kbd {
-            background: #2a2f3a;
+            background: #232731;
             padding: 2px 6px;
             border-radius: 4px;
-            color: #e0e4f0;
+            color: #eef2f8;
+            font-family: 'SF Mono', monospace;
+            font-size: 9px;
         }
     </style>
 </head>
@@ -224,54 +270,89 @@
     <div id="header">
         <div class="header-content">
             <div class="title-section">
-                <div class="title-main">BARYCENTRIC GRID</div>
-                <div class="title-sub">60° · equilateral · precise</div>
+                <div class="title-main">BARYCENTRIC 60°</div>
+                <div class="title-sub">parallels · diagonals</div>
             </div>
             
-            <!-- Control 1: Hairline Width -->
-            <div class="control-group">
-                <div class="control-item">
-                    <div class="control-label">
-                        HAIRLINE <span id="hairline-preview">0.6</span>
-                    </div>
+            <!-- GROUP 1: LINE CONTROLS -->
+            <div class="param-group">
+                <div class="param-item">
+                    <span class="param-label">HAIR<i>px</i></span>
                     <div class="slider-row">
-                        <input type="range" id="hairline-slider" min="0.1" max="1.5" step="0.01" value="0.6">
-                        <div class="value-display" id="hairline-value">0.60</div>
+                        <input type="range" id="hairline-slider" min="0.1" max="2.0" step="0.01" value="0.8">
+                        <span class="value-display" id="hairline-value">0.80</span>
+                    </div>
+                </div>
+                
+                <div class="param-item">
+                    <span class="param-label">SHIFT<i>∥</i></span>
+                    <div class="slider-row">
+                        <input type="range" id="shift-slider" min="0.0" max="1.0" step="0.01" value="0.3">
+                        <span class="value-display" id="shift-value">0.30</span>
                     </div>
                 </div>
             </div>
             
-            <!-- Control 2: Parallel Shift (shifts parallels relative to diagonals) -->
-            <div class="control-group">
-                <div class="control-item">
-                    <div class="control-label">
-                        PARALLEL SHIFT <span id="shift-preview">0.0</span>
+            <!-- GROUP 2: COLOR CONTROLS -->
+            <div class="param-group">
+                <div class="param-item">
+                    <span class="param-label">DIAG</span>
+                    <div class="color-group">
+                        <div class="color-swatch diag" data-color="diag" data-values="0.5,0.35,0.95"></div>
+                        <div class="color-swatch" style="background:#9f7afa;" data-color="diag" data-values="0.62,0.47,0.98"></div>
+                        <div class="color-swatch" style="background:#5f3bc0;" data-color="diag" data-values="0.37,0.23,0.75"></div>
                     </div>
-                    <div class="slider-row">
-                        <input type="range" id="shift-slider" min="0.0" max="1.0" step="0.01" value="0.0">
-                        <div class="value-display" id="shift-value">0.00</div>
+                </div>
+                
+                <div class="param-item">
+                    <span class="param-label">PARA</span>
+                    <div class="color-group">
+                        <div class="color-swatch para" data-color="para" data-values="0.17,0.71,0.47"></div>
+                        <div class="color-swatch" style="background:#4ec9a0;" data-color="para" data-values="0.30,0.79,0.63"></div>
+                        <div class="color-swatch" style="background:#1e8b6a;" data-color="para" data-values="0.12,0.55,0.42"></div>
+                    </div>
+                </div>
+                
+                <div class="param-item">
+                    <span class="param-label">BACK</span>
+                    <div class="color-group">
+                        <div class="color-swatch bgnd" data-color="bg" data-values="0.08,0.09,0.12"></div>
+                        <div class="color-swatch" style="background:#1e212a;" data-color="bg" data-values="0.12,0.13,0.16"></div>
+                        <div class="color-swatch" style="background:#0a0c12;" data-color="bg" data-values="0.04,0.05,0.07"></div>
                     </div>
                 </div>
             </div>
             
-            <!-- Control 3: 30° Snap Checkbox -->
-            <div class="control-group">
+            <!-- GROUP 3: MODIFIERS -->
+            <div class="param-group">
                 <div class="checkbox-item">
                     <input type="checkbox" id="snap-30">
-                    <label for="snap-30">SNAP TO 30° <span class="key-hint">ALT+SHIFT+PAN</span></label>
+                    <label for="snap-30">SNAP 30°</label>
+                </div>
+                
+                <div class="checkbox-item">
+                    <input type="checkbox" id="invert-para">
+                    <label for="invert-para">INVERT ∥</label>
+                </div>
+                
+                <div class="param-item">
+                    <span class="param-label">OPACITY</span>
+                    <div class="slider-row">
+                        <input type="range" id="opacity-slider" min="0.3" max="1.0" step="0.01" value="0.8">
+                        <span class="value-display" id="opacity-value">0.80</span>
+                    </div>
                 </div>
             </div>
             
             <div class="status">
                 <div class="status-dot"></div>
-                <span>live</span>
+                <span>60°</span>
             </div>
         </div>
     </div>
     
     <div class="hint">
-        <kbd>ALT</kbd> + drag → rotate freely · <kbd>ALT</kbd> + <kbd>SHIFT</kbd> + drag → snap 30°<br>
-        ↕️ pan · ⚡ zoom · PARALLEL SHIFT moves parallels between diagonals
+        <kbd>ALT</kbd>+drag rotate · <kbd>ALT</kbd>+<kbd>SHIFT</kbd> snap 30° · ∥ shift moves parallels between diagonals
     </div>
 
     <script>
@@ -282,10 +363,7 @@
             document.body.appendChild(canvas);
 
             const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
-            if (!gl) {
-                document.body.innerHTML = '<h2 style="color:#fff;">WebGL not supported</h2>';
-                return;
-            }
+            if (!gl) return;
 
             // Geometry
             const vertices = new Float32Array([
@@ -312,7 +390,7 @@
                 }
             `;
 
-            // Fragment shader with perfect 60° geometry
+            // Fragment shader with distinct parallel/diagonal coloring
             const fsSource = `
                 precision highp float;
                 
@@ -320,17 +398,18 @@
                 
                 uniform vec2  uOffset;
                 uniform float uScale;
-                uniform vec3  uColorA;
-                uniform vec3  uColorB;
-                uniform vec3  uEdgeColor;
+                uniform vec3  uColorDiag;      // color for diagonals
+                uniform vec3  uColorPara;       // color for parallels
+                uniform vec3  uColorBg;         // background
+                uniform vec3  uColorHair;       // hairline color
                 uniform float uLineWidth;
-                uniform float uParallelShift;  // Shifts parallels relative to diagonals (0-1)
-                uniform float uRotate;          // Rotation angle in radians
-                uniform bool  uSnap30;          // Snap to 30° increments
+                uniform float uParallelShift;    // 0-1 shift of parallels
+                uniform float uRotate;
+                uniform bool  uInvertPara;       // invert parallel/diagonal roles
+                uniform float uOpacity;           // overall opacity
                 uniform vec2  uResolution;
                 uniform float uAspect;
                 
-                // Rotation matrix
                 vec2 rotate(vec2 p, float angle) {
                     float s = sin(angle);
                     float c = cos(angle);
@@ -338,75 +417,84 @@
                 }
                 
                 void main() {
-                    // Base world position with aspect correction
+                    // World position
                     vec2 p = (vUv * 2.0 - 1.0) * uScale;
                     p.x *= uAspect;
                     p += uOffset;
-                    
-                    // Apply rotation
                     p = rotate(p, uRotate);
                     
-                    // PERFECT 60° TRIANGLE GRID
-                    // Using proper basis vectors for equilateral triangles
-                    const float sqrt3 = 1.73205080757;
+                    // Perfect 60° grid
                     const float halfSqrt3 = 0.86602540378;
                     
-                    // Transform to barycentric space with proper 60° axes
-                    // u axis: horizontal (0°)
-                    // v axis: 60° up
-                    // w axis: 120° up (which is -u-v in this space)
+                    // Three axes at 0°, 60°, 120°
                     float u = p.x;
                     float v = p.y / halfSqrt3 + p.x * 0.5;
-                    
-                    // Apply parallel shift - moves the v/w axes relative to u
-                    // This shifts the parallels while keeping diagonals fixed
-                    v += uParallelShift * 0.5;
-                    
                     float w = -u - v;
                     
-                    // Get fractional parts for distance calculation
-                    float fu = fract(u);
-                    float fv = fract(v);
-                    float fw = fract(w);
+                    // Parallel shift moves the v/w axes relative to u
+                    v += uParallelShift * 0.5;
+                    w = -u - v;
                     
-                    // Distance to each set of parallel lines (0 at lines, 0.5 at centers)
-                    float du = min(fu, 1.0 - fu);
-                    float dv = min(fv, 1.0 - fv);
-                    float dw = min(fw, 1.0 - fw);
+                    // Distances to each set of lines (0-1 range, 0=line, 0.5=center)
+                    float du = abs(fract(u + 0.5) - 0.5) * 2.0;
+                    float dv = abs(fract(v + 0.5) - 0.5) * 2.0;
+                    float dw = abs(fract(w + 0.5) - 0.5) * 2.0;
                     
-                    // Scale to 0-1 range where 1 = center of triangle
-                    float d1 = du * 2.0;
-                    float d2 = dv * 2.0;
-                    float d3 = dw * 2.0;
+                    // Identify which lines are diagonals vs parallels
+                    // In a 60° grid, two axes are diagonals (60° apart), one is parallels
+                    // Here: u is one diagonal, v and w are the other diagonal and parallels
+                    // But we want distinct coloring: let's make u and w the diagonals (60° apart)
+                    // and v the parallels (the third direction)
                     
-                    // The three diagonals are at 60° to each other
-                    // The minimum distance gives us the grid lines
-                    float minDist = min(min(d1, d2), d3);
+                    float diag1 = du;
+                    float diag2 = dw;
+                    float para = dv;
                     
-                    // Screen-space pixel calculation
+                    if (uInvertPara) {
+                        // Swap roles for different visual states
+                        diag1 = dv;
+                        diag2 = dw;
+                        para = du;
+                    }
+                    
+                    // Edge detection with screen-space antialiasing
                     vec2 worldPerPixel = vec2(2.0 * uScale / uResolution.x, 2.0 * uScale / uResolution.y);
                     float deriv = length(worldPerPixel) * 1.5;
                     float pixelWidth = uLineWidth * deriv;
                     
-                    // Invert so lines are dark
-                    float line = smoothstep(0.0, pixelWidth, minDist);
+                    // Line detection (0 = on line, 1 = off line)
+                    float lineDiag1 = smoothstep(0.0, pixelWidth, diag1);
+                    float lineDiag2 = smoothstep(0.0, pixelWidth, diag2);
+                    float linePara = smoothstep(0.0, pixelWidth, para);
                     
-                    // Triangle center glow
-                    float centerDist = length(vec3(d1, d2, d3) - vec3(1.0));
-                    float glow = exp(-centerDist * 5.0) * 0.25;
+                    // Combine: we want lines where any of the three is near 0
+                    float lineAll = min(min(lineDiag1, lineDiag2), linePara);
                     
-                    // Cell variation
+                    // Color mixing: background with diagonal and parallel influences
+                    vec3 color = uColorBg;
+                    
+                    // Add diagonal colors (at line positions)
+                    float diagIntensity = (1.0 - lineDiag1) * (1.0 - lineDiag2);
+                    color = mix(color, uColorDiag, diagIntensity * 0.8);
+                    
+                    // Add parallel colors
+                    float paraIntensity = (1.0 - linePara);
+                    color = mix(color, uColorPara, paraIntensity * 0.6);
+                    
+                    // Hairline edges in darker color
+                    color = mix(uColorHair, color, lineAll);
+                    
+                    // Subtle cell variation
                     float iu = floor(u + 0.5);
                     float iv = floor(v + 0.5);
-                    float pattern = fract(iu * 0.5 + iv * 0.7);
+                    float pattern = fract(iu * 0.3 + iv * 0.5) * 0.15;
+                    color += pattern;
                     
-                    vec3 baseColor = mix(uColorA, uColorB, pattern * 0.3);
-                    vec3 finalColor = mix(baseColor + glow * uColorB, uEdgeColor, line);
+                    // Opacity and gamma
+                    color = mix(uColorBg, color, uOpacity);
+                    color = pow(color, vec3(1.0/2.2));
                     
-                    // Gamma
-                    finalColor = pow(finalColor, vec3(1.0/2.2));
-                    
-                    gl_FragColor = vec4(finalColor, 1.0);
+                    gl_FragColor = vec4(color, 1.0);
                 }
             `;
 
@@ -431,41 +519,48 @@
             gl.linkProgram(program);
             gl.useProgram(program);
 
-            // Attributes & uniforms
+            // Attributes
             const aPos = gl.getAttribLocation(program, 'aPos');
             const aUv = gl.getAttribLocation(program, 'aUv');
-
             gl.enableVertexAttribArray(aPos);
             gl.enableVertexAttribArray(aUv);
             gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 16, 0);
             gl.vertexAttribPointer(aUv, 2, gl.FLOAT, false, 16, 8);
 
+            // Uniforms
             const uOffset = gl.getUniformLocation(program, 'uOffset');
             const uScale = gl.getUniformLocation(program, 'uScale');
-            const uColorA = gl.getUniformLocation(program, 'uColorA');
-            const uColorB = gl.getUniformLocation(program, 'uColorB');
-            const uEdgeColor = gl.getUniformLocation(program, 'uEdgeColor');
+            const uColorDiag = gl.getUniformLocation(program, 'uColorDiag');
+            const uColorPara = gl.getUniformLocation(program, 'uColorPara');
+            const uColorBg = gl.getUniformLocation(program, 'uColorBg');
+            const uColorHair = gl.getUniformLocation(program, 'uColorHair');
             const uLineWidth = gl.getUniformLocation(program, 'uLineWidth');
             const uParallelShift = gl.getUniformLocation(program, 'uParallelShift');
             const uRotate = gl.getUniformLocation(program, 'uRotate');
-            const uSnap30 = gl.getUniformLocation(program, 'uSnap30');
+            const uInvertPara = gl.getUniformLocation(program, 'uInvertPara');
+            const uOpacity = gl.getUniformLocation(program, 'uOpacity');
             const uResolution = gl.getUniformLocation(program, 'uResolution');
             const uAspect = gl.getUniformLocation(program, 'uAspect');
 
-            gl.uniform3f(uColorA, 0.15, 0.17, 0.22);
-            gl.uniform3f(uColorB, 0.75, 0.85, 1.0);
-            gl.uniform3f(uEdgeColor, 0.04, 0.04, 0.05);
+            // Default colors
+            gl.uniform3f(uColorDiag, 0.5, 0.35, 0.95);    // purple
+            gl.uniform3f(uColorPara, 0.17, 0.71, 0.47);   // green
+            gl.uniform3f(uColorBg, 0.08, 0.09, 0.12);      // dark
+            gl.uniform3f(uColorHair, 0.04, 0.04, 0.06);    // almost black
             
             // Initial values
-            let currentLineWidth = 0.6;
-            let currentParallelShift = 0.0;
+            let currentLineWidth = 0.8;
+            let currentShift = 0.3;
             let currentRotate = 0.0;
             let snap30Enabled = false;
+            let invertPara = false;
+            let currentOpacity = 0.8;
             
             gl.uniform1f(uLineWidth, currentLineWidth);
-            gl.uniform1f(uParallelShift, currentParallelShift);
+            gl.uniform1f(uParallelShift, currentShift);
             gl.uniform1f(uRotate, currentRotate);
-            gl.uniform1i(uSnap30, snap30Enabled ? 1 : 0);
+            gl.uniform1i(uInvertPara, invertPara ? 1 : 0);
+            gl.uniform1f(uOpacity, currentOpacity);
 
             // Interaction state
             let offsetX = 1.5, offsetY = -1.0;
@@ -473,7 +568,6 @@
             let isDragging = false;
             let lastMouseX = 0, lastMouseY = 0;
             
-            // Rotation state
             let isAltDown = false;
             let isShiftDown = false;
             let dragStartRotate = 0;
@@ -494,9 +588,7 @@
                     isAltDown = true;
                     canvas.style.cursor = 'grab';
                 }
-                if (e.key === 'Shift') {
-                    isShiftDown = true;
-                }
+                if (e.key === 'Shift') isShiftDown = true;
             });
 
             window.addEventListener('keyup', (e) => {
@@ -504,12 +596,10 @@
                     isAltDown = false;
                     canvas.style.cursor = 'default';
                 }
-                if (e.key === 'Shift') {
-                    isShiftDown = false;
-                }
+                if (e.key === 'Shift') isShiftDown = false;
             });
 
-            // Mouse events with rotation
+            // Mouse events
             canvas.addEventListener('mousedown', (e) => {
                 if (e.button === 0) {
                     isDragging = true;
@@ -517,13 +607,11 @@
                     lastMouseY = e.clientY;
                     
                     if (isAltDown) {
-                        // Rotation mode
                         canvas.style.cursor = 'grabbing';
                         dragStartRotate = currentRotate;
                         dragStartX = e.clientX;
                         dragStartY = e.clientY;
                     } else {
-                        // Pan mode
                         canvas.style.cursor = 'grabbing';
                     }
                 }
@@ -533,15 +621,11 @@
                 if (!isDragging) return;
                 
                 if (isAltDown) {
-                    // Rotation
                     const dx = e.clientX - dragStartX;
                     const dy = e.clientY - dragStartY;
-                    
-                    // Convert to rotation angle (sensitive)
-                    let angleDelta = (dx - dy) * 0.01;
+                    let angleDelta = (dx - dy) * 0.008;
                     
                     if (isShiftDown && snap30Enabled) {
-                        // Snap to 30° increments (π/6 = 0.5236 rad)
                         const snap = Math.PI / 6;
                         let newRotate = dragStartRotate + angleDelta;
                         currentRotate = Math.round(newRotate / snap) * snap;
@@ -552,7 +636,6 @@
                     gl.uniform1f(uRotate, currentRotate);
                     draw();
                 } else {
-                    // Pan
                     const dx = e.clientX - lastMouseX;
                     const dy = e.clientY - lastMouseY;
                     
@@ -569,11 +652,9 @@
                 }
             });
 
-            window.addEventListener('mouseup', (e) => {
-                if (e.button === 0) {
-                    isDragging = false;
-                    canvas.style.cursor = isAltDown ? 'grab' : 'default';
-                }
+            window.addEventListener('mouseup', () => {
+                isDragging = false;
+                canvas.style.cursor = isAltDown ? 'grab' : 'default';
             });
 
             // Wheel zoom
@@ -599,8 +680,6 @@
                 updateUniforms();
             }, { passive: false });
 
-            canvas.addEventListener('dragstart', (e) => e.preventDefault());
-
             // Resize
             function resizeCanvas() {
                 canvas.width = window.innerWidth;
@@ -624,52 +703,58 @@
             loop();
 
             // UI Controls
-            const hairlineSlider = document.getElementById('hairline-slider');
-            const hairlineValue = document.getElementById('hairline-value');
-            const hairlinePreview = document.getElementById('hairline-preview');
-            
-            hairlineSlider.addEventListener('input', (e) => {
+            document.getElementById('hairline-slider').addEventListener('input', (e) => {
                 const val = parseFloat(e.target.value);
-                hairlineValue.textContent = val.toFixed(2);
-                hairlinePreview.textContent = val.toFixed(2);
+                document.getElementById('hairline-value').textContent = val.toFixed(2);
                 gl.uniform1f(uLineWidth, val);
                 draw();
             });
             
-            // Parallel Shift slider (0-1 range)
-            const shiftSlider = document.getElementById('shift-slider');
-            const shiftValue = document.getElementById('shift-value');
-            const shiftPreview = document.getElementById('shift-preview');
-            
-            shiftSlider.addEventListener('input', (e) => {
+            document.getElementById('shift-slider').addEventListener('input', (e) => {
                 const val = parseFloat(e.target.value);
-                shiftValue.textContent = val.toFixed(2);
-                shiftPreview.textContent = val.toFixed(2);
+                document.getElementById('shift-value').textContent = val.toFixed(2);
                 gl.uniform1f(uParallelShift, val);
                 draw();
             });
             
-            // Snap 30° checkbox
-            const snapCheck = document.getElementById('snap-30');
+            document.getElementById('opacity-slider').addEventListener('input', (e) => {
+                const val = parseFloat(e.target.value);
+                document.getElementById('opacity-value').textContent = val.toFixed(2);
+                gl.uniform1f(uOpacity, val);
+                draw();
+            });
             
-            snapCheck.addEventListener('change', (e) => {
+            document.getElementById('snap-30').addEventListener('change', (e) => {
                 snap30Enabled = e.target.checked;
-                gl.uniform1i(uSnap30, snap30Enabled ? 1 : 0);
-                
-                if (snap30Enabled) {
-                    // Snap current rotation to nearest 30°
-                    const snap = Math.PI / 6;
-                    currentRotate = Math.round(currentRotate / snap) * snap;
-                    gl.uniform1f(uRotate, currentRotate);
+            });
+            
+            document.getElementById('invert-para').addEventListener('change', (e) => {
+                invertPara = e.target.checked;
+                gl.uniform1i(uInvertPara, invertPara ? 1 : 0);
+                draw();
+            });
+            
+            // Color swatches
+            document.querySelectorAll('.color-swatch').forEach(swatch => {
+                swatch.addEventListener('click', () => {
+                    const colorType = swatch.dataset.color;
+                    const values = swatch.dataset.values.split(',').map(Number);
+                    
+                    if (colorType === 'diag') {
+                        gl.uniform3f(uColorDiag, values[0], values[1], values[2]);
+                    } else if (colorType === 'para') {
+                        gl.uniform3f(uColorPara, values[0], values[1], values[2]);
+                    } else if (colorType === 'bg') {
+                        gl.uniform3f(uColorBg, values[0], values[1], values[2]);
+                    }
                     draw();
-                }
+                });
             });
             
             // Initialize displays
-            hairlineValue.textContent = currentLineWidth.toFixed(2);
-            hairlinePreview.textContent = currentLineWidth.toFixed(2);
-            shiftValue.textContent = currentParallelShift.toFixed(2);
-            shiftPreview.textContent = currentParallelShift.toFixed(2);
+            document.getElementById('hairline-value').textContent = currentLineWidth.toFixed(2);
+            document.getElementById('shift-value').textContent = currentShift.toFixed(2);
+            document.getElementById('opacity-value').textContent = currentOpacity.toFixed(2);
         })();
     </script>
 </body>
