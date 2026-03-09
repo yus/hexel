@@ -93,75 +93,72 @@
             // --- fragment shader: barycentric grid without derivatives ---
             // Anti-aliasing is achieved via smoothstep with a fixed pixel footprint
             // approximated by scaling factor based on zoom level.
-            const fsSource = `
+            // Uses derivatives for pixel-perfect, stable hairlines at any zoom.
+            const string fsSource = `
+                #extension GL_OES_standard_derivatives : enable
                 precision highp float;
                 
                 varying vec2 vUv;
                 
-                uniform vec2  uOffset;      // pan
-                uniform float uScale;        // zoom
+                uniform vec2  uOffset;
+                uniform float uScale;
                 uniform vec3  uColorA;
                 uniform vec3  uColorB;
                 uniform vec3  uEdgeColor;
-                uniform float uLineWidth;
-                uniform vec2  uResolution;   // screen resolution for pixel size estimation
+                uniform float uLineWidth; // Desired line width in pixels (e.g., 1.0)
                 
                 void main() {
-                    // world position on plane z=0
+                    // World position (same as before)
                     vec2 p = (vUv * 2.0 - 1.0) * uScale + uOffset;
                     
-                    // equilateral triangle basis
-                    const float halfSqrt3 = 0.86602540378;  // √3/2
+                    // Equilateral triangle basis (same)
+                    const float halfSqrt3 = 0.86602540378;
                     
-                    // transform to lattice coordinates
-                    float fu = p.x - p.y * (0.5 / halfSqrt3);   // = x - 0.57735*y
-                    float fv = p.y / halfSqrt3;                 // = y / 0.866
+                    // Transform to lattice coordinates (same)
+                    float fu = p.x - p.y * (0.5 / halfSqrt3);
+                    float fv = p.y / halfSqrt3;
                     
-                    // integer cell and barycentric weights
+                    // Get fractional parts for barycentric calculation (same)
                     float iu = floor(fu);
                     float iv = floor(fv);
                     float u_frac = fu - iu;
                     float v_frac = fv - iv;
                     
-                    // barycentric coordinates (two triangles per rhombus)
+                    // Barycentric coordinates (same)
                     vec3 bary;
                     if (u_frac + v_frac < 1.0) {
-                        // lower triangle
                         bary = vec3(1.0 - u_frac - v_frac, u_frac, v_frac);
                     } else {
-                        // upper triangle (complement)
                         float u2 = 1.0 - u_frac;
                         float v2 = 1.0 - v_frac;
                         bary = vec3(1.0 - u2 - v2, u2, v2);
                     }
                     
-                    // distance to edges (barycentric coordinates themselves)
-                    float d0 = bary.x;
-                    float d1 = bary.y;
-                    float d2 = bary.z;
+                    // Calculate the minimum distance to any triangle edge (in barycentric space)
+                    float minDist = min(bary.x, min(bary.y, bary.z));
                     
-                    float minDist = min(min(d0, d1), d2);
+                    // --- KEY FIX: Screen-space derivative for anti-aliasing ---
+                    // This calculates how much 'minDist' changes per pixel.
+                    // It's the secret to stable, resolution-independent grid lines.
+                    float deriv = fwidth(minDist);
                     
-                    // Estimate pixel size in barycentric space.
-                    // Since we don't have derivatives, we approximate based on screen resolution and scale.
-                    // The barycentric space is scaled by ~1.0/cellSize, and screen maps to 2*uScale world units.
-                    // A rough approximation: barycentric derivative ~ (1.0 / (uScale * uResolution.x)) * constant
-                    float pixelSize = 2.0 / (uScale * min(uResolution.x, uResolution.y)) * 2.5;  // tuned constant
+                    // The line width in barycentric space is now expressed as a function
+                    // of the desired screen pixel width and the local derivative.
+                    // 'uLineWidth' is now your target hairline thickness in pixels (e.g., 1.2).
+                    float pixelWidth = uLineWidth * deriv;
                     
-                    // grid line: 0 on line, 1 elsewhere
-                    float line = smoothstep(0.0, uLineWidth * pixelSize, minDist);
+                    // Apply a smoothstep for anti-aliasing. The line is drawn where minDist is near 0.
+                    // The factor 0.5 centers the line on the edge.
+                    float line = smoothstep(0.0, pixelWidth, minDist);
                     
-                    // subtle pattern based on integer cell
+                    // --- Visual styling (you can keep your enhancements) ---
                     float pattern = fract(iu * 0.7 + iv * 0.4);
                     vec3 baseColor = mix(uColorA, uColorB, pattern * 0.4);
                     
-                    // faint glow near incenter
                     float incenterDist = length(bary - vec3(1.0/3.0));
                     float glow = exp(-incenterDist * 8.0) * 0.25;
                     
                     vec3 finalColor = mix(baseColor + glow * uColorB, uEdgeColor, line);
-                    
-                    // gamma
                     finalColor = pow(finalColor, vec3(1.0/2.2));
                     
                     gl_FragColor = vec4(finalColor, 1.0);
