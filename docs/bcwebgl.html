@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>barycentric · parallel/diagonal groups</title>
+    <title>hexagon gizmo · AD/BE/CF barycentric grid</title>
     <style>
         * {
             box-sizing: border-box;
@@ -17,7 +17,6 @@
             font-family: system-ui, -apple-system, 'Segoe UI', Roboto, 'Helvetica Neue', sans-serif;
             font-weight: 400;
             -webkit-font-smoothing: antialiased;
-            -moz-osx-font-smoothing: grayscale;
         }
         
         #header {
@@ -25,7 +24,7 @@
             top: 0;
             left: 0;
             width: 100%;
-            height: 160px;
+            height: 150px;
             background: rgba(18, 20, 26, 0.96);
             backdrop-filter: blur(12px);
             border-bottom: 1px solid rgba(255, 255, 255, 0.06);
@@ -47,7 +46,7 @@
         }
         
         .title-section {
-            min-width: 130px;
+            min-width: 120px;
             padding-top: 4px;
         }
         
@@ -66,14 +65,13 @@
             margin-top: 2px;
         }
         
-        /* Group containers */
         .group {
             display: flex;
             flex-direction: column;
-            gap: 12px;
+            gap: 10px;
             padding: 8px 16px;
             border-left: 1px solid rgba(255, 255, 255, 0.1);
-            min-width: 200px;
+            min-width: 180px;
         }
         
         .group-header {
@@ -82,7 +80,6 @@
             color: #b8c0d8;
             text-transform: uppercase;
             letter-spacing: 0.8px;
-            margin-bottom: 2px;
         }
         
         .group-header small {
@@ -92,7 +89,6 @@
             font-size: 9px;
         }
         
-        /* Parameter rows */
         .param-row {
             display: flex;
             align-items: center;
@@ -105,7 +101,7 @@
             color: #b0b8d0;
             text-transform: uppercase;
             letter-spacing: 0.3px;
-            min-width: 80px;
+            min-width: 70px;
         }
         
         .param-label i {
@@ -126,7 +122,7 @@
         
         input[type=range] {
             -webkit-appearance: none;
-            width: 130px;
+            width: 120px;
             height: 1px;
             background: rgba(255, 255, 255, 0.25);
             border-radius: 0;
@@ -152,15 +148,13 @@
             min-width: 38px;
             text-align: center;
             border: 1px solid rgba(255, 255, 255, 0.1);
-            font-feature-settings: 'tnum';
         }
         
-        /* Color controls */
         .color-row {
             display: flex;
             align-items: center;
-            gap: 10px;
-            margin: 4px 0;
+            gap: 8px;
+            margin: 2px 0;
         }
         
         .color-picker {
@@ -168,12 +162,12 @@
             height: 20px;
             border: 1px solid rgba(255, 255, 255, 0.3);
             cursor: pointer;
-            position: relative;
         }
         
-        .color-picker.bg-picker { background: #16181f; }
-        .color-picker.diag-picker { background: #7f5af0; }
-        .color-picker.para-picker { background: #2cb67d; }
+        .color-picker.ad { background: #9a9aff; }
+        .color-picker.be { background: #b380ff; }
+        .color-picker.cf { background: #5cc9a0; }
+        .color-picker.bg { background: #16181f; }
         
         .checkbox-item {
             display: flex;
@@ -195,12 +189,11 @@
             accent-color: #7f5af0;
         }
         
-        .bright-indicator {
+        .axis-tag {
             display: inline-block;
-            width: 8px;
-            height: 8px;
-            border-radius: 0;
-            margin-left: 4px;
+            width: 16px;
+            font-weight: 600;
+            color: #c8d0f0;
         }
         
         .status {
@@ -221,10 +214,10 @@
         canvas {
             display: block;
             position: fixed;
-            top: 160px;
+            top: 150px;
             left: 0;
             width: 100%;
-            height: calc(100vh - 160px);
+            height: calc(100vh - 150px);
         }
         
         .hint {
@@ -255,89 +248,71 @@
     <div id="header">
         <div class="header-content">
             <div class="title-section">
-                <div class="title-main">60° GRID</div>
-                <div class="title-sub">parallels · diagonals</div>
+                <div class="title-main">HEXAGON GIZMO</div>
+                <div class="title-sub">AD · BE · CF</div>
             </div>
             
-            <!-- GROUP 1: HAIRLINE & EQUAL COLORS -->
+            <!-- GROUP 1: HAIRLINE & VMode -->
             <div class="group">
-                <div class="group-header">HAIRLINE <small>px</small></div>
+                <div class="group-header">GLOBAL</div>
                 <div class="param-row">
-                    <span class="param-label">SIZE</span>
+                    <span class="param-label">HAIR <i>px</i></span>
                     <div class="slider-row">
-                        <input type="range" id="hairline-slider" min="0.3" max="2.5" step="0.05" value="0.9">
+                        <input type="range" id="hairline-slider" min="0.3" max="2.0" step="0.05" value="0.9">
                         <span class="value-display" id="hairline-value">0.90</span>
                     </div>
                 </div>
-                <div class="color-row">
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="equal-colors">
-                        <label for="equal-colors">EQUAL COLORS</label>
-                    </div>
+                <div class="checkbox-item">
+                    <input type="checkbox" id="vmode-check">
+                    <label for="vmode-check">V MODE (AD horizontal)</label>
                 </div>
             </div>
             
-            <!-- GROUP 2: DIAGONALS -->
+            <!-- GROUP 2: GIZMO TRANSFORM -->
             <div class="group">
-                <div class="group-header">DIAGONALS <small>60° base</small></div>
+                <div class="group-header">GIZMO</div>
                 <div class="param-row">
-                    <span class="param-label">ANGLE</span>
+                    <span class="param-label">ROTATE</span>
                     <div class="slider-row">
-                        <input type="range" id="diag-angle-slider" min="30" max="60" step="0.5" value="60">
-                        <span class="value-display" id="diag-angle-value">60°</span>
+                        <input type="range" id="rotate-slider" min="-180" max="180" value="0" step="1">
+                        <span class="value-display" id="rotate-value">0°</span>
                     </div>
                 </div>
-                <div class="color-row">
-                    <div class="color-picker diag-picker" id="diag-color"></div>
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="diag-bright">
-                        <label for="diag-bright">BRIGHT</label>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- GROUP 3: PARALLELS -->
-            <div class="group">
-                <div class="group-header">PARALLELS <small>thru intersections</small></div>
                 <div class="param-row">
-                    <span class="param-label">SHIFT</span>
+                    <span class="param-label">SKEW</span>
                     <div class="slider-row">
-                        <input type="range" id="para-shift-slider" min="0.0" max="1.0" step="0.01" value="0.0">
-                        <span class="value-display" id="para-shift-value">0.00</span>
-                    </div>
-                </div>
-                <div class="color-row">
-                    <div class="color-picker para-picker" id="para-color"></div>
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="para-bright">
-                        <label for="para-bright">BRIGHT</label>
+                        <input type="range" id="skew-slider" min="-0.8" max="0.8" value="0" step="0.01">
+                        <span class="value-display" id="skew-value">0.00</span>
                     </div>
                 </div>
             </div>
             
-            <!-- GROUP 4: BACKGROUND & STATE -->
+            <!-- GROUP 3: AXIS COLORS -->
             <div class="group">
-                <div class="group-header">BACKGROUND</div>
+                <div class="group-header">COLORS</div>
                 <div class="color-row">
-                    <div class="color-picker bg-picker" id="bg-color"></div>
+                    <span class="axis-tag">AD</span>
+                    <div class="color-picker ad" id="color-ad"></div>
+                    <div class="color-picker be" id="color-be"></div>
+                    <span class="axis-tag">BE</span>
                 </div>
-                <div class="param-row">
-                    <div class="checkbox-item">
-                        <input type="checkbox" id="start-state" checked>
-                        <label for="start-state">START STATE</label>
-                    </div>
+                <div class="color-row">
+                    <span class="axis-tag">CF</span>
+                    <div class="color-picker cf" id="color-cf"></div>
+                    <div class="color-picker bg" id="color-bg"></div>
+                    <span class="axis-tag">BG</span>
                 </div>
             </div>
             
             <div class="status">
                 <div class="status-dot"></div>
-                <span>60°</span>
+                <span>AD ∥ BE CF ⤨</span>
             </div>
         </div>
     </div>
     
     <div class="hint">
-        <kbd>ALT</kbd>+drag rotate · <kbd>ALT</kbd>+<kbd>SHIFT</kbd> snap 30° · shift moves parallels
+        <kbd>ALT</kbd>+drag rotate · <kbd>ALT</kbd>+<kbd>SHIFT</kbd> snap 30° · skew tilts BE/CF
     </div>
 
     <script>
@@ -364,6 +339,7 @@
             gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
             gl.bufferData(gl.ARRAY_BUFFER, vertices, gl.STATIC_DRAW);
 
+            // Vertex shader
             const vsSource = `
                 attribute vec2 aPos;
                 attribute vec2 aUv;
@@ -374,6 +350,7 @@
                 }
             `;
 
+            // Fragment shader - AD/BE/CF hexagon gizmo
             const fsSource = `
                 precision highp float;
                 
@@ -381,25 +358,21 @@
                 
                 uniform vec2  uOffset;
                 uniform float uScale;
-                uniform float uRotate;
+                uniform float uRotate;          // Gizmo rotation (radians)
+                uniform float uSkew;             // Skew factor for BE/CF (-0.8 to 0.8)
+                uniform bool  uVMode;            // VMode: rotate so AD horizontal
                 
-                // Colors
+                // Colors for each axis
+                uniform vec3  uColorAD;
+                uniform vec3  uColorBE;
+                uniform vec3  uColorCF;
                 uniform vec3  uColorBg;
-                uniform vec3  uColorDiag;
-                uniform vec3  uColorPara;
                 
-                // Controls
                 uniform float uHairlineSize;
-                uniform float uDiagAngle;      // 30-60 degrees
-                uniform float uParaShift;       // 0-1 shift relative to diagonals
-                uniform bool  uEqualColors;
-                uniform bool  uDiagBright;
-                uniform bool  uParaBright;
-                uniform bool  uStartState;
-                
                 uniform vec2  uResolution;
                 uniform float uAspect;
                 
+                // 2D rotation
                 vec2 rotate(vec2 p, float angle) {
                     float s = sin(angle);
                     float c = cos(angle);
@@ -407,98 +380,96 @@
                 }
                 
                 void main() {
-                    // World position
+                    // World position with aspect correction
                     vec2 p = (vUv * 2.0 - 1.0) * uScale;
                     p.x *= uAspect;
                     p += uOffset;
+                    
+                    // Apply gizmo transformations in reverse order
+                    
+                    // 1. User rotation
                     p = rotate(p, uRotate);
                     
-                    // Base 60° grid
-                    const float sqrt3 = 1.73205;
-                    const float halfSqrt3 = 0.866025;
-                    
-                    // Convert diagonal angle from degrees to radians and to scale factor
-                    float diagRad = uDiagAngle * 3.14159 / 180.0;
-                    float diagScale = tan(diagRad) / 1.73205;  // Normalize to 60° base
-                    
-                    // Three axes with adjustable diagonal angle
-                    // u axis: horizontal (parallels group baseline)
-                    // v axis: first diagonal at diagAngle
-                    // w axis: second diagonal at 120°? Actually we want two diagonals symmetric
-                    
-                    float u = p.x;  // parallels reference
-                    
-                    // Diagonals: symmetric around vertical
-                    float v = (p.y / halfSqrt3) * diagScale + p.x * 0.5;
-                    float w = -u - v;
-                    
-                    // Parallel shift moves parallels relative to diagonal intersections
-                    // At shift=0, parallels go through diagonal intersections
-                    // At shift=0.5, parallels are halfway between
-                    // At shift=1.0, parallels align with next diagonal set
-                    
-                    // The diagonal intersection points occur where v and w are integers
-                    // We want parallels (u lines) to pass through these points
-                    float intersectionOffset = fract(v + w) * 0.5;
-                    float paraShift = uParaShift * 1.0;
-                    
-                    // Adjust u based on shift parameter to align with diagonal intersections
-                    float uAdj = u + paraShift * 0.5;
-                    
-                    // Distances to each line set (0-1 range, 0=line, 0.5=center)
-                    float du = abs(fract(uAdj + 0.5) - 0.5) * 2.0;
-                    float dv = abs(fract(v + 0.5) - 0.5) * 2.0;
-                    float dw = abs(fract(w + 0.5) - 0.5) * 2.0;
-                    
-                    // Start state: parallels at 0°, diagonals at 60° and 120°
-                    if (uStartState) {
-                        // Force pure 60° geometry with parallels through intersections
-                        uAdj = p.x;
-                        float vv = p.y / halfSqrt3 + p.x * 0.5;
-                        float ww = -p.x - vv;
-                        du = abs(fract(uAdj + 0.5) - 0.5) * 2.0;
-                        dv = abs(fract(vv + 0.5) - 0.5) * 2.0;
-                        dw = abs(fract(ww + 0.5) - 0.5) * 2.0;
+                    // 2. VMode - rotate so AD becomes horizontal (if enabled)
+                    if (uVMode) {
+                        // In base orientation, AD is at 90° (vertical)
+                        // Rotate by -90° to make it horizontal (0°)
+                        p = rotate(p, -1.5708); // -90 degrees
                     }
                     
-                    // Edge detection
+                    // Define the three axes in local space
+                    // After VMode, AD is horizontal (1,0)
+                    
+                    // Base diagonal axes at 60° and 120°
+                    float baseAngle = 60.0 * 3.14159 / 180.0; // 60° in radians
+                    
+                    // BE axis: +60° from AD
+                    vec2 axisBE_base = vec2(cos(baseAngle), sin(baseAngle));
+                    // CF axis: -60° from AD
+                    vec2 axisCF_base = vec2(cos(-baseAngle), sin(-baseAngle));
+                    
+                    // Apply skew to diagonal axes
+                    // Skew adds horizontal component
+                    float skewAmount = uSkew * 0.6; // Limit range
+                    
+                    vec2 axisBE = axisBE_base + vec2(skewAmount, 0.0);
+                    vec2 axisCF = axisCF_base + vec2(skewAmount, 0.0);
+                    
+                    // Renormalize to preserve direction
+                    axisBE = normalize(axisBE);
+                    axisCF = normalize(axisCF);
+                    
+                    // Calculate perpendicular distances to each axis
+                    // AD axis is horizontal, so perpendicular is vertical
+                    float distAD = p.y;
+                    
+                    // For BE and CF, use cross product for perpendicular distance
+                    float distBE = p.x * axisBE.y - p.y * axisBE.x;
+                    float distCF = p.x * axisCF.y - p.y * axisCF.x;
+                    
+                    // Grid spacing is 1.0 world unit
+                    // Convert to grid line distances (0 = on line, 0.5 = between lines)
+                    float gridAD = abs(fract(distAD + 0.5) - 0.5) * 2.0;
+                    float gridBE = abs(fract(distBE + 0.5) - 0.5) * 2.0;
+                    float gridCF = abs(fract(distCF + 0.5) - 0.5) * 2.0;
+                    
+                    // Screen-space antialiasing
                     vec2 worldPerPixel = vec2(2.0 * uScale / uResolution.x, 2.0 * uScale / uResolution.y);
                     float deriv = length(worldPerPixel) * 1.5;
                     float pixelWidth = uHairlineSize * deriv;
                     
-                    // Line detection
-                    float linePara = smoothstep(0.0, pixelWidth, du);
-                    float lineDiag1 = smoothstep(0.0, pixelWidth, dv);
-                    float lineDiag2 = smoothstep(0.0, pixelWidth, dw);
+                    // Line detection (0 = on line, 1 = off line)
+                    float lineAD = smoothstep(0.0, pixelWidth, gridAD);
+                    float lineBE = smoothstep(0.0, pixelWidth, gridBE);
+                    float lineCF = smoothstep(0.0, pixelWidth, gridCF);
                     
-                    // Color mixing
+                    // Color mixing based on active lines
                     vec3 color = uColorBg;
                     
-                    // Brightness modifiers
-                    float diagBrightness = uDiagBright ? 1.5 : 1.0;
-                    float paraBrightness = uParaBright ? 1.5 : 1.0;
+                    // AD (parallels) contribution
+                    float adIntensity = 1.0 - lineAD;
+                    color = mix(color, uColorAD, adIntensity * 0.9);
                     
-                    // Apply diagonal colors
-                    float diagIntensity = (1.0 - lineDiag1) * (1.0 - lineDiag2);
-                    vec3 diagColor = uEqualColors ? vec3(0.9, 0.9, 0.95) : uColorDiag;
-                    color = mix(color, diagColor * diagBrightness, diagIntensity * 0.9);
+                    // BE contribution
+                    float beIntensity = 1.0 - lineBE;
+                    color = mix(color, uColorBE, beIntensity * 0.8);
                     
-                    // Apply parallel colors
-                    float paraIntensity = 1.0 - linePara;
-                    vec3 paraColor = uEqualColors ? vec3(0.85, 0.85, 0.9) : uColorPara;
-                    color = mix(color, paraColor * paraBrightness, paraIntensity * 0.7);
+                    // CF contribution
+                    float cfIntensity = 1.0 - lineCF;
+                    color = mix(color, uColorCF, cfIntensity * 0.8);
                     
-                    // Grid lines in darker color
-                    float allLines = min(min(linePara, lineDiag1), lineDiag2);
+                    // Dark grid lines at intersections
+                    float allLines = min(min(lineAD, lineBE), lineCF);
                     color = mix(vec3(0.02, 0.02, 0.03), color, allLines);
                     
-                    // Gamma
+                    // Gamma correction
                     color = pow(color, vec3(1.0/2.2));
                     
                     gl_FragColor = vec4(color, 1.0);
                 }
             `;
 
+            // Compile shader
             function compileShader(gl, source, type) {
                 const shader = gl.createShader(type);
                 gl.shaderSource(shader, source);
@@ -531,42 +502,32 @@
             const uOffset = gl.getUniformLocation(program, 'uOffset');
             const uScale = gl.getUniformLocation(program, 'uScale');
             const uRotate = gl.getUniformLocation(program, 'uRotate');
+            const uSkew = gl.getUniformLocation(program, 'uSkew');
+            const uVMode = gl.getUniformLocation(program, 'uVMode');
+            const uColorAD = gl.getUniformLocation(program, 'uColorAD');
+            const uColorBE = gl.getUniformLocation(program, 'uColorBE');
+            const uColorCF = gl.getUniformLocation(program, 'uColorCF');
             const uColorBg = gl.getUniformLocation(program, 'uColorBg');
-            const uColorDiag = gl.getUniformLocation(program, 'uColorDiag');
-            const uColorPara = gl.getUniformLocation(program, 'uColorPara');
             const uHairlineSize = gl.getUniformLocation(program, 'uHairlineSize');
-            const uDiagAngle = gl.getUniformLocation(program, 'uDiagAngle');
-            const uParaShift = gl.getUniformLocation(program, 'uParaShift');
-            const uEqualColors = gl.getUniformLocation(program, 'uEqualColors');
-            const uDiagBright = gl.getUniformLocation(program, 'uDiagBright');
-            const uParaBright = gl.getUniformLocation(program, 'uParaBright');
-            const uStartState = gl.getUniformLocation(program, 'uStartState');
             const uResolution = gl.getUniformLocation(program, 'uResolution');
             const uAspect = gl.getUniformLocation(program, 'uAspect');
 
             // Default colors
-            gl.uniform3f(uColorBg, 0.08, 0.09, 0.12);
-            gl.uniform3f(uColorDiag, 0.5, 0.35, 0.95);    // purple
-            gl.uniform3f(uColorPara, 0.17, 0.71, 0.47);   // green
+            gl.uniform3f(uColorAD, 0.6, 0.6, 1.0);    // light blue
+            gl.uniform3f(uColorBE, 0.7, 0.5, 1.0);    // purple
+            gl.uniform3f(uColorCF, 0.3, 0.8, 0.6);    // teal
+            gl.uniform3f(uColorBg, 0.08, 0.09, 0.12); // dark
             
             // Initial values
             let currentHairline = 0.9;
-            let currentDiagAngle = 60.0;
-            let currentParaShift = 0.0;
             let currentRotate = 0.0;
-            let equalColors = false;
-            let diagBright = false;
-            let paraBright = false;
-            let startState = true;
+            let currentSkew = 0.0;
+            let vmodeEnabled = false;
             
             gl.uniform1f(uHairlineSize, currentHairline);
-            gl.uniform1f(uDiagAngle, currentDiagAngle);
-            gl.uniform1f(uParaShift, currentParaShift);
-            gl.uniform1f(uRotate, currentRotate);
-            gl.uniform1i(uEqualColors, equalColors ? 1 : 0);
-            gl.uniform1i(uDiagBright, diagBright ? 1 : 0);
-            gl.uniform1i(uParaBright, paraBright ? 1 : 0);
-            gl.uniform1i(uStartState, startState ? 1 : 0);
+            gl.uniform1f(uRotate, 0.0);
+            gl.uniform1f(uSkew, 0.0);
+            gl.uniform1i(uVMode, 0);
 
             // Interaction state
             let offsetX = 1.5, offsetY = -1.0;
@@ -637,6 +598,8 @@
                     }
                     
                     gl.uniform1f(uRotate, currentRotate);
+                    document.getElementById('rotate-value').textContent = 
+                        Math.round(currentRotate * 180 / Math.PI) + '°';
                     draw();
                 } else {
                     const dx = e.clientX - lastMouseX;
@@ -686,7 +649,7 @@
             // Resize
             function resizeCanvas() {
                 canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight - 160;
+                canvas.height = window.innerHeight - 150;
                 gl.viewport(0, 0, canvas.width, canvas.height);
                 updateUniforms();
             }
@@ -712,97 +675,96 @@
                 draw();
             });
             
-            document.getElementById('diag-angle-slider').addEventListener('input', (e) => {
+            document.getElementById('rotate-slider').addEventListener('input', (e) => {
                 const val = parseFloat(e.target.value);
-                document.getElementById('diag-angle-value').textContent = val + '°';
-                gl.uniform1f(uDiagAngle, val);
+                document.getElementById('rotate-value').textContent = val + '°';
+                currentRotate = val * Math.PI / 180.0;
+                gl.uniform1f(uRotate, currentRotate);
                 draw();
             });
             
-            document.getElementById('para-shift-slider').addEventListener('input', (e) => {
+            document.getElementById('skew-slider').addEventListener('input', (e) => {
                 const val = parseFloat(e.target.value);
-                document.getElementById('para-shift-value').textContent = val.toFixed(2);
-                gl.uniform1f(uParaShift, val);
+                document.getElementById('skew-value').textContent = val.toFixed(2);
+                gl.uniform1f(uSkew, val);
                 draw();
             });
             
-            document.getElementById('equal-colors').addEventListener('change', (e) => {
-                equalColors = e.target.checked;
-                gl.uniform1i(uEqualColors, equalColors ? 1 : 0);
+            document.getElementById('vmode-check').addEventListener('change', (e) => {
+                vmodeEnabled = e.target.checked;
+                gl.uniform1i(uVMode, vmodeEnabled ? 1 : 0);
                 draw();
             });
             
-            document.getElementById('diag-bright').addEventListener('change', (e) => {
-                diagBright = e.target.checked;
-                gl.uniform1i(uDiagBright, diagBright ? 1 : 0);
-                draw();
-            });
-            
-            document.getElementById('para-bright').addEventListener('change', (e) => {
-                paraBright = e.target.checked;
-                gl.uniform1i(uParaBright, paraBright ? 1 : 0);
-                draw();
-            });
-            
-            document.getElementById('start-state').addEventListener('change', (e) => {
-                startState = e.target.checked;
-                gl.uniform1i(uStartState, startState ? 1 : 0);
-                draw();
-            });
-            
-            // Color pickers (simplified - cycle through presets)
-            const diagColors = [
-                [0.5, 0.35, 0.95],  // purple
-                [0.95, 0.4, 0.5],   // red
-                [0.3, 0.7, 0.95],   // blue
-                [0.95, 0.8, 0.3]    // gold
+            // Color pickers - cycle through presets
+            const adColors = [
+                [0.6, 0.6, 1.0],  // light blue
+                [1.0, 0.7, 0.7],  // pink
+                [0.7, 1.0, 0.7],  // mint
+                [1.0, 1.0, 0.7]   // cream
             ];
-            let diagColorIndex = 0;
-            
-            document.getElementById('diag-color').addEventListener('click', () => {
-                diagColorIndex = (diagColorIndex + 1) % diagColors.length;
-                const c = diagColors[diagColorIndex];
-                gl.uniform3f(uColorDiag, c[0], c[1], c[2]);
-                document.getElementById('diag-color').style.backgroundColor = `rgb(${c[0]*255},${c[1]*255},${c[2]*255})`;
+            let adIndex = 0;
+            document.getElementById('color-ad').addEventListener('click', () => {
+                adIndex = (adIndex + 1) % adColors.length;
+                const c = adColors[adIndex];
+                gl.uniform3f(uColorAD, c[0], c[1], c[2]);
+                document.getElementById('color-ad').style.backgroundColor = 
+                    `rgb(${c[0]*255},${c[1]*255},${c[2]*255})`;
                 draw();
             });
             
-            const paraColors = [
-                [0.17, 0.71, 0.47],  // green
-                [0.95, 0.6, 0.2],    // orange
-                [0.8, 0.4, 0.8],     // magenta
-                [0.4, 0.8, 0.9]      // cyan
+            const beColors = [
+                [0.7, 0.5, 1.0],  // purple
+                [1.0, 0.5, 0.5],  // red
+                [0.5, 0.7, 1.0],  // blue
+                [1.0, 0.8, 0.4]   // orange
             ];
-            let paraColorIndex = 0;
+            let beIndex = 0;
+            document.getElementById('color-be').addEventListener('click', () => {
+                beIndex = (beIndex + 1) % beColors.length;
+                const c = beColors[beIndex];
+                gl.uniform3f(uColorBE, c[0], c[1], c[2]);
+                document.getElementById('color-be').style.backgroundColor = 
+                    `rgb(${c[0]*255},${c[1]*255},${c[2]*255})`;
+                draw();
+            });
             
-            document.getElementById('para-color').addEventListener('click', () => {
-                paraColorIndex = (paraColorIndex + 1) % paraColors.length;
-                const c = paraColors[paraColorIndex];
-                gl.uniform3f(uColorPara, c[0], c[1], c[2]);
-                document.getElementById('para-color').style.backgroundColor = `rgb(${c[0]*255},${c[1]*255},${c[2]*255})`;
+            const cfColors = [
+                [0.3, 0.8, 0.6],  // teal
+                [0.8, 0.4, 0.8],  // magenta
+                [0.4, 0.7, 0.9],  // sky
+                [0.9, 0.7, 0.3]   // gold
+            ];
+            let cfIndex = 0;
+            document.getElementById('color-cf').addEventListener('click', () => {
+                cfIndex = (cfIndex + 1) % cfColors.length;
+                const c = cfColors[cfIndex];
+                gl.uniform3f(uColorCF, c[0], c[1], c[2]);
+                document.getElementById('color-cf').style.backgroundColor = 
+                    `rgb(${c[0]*255},${c[1]*255},${c[2]*255})`;
                 draw();
             });
             
             const bgColors = [
                 [0.08, 0.09, 0.12],  // dark
-                [0.15, 0.15, 0.18],  // medium dark
-                [0.22, 0.22, 0.26],  // lighter dark
+                [0.15, 0.15, 0.18],  // medium
+                [0.22, 0.22, 0.26],  // lighter
                 [0.05, 0.05, 0.08]   // very dark
             ];
-            let bgColorIndex = 0;
-            
-            document.getElementById('bg-color').addEventListener('click', () => {
-                bgColorIndex = (bgColorIndex + 1) % bgColors.length;
-                const c = bgColors[bgColorIndex];
+            let bgIndex = 0;
+            document.getElementById('color-bg').addEventListener('click', () => {
+                bgIndex = (bgIndex + 1) % bgColors.length;
+                const c = bgColors[bgIndex];
                 gl.uniform3f(uColorBg, c[0], c[1], c[2]);
-                document.getElementById('bg-color').style.backgroundColor = `rgb(${c[0]*255},${c[1]*255},${c[2]*255})`;
+                document.getElementById('color-bg').style.backgroundColor = 
+                    `rgb(${c[0]*255},${c[1]*255},${c[2]*255})`;
                 draw();
             });
             
             // Initialize displays
             document.getElementById('hairline-value').textContent = currentHairline.toFixed(2);
-            document.getElementById('diag-angle-value').textContent = currentDiagAngle + '°';
-            document.getElementById('para-shift-value').textContent = currentParaShift.toFixed(2);
+            document.getElementById('rotate-value').textContent = '0°';
+            document.getElementById('skew-value').textContent = '0.00';
         })();
     </script>
 </body>
