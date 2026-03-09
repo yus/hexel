@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>pure barycentric grid · 60°</title>
+    <title>pure barycentric grid · with gaps</title>
     <style>
         * {
             box-sizing: border-box;
@@ -40,7 +40,7 @@
             align-items: center;
             gap: 40px;
             width: 100%;
-            max-width: 1200px;
+            max-width: 1400px;
             margin: 0 auto;
         }
         
@@ -123,7 +123,7 @@
         <div class="header-content">
             <div class="title-section">
                 <div class="title-main">BARYCENTRIC GRID</div>
-                <div class="title-sub">60° · equilateral triangles</div>
+                <div class="title-sub">60° · with gaps</div>
             </div>
             
             <div class="group">
@@ -138,12 +138,18 @@
                     <input type="range" id="line-slider" min="0.3" max="2.0" value="0.8" step="0.05">
                     <span class="value-display" id="line-value">0.80</span>
                 </div>
+                
+                <div class="param-row">
+                    <span class="param-label">GAP</span>
+                    <input type="range" id="gap-slider" min="0.0" max="0.8" value="0.2" step="0.01">
+                    <span class="value-display" id="gap-value">0.20</span>
+                </div>
             </div>
         </div>
     </div>
     
     <div class="hint">
-        ⚡ zoom · 🖱️ pan · barycentric coordinates at each point
+        ⚡ zoom · 🖱️ pan · gap controls spacing between triangles
     </div>
 
     <script>
@@ -179,7 +185,7 @@
                 }
             `;
             
-            // Fragment shader - pure barycentric grid
+            // Fragment shader - pure barycentric grid with adjustable gaps
             const fsSource = `
                 precision highp float;
                 
@@ -189,6 +195,7 @@
                 uniform float uScale;
                 uniform float uCellSize;
                 uniform float uLineWidth;
+                uniform float uGap;           // Gap between triangles (0-0.8)
                 uniform vec2 uResolution;
                 uniform float uAspect;
                 
@@ -206,7 +213,6 @@
                     const float halfSqrt3 = 0.8660254;
                     
                     // Three axes at 0°, 60°, and 120°
-                    // Convert to barycentric-like coordinates
                     float u = p.x;
                     float v = (p.y / halfSqrt3) + (p.x * 0.5);
                     float w = -u - v;
@@ -229,13 +235,24 @@
                     // The minimum distance to any edge
                     float minDist = min(min(d1, d2), d3);
                     
+                    // Apply gap - this pushes edges away from triangle centers
+                    // When gap > 0, we need to be closer to an edge to be on the grid line
+                    float gapAdjusted = minDist - uGap;
+                    
                     // Screen-space antialiasing
                     vec2 worldPerPixel = vec2(2.0 * uScale / uResolution.x, 2.0 * uScale / uResolution.y);
                     float deriv = length(worldPerPixel) * 1.5 / uCellSize;
                     float pixelWidth = uLineWidth * deriv;
                     
-                    // Grid line intensity (0 = line, 1 = background)
-                    float grid = smoothstep(0.0, pixelWidth, minDist);
+                    // Grid line intensity with gap (0 = line, 1 = background)
+                    float grid;
+                    if (gapAdjusted < 0.0) {
+                        // Inside the gap region - always background
+                        grid = 1.0;
+                    } else {
+                        // Apply smoothstep only to the remaining region
+                        grid = smoothstep(0.0, pixelWidth, gapAdjusted);
+                    }
                     
                     // Color based on barycentric coordinates
                     vec3 color1 = vec3(0.2, 0.25, 0.3);  // dark
@@ -289,6 +306,7 @@
             const uScale = gl.getUniformLocation(program, 'uScale');
             const uCellSize = gl.getUniformLocation(program, 'uCellSize');
             const uLineWidth = gl.getUniformLocation(program, 'uLineWidth');
+            const uGap = gl.getUniformLocation(program, 'uGap');
             const uResolution = gl.getUniformLocation(program, 'uResolution');
             const uAspect = gl.getUniformLocation(program, 'uAspect');
             
@@ -297,6 +315,7 @@
             let scale = 3.0;
             let cellSize = 1.5;
             let lineWidth = 0.8;
+            let gap = 0.2;
             
             let isDragging = false;
             let lastX = 0, lastY = 0;
@@ -307,6 +326,7 @@
                 gl.uniform1f(uScale, scale);
                 gl.uniform1f(uCellSize, cellSize);
                 gl.uniform1f(uLineWidth, lineWidth);
+                gl.uniform1f(uGap, gap);
                 gl.uniform2f(uResolution, canvas.width, canvas.height);
                 gl.uniform1f(uAspect, aspect);
                 draw();
@@ -396,6 +416,12 @@
             document.getElementById('line-slider').addEventListener('input', (e) => {
                 lineWidth = parseFloat(e.target.value);
                 document.getElementById('line-value').textContent = lineWidth.toFixed(2);
+                updateUniforms();
+            });
+            
+            document.getElementById('gap-slider').addEventListener('input', (e) => {
+                gap = parseFloat(e.target.value);
+                document.getElementById('gap-value').textContent = gap.toFixed(2);
                 updateUniforms();
             });
         })();
