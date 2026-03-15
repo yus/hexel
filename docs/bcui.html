@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>HEXEL STUDIO · WORKING GRID & BRUSH</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+
+        body {
+            background: #0f1219;
+            font-family: 'Inter', -apple-system, monospace;
+            overflow: hidden;
+        }
+
+        canvas {
+            display: block;
+            width: 100vw;
+            height: 100vh;
+            position: fixed;
+            top: 0;
+            left: 0;
+            cursor: crosshair;
+        }
+
+        /* Toolbar - 2px rounding as requested */
+        #toolbar {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #1e2430;
+            border: 1px solid #3a4a60;
+            border-radius: 2px;
+            padding: 4px;
+            display: flex;
+            gap: 2px;
+            z-index: 1000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+        }
+
+        .tool-btn {
+            background: transparent;
+            border: none;
+            color: #a0b5cc;
+            font-size: 13px;
+            padding: 8px 16px;
+            border-radius: 2px;
+            cursor: pointer;
+            transition: all 0.1s ease;
+            font-weight: 500;
+        }
+
+        .tool-btn.active {
+            background: #2a4a68;
+            color: white;
+            box-shadow: inset 0 0 0 1px #4f9eff;
+        }
+
+        .tool-btn:hover {
+            background: #2a3645;
+            color: white;
+        }
+
+        /* Preferences pane - 2px rounding */
+        #prefs-pane {
+            position: fixed;
+            top: 90px;
+            right: 20px;
+            width: 250px;
+            background: #1e2430;
+            border: 1px solid #3a4a60;
+            border-radius: 2px;
+            padding: 16px;
+            color: #e0eef5;
+            z-index: 900;
+            font-size: 12px;
+            box-shadow: 0 8px 20px rgba(0,0,0,0.6);
+        }
+
+        .setting-group {
+            margin-bottom: 16px;
+            border-bottom: 1px solid #2a3a48;
+            padding-bottom: 12px;
+        }
+
+        .setting-group h4 {
+            color: #7f9fbf;
+            margin-bottom: 8px;
+            font-size: 11px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .slider-container {
+            margin: 8px 0;
+        }
+
+        .slider-label {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+            color: #aac3d4;
+        }
+
+        input[type=range] {
+            width: 100%;
+            height: 4px;
+            background: #2a3f50;
+            border-radius: 2px;
+            -webkit-appearance: none;
+        }
+
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #7fb0ff;
+            border-radius: 2px;
+            cursor: pointer;
+            border: 1px solid #c0e0ff;
+        }
+
+        .radio-group {
+            display: flex;
+            gap: 4px;
+            margin: 8px 0;
+        }
+
+        .radio-option {
+            background: #1f2a33;
+            padding: 6px 10px;
+            border-radius: 2px;
+            cursor: pointer;
+            border: 1px solid #3a4f60;
+            font-size: 11px;
+            flex: 1;
+            text-align: center;
+        }
+
+        .radio-option.selected {
+            background: #2e4b62;
+            border-color: #6cabff;
+            color: white;
+        }
+
+        .color-palette {
+            display: flex;
+            gap: 6px;
+            margin-top: 8px;
+        }
+        
+        .color-preset {
+            width: 28px;
+            height: 28px;
+            border-radius: 2px;
+            cursor: pointer;
+            border: 2px solid transparent;
+        }
+        
+        .color-preset.selected {
+            border-color: white;
+            box-shadow: 0 0 0 1px #2a6eff;
+        }
+
+        #status-bar {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            background: #1e2430;
+            border: 1px solid #3a4a60;
+            border-radius: 2px;
+            padding: 6px 12px;
+            color: #aac3d4;
+            font-size: 12px;
+            z-index: 800;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        }
+
+        #coordinates {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            background: #1e2430;
+            border: 1px solid #3a4a60;
+            border-radius: 2px;
+            padding: 6px 12px;
+            color: #aac3d4;
+            font-size: 12px;
+            font-family: monospace;
+            box-shadow: 0 4px 8px rgba(0,0,0,0.4);
+        }
+
+        .badge {
+            color: #f5b56b;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div id="toolbar">
+        <button class="tool-btn active" id="tool-brush">🖌️ BRUSH</button>
+        <button class="tool-btn" id="tool-blur">💧 BLUR</button>
+        <button class="tool-btn" id="tool-reset">↺ RESET</button>
+        <button class="tool-btn" id="toggle-prefs">⚙️ PREFS</button>
+    </div>
+
+    <div id="prefs-pane">
+        <div class="setting-group">
+            <h4>GRID STYLE</h4>
+            <div class="radio-group" id="grid-style">
+                <div class="radio-option selected" data-style="0">HAIRLINE</div>
+                <div class="radio-option" data-style="1">DOT</div>
+                <div class="radio-option" data-style="2">LINE</div>
+            </div>
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>WEIGHT</span>
+                    <span id="grid-weight-val">0.03</span>
+                </div>
+                <input type="range" id="grid-weight" min="0.01" max="0.08" step="0.002" value="0.03">
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <h4>BRUSH</h4>
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>SIZE</span>
+                    <span id="brush-size-val">1</span>
+                </div>
+                <input type="range" id="brush-size" min="1" max="4" step="1" value="1">
+            </div>
+            <div>COLOR</div>
+            <div class="color-palette">
+                <div class="color-preset selected" style="background:#4aa8ff" data-color="0.29,0.66,1.0"></div>
+                <div class="color-preset" style="background:#ff6b4a" data-color="1.0,0.42,0.29"></div>
+                <div class="color-preset" style="background:#8bc34a" data-color="0.55,0.76,0.29"></div>
+                <div class="color-preset" style="background:#ffb347" data-color="1.0,0.7,0.28"></div>
+            </div>
+        </div>
+
+        <div class="setting-group">
+            <h4>BLUR</h4>
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>RADIUS</span>
+                    <span id="blur-radius-val">1</span>
+                </div>
+                <input type="range" id="blur-radius" min="1" max="3" step="1" value="1">
+            </div>
+            <div class="slider-container">
+                <div class="slider-label">
+                    <span>STRENGTH</span>
+                    <span id="blur-strength-val">0.3</span>
+                </div>
+                <input type="range" id="blur-strength" min="0.1" max="0.9" step="0.05" value="0.3">
+            </div>
+        </div>
+    </div>
+
+    <div id="status-bar"><span class="badge">⬡ READY</span> Click on any triangle to paint</div>
+    <div id="coordinates">0.00, 0.00</div>
+
+    <canvas id="gridCanvas"></canvas>
+
+    <script>
+        // WebGL setup
+        const canvas = document.getElementById('gridCanvas');
+        const gl = canvas.getContext('webgl');
+        
+        if (!gl) {
+            alert('WebGL not supported');
+        }
+
+        // Resize handler
+        function resize() {
+            const width = window.innerWidth;
+            const height = window.innerHeight;
+            canvas.width = width * devicePixelRatio;
+            canvas.height = height * devicePixelRatio;
+            canvas.style.width = width + 'px';
+            canvas.style.height = height + 'px';
+            gl.viewport(0, 0, canvas.width, canvas.height);
+            
+            // Update projection for aspect ratio
+            const aspect = width / height;
+            gl.uniform2f(uScale, 0.8, 0.8 * aspect);
+        }
+        resize();
+        window.addEventListener('resize', resize);
+
+        // Vertex shader - with proper aspect ratio
+        const vsSource = `
+            attribute vec2 aPos;
+            attribute vec3 aBary;
+            attribute float aTriId;
+            
+            uniform vec2 uTranslate;
+            uniform vec2 uScale;
+            
+            varying vec3 vBary;
+            varying float vTriId;
+            
+            void main() {
+                vec2 pos = (aPos + uTranslate) * uScale;
+                gl_Position = vec4(pos.x, pos.y, 0.0, 1.0);
+                vBary = aBary;
+                vTriId = aTriId;
+            }
+        `;
+
+        // Fragment shader - with proper grid rendering
+        const fsSource = `
+            precision highp float;
+            
+            varying vec3 vBary;
+            varying float vTriId;
+            
+            uniform vec3 uColors[500];
+            uniform float uLineWidth;
+            uniform int uGridStyle;
+            uniform vec3 uGridColor;
+            
+            void main() {
+                int id = int(vTriId);
+                vec3 triColor = uColors[id];
+                
+                // Calculate distance to edges (barycentric coordinates)
+                float d0 = vBary.x;
+                float d1 = vBary.y;
+                float d2 = vBary.z;
+                
+                // Distance to nearest edge
+                float minDist = min(min(d0, d1), d2);
+                
+                float gridIntensity = 0.0;
+                
+                if (uGridStyle == 0) { // Hairline
+                    gridIntensity = 1.0 - smoothstep(0.0, uLineWidth, minDist);
+                }
+                else if (uGridStyle == 1) { // Dot
+                    float distToVert = min(1.0 - d0, min(1.0 - d1, 1.0 - d2));
+                    gridIntensity = 1.0 - smoothstep(0.0, uLineWidth * 2.0, distToVert);
+                }
+                else { // Line
+                    gridIntensity = 1.0 - smoothstep(0.0, uLineWidth * 3.0, minDist);
+                }
+                
+                // Mix triangle color with grid color
+                vec3 finalColor = mix(triColor, uGridColor, gridIntensity);
+                
+                // Make sure grid is visible
+                if (gridIntensity > 0.1) {
+                    finalColor = uGridColor;
+                }
+                
+                gl_FragColor = vec4(finalColor, 1.0);
+            }
+        `;
+
+        // Compile shaders
+        function createShader(source, type) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error(gl.getShaderInfoLog(shader));
+            }
+            return shader;
+        }
+
+        const vs = createShader(vsSource, gl.VERTEX_SHADER);
+        const fs = createShader(fsSource, gl.FRAGMENT_SHADER);
+        
+        const program = gl.createProgram();
+        gl.attachShader(program, vs);
+        gl.attachShader(program, fs);
+        gl.linkProgram(program);
+        gl.useProgram(program);
+
+        // Get uniform locations
+        const uTranslate = gl.getUniformLocation(program, 'uTranslate');
+        const uScale = gl.getUniformLocation(program, 'uScale');
+        const uColors = gl.getUniformLocation(program, 'uColors');
+        const uLineWidth = gl.getUniformLocation(program, 'uLineWidth');
+        const uGridStyle = gl.getUniformLocation(program, 'uGridStyle');
+        const uGridColor = gl.getUniformLocation(program, 'uGridColor');
+
+        // Generate equilateral grid (60° angles)
+        const side = 0.35;
+        const height = side * Math.sqrt(3) / 2;
+        const gridSize = 12;
+        
+        const positions = [];
+        const barycentrics = [];
+        const triIds = [];
+        const triangles = [];
+        
+        let triId = 0;
+
+        function addTriangle(x1, y1, x2, y2, x3, y3) {
+            // Store for hit detection
+            triangles.push({ 
+                id: triId, 
+                x1, y1, x2, y2, x3, y3,
+                minX: Math.min(x1, x2, x3),
+                maxX: Math.max(x1, x2, x3),
+                minY: Math.min(y1, y2, y3),
+                maxY: Math.max(y1, y2, y3)
+            });
+            
+            // Vertex 1 - barycentric (1,0,0)
+            positions.push(x1, y1);
+            barycentrics.push(1, 0, 0);
+            triIds.push(triId);
+            
+            // Vertex 2 - barycentric (0,1,0)
+            positions.push(x2, y2);
+            barycentrics.push(0, 1, 0);
+            triIds.push(triId);
+            
+            // Vertex 3 - barycentric (0,0,1)
+            positions.push(x3, y3);
+            barycentrics.push(0, 0, 1);
+            triIds.push(triId);
+            
+            triId++;
+        }
+
+        // Generate the grid
+        for (let row = -gridSize; row < gridSize; row++) {
+            for (let col = -gridSize; col < gridSize; col++) {
+                const x = col * side;
+                const y = row * height;
+                const offset = (Math.abs(row) % 2) * (side / 2);
+                
+                // Upward pointing triangle
+                addTriangle(
+                    x + offset, y,
+                    x + offset + side, y,
+                    x + offset + side/2, y + height
+                );
+                
+                // Downward pointing triangle
+                addTriangle(
+                    x + offset + side, y,
+                    x + offset, y,
+                    x + offset + side/2, y - height
+                );
+            }
+        }
+
+        console.log(`Generated ${triId} triangles`);
+
+        // Create interleaved buffer
+        const vertexData = [];
+        for (let i = 0; i < positions.length; i += 2) {
+            const vi = i / 2;
+            vertexData.push(
+                positions[i], positions[i+1],
+                barycentrics[vi*3], barycentrics[vi*3+1], barycentrics[vi*3+2],
+                triIds[vi]
+            );
+        }
+
+        const buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexData), gl.STATIC_DRAW);
+
+        const stride = 6 * 4; // 6 floats per vertex
+        
+        const aPos = gl.getAttribLocation(program, 'aPos');
+        gl.enableVertexAttribArray(aPos);
+        gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, stride, 0);
+        
+        const aBary = gl.getAttribLocation(program, 'aBary');
+        gl.enableVertexAttribArray(aBary);
+        gl.vertexAttribPointer(aBary, 3, gl.FLOAT, false, stride, 2*4);
+        
+        const aTriId = gl.getAttribLocation(program, 'aTriId');
+        gl.enableVertexAttribArray(aTriId);
+        gl.vertexAttribPointer(aTriId, 1, gl.FLOAT, false, stride, 5*4);
+
+        // Triangle colors - start with dark gray
+        const triangleColors = new Array(triId);
+        for (let i = 0; i < triId; i++) {
+            triangleColors[i] = [0.15, 0.18, 0.22]; // Dark gray base
+        }
+
+        // Update colors uniform
+        function updateColors() {
+            const colorArray = new Float32Array(triId * 3);
+            for (let i = 0; i < triId; i++) {
+                colorArray[i*3] = triangleColors[i][0];
+                colorArray[i*3+1] = triangleColors[i][1];
+                colorArray[i*3+2] = triangleColors[i][2];
+            }
+            gl.uniform3fv(uColors, colorArray);
+        }
+        updateColors();
+
+        // Set initial uniforms
+        const aspect = window.innerWidth / window.innerHeight;
+        gl.uniform2f(uTranslate, 0, 0);
+        gl.uniform2f(uScale, 0.8, 0.8 * aspect);
+        gl.uniform1f(uLineWidth, 0.03);
+        gl.uniform1i(uGridStyle, 0);
+        gl.uniform3f(uGridColor, 0.9, 0.95, 1.0); // Bright grid
+
+        // Mouse handling
+        let currentTool = 'brush';
+        let brushSize = 1;
+        let brushColor = [0.29, 0.66, 1.0];
+        let blurRadius = 1;
+        let blurStrength = 0.3;
+
+        // Screen to world conversion
+        function screenToWorld(x, y) {
+            const rect = canvas.getBoundingClientRect();
+            const ndcX = (x / rect.width) * 2 - 1;
+            const ndcY = 1 - (y / rect.height) * 2;
+            
+            const aspect = rect.width / rect.height;
+            return {
+                x: ndcX / 0.8,
+                y: ndcY / (0.8 * aspect)
+            };
+        }
+
+        // Point in triangle test
+        function pointInTriangle(px, py, x1, y1, x2, y2, x3, y3) {
+            const v0x = x3 - x1;
+            const v0y = y3 - y1;
+            const v1x = x2 - x1;
+            const v1y = y2 - y1;
+            const v2x = px - x1;
+            const v2y = py - y1;
+            
+            const dot00 = v0x * v0x + v0y * v0y;
+            const dot01 = v0x * v1x + v0y * v1y;
+            const dot02 = v0x * v2x + v0y * v2y;
+            const dot11 = v1x * v1x + v1y * v1y;
+            const dot12 = v1x * v2x + v1y * v2y;
+            
+            const invDenom = 1 / (dot00 * dot11 - dot01 * dot01);
+            const u = (dot11 * dot02 - dot01 * dot12) * invDenom;
+            const v = (dot00 * dot12 - dot01 * dot02) * invDenom;
+            
+            return (u >= 0) && (v >= 0) && (u + v < 1);
+        }
+
+        // Find triangle at world coordinates
+        function findTriangle(wx, wy) {
+            for (const tri of triangles) {
+                // Quick bounds check
+                if (wx < tri.minX || wx > tri.maxX || wy < tri.minY || wy > tri.maxY) continue;
+                
+                if (pointInTriangle(wx, wy, tri.x1, tri.y1, tri.x2, tri.y2, tri.x3, tri.y3)) {
+                    return tri.id;
+                }
+            }
+            return -1;
+        }
+
+        // Get neighboring triangles
+        function getNeighbors(centerId, radius) {
+            if (centerId < 0) return [];
+            
+            const center = triangles[centerId];
+            const cx = (center.x1 + center.x2 + center.x3) / 3;
+            const cy = (center.y1 + center.y2 + center.y3) / 3;
+            
+            const neighbors = [centerId];
+            
+            for (let i = 0; i < triangles.length; i++) {
+                if (i === centerId) continue;
+                
+                const tri = triangles[i];
+                const tx = (tri.x1 + tri.x2 + tri.x3) / 3;
+                const ty = (tri.y1 + tri.y2 + tri.y3) / 3;
+                
+                const dist = Math.sqrt((tx - cx)**2 + (ty - cy)**2) / side;
+                if (dist <= radius) {
+                    neighbors.push(i);
+                }
+            }
+            
+            return neighbors;
+        }
+
+        // Paint action
+        function paint(id) {
+            const neighbors = getNeighbors(id, brushSize);
+            for (const nid of neighbors) {
+                triangleColors[nid] = [...brushColor];
+            }
+            updateColors();
+            document.getElementById('status-bar').innerHTML = 
+                `<span class="badge">🖌️ PAINTED</span> ${neighbors.length} triangles`;
+        }
+
+        // Blur action
+        function blur(id) {
+            const neighbors = getNeighbors(id, blurRadius);
+            if (neighbors.length === 0) return;
+            
+            // Calculate average
+            let r = 0, g = 0, b = 0;
+            for (const nid of neighbors) {
+                r += triangleColors[nid][0];
+                g += triangleColors[nid][1];
+                b += triangleColors[nid][2];
+            }
+            
+            r /= neighbors.length;
+            g /= neighbors.length;
+            b /= neighbors.length;
+            
+            // Apply blur with strength
+            for (const nid of neighbors) {
+                triangleColors[nid] = [
+                    triangleColors[nid][0] * (1 - blurStrength) + r * blurStrength,
+                    triangleColors[nid][1] * (1 - blurStrength) + g * blurStrength,
+                    triangleColors[nid][2] * (1 - blurStrength) + b * blurStrength
+                ];
+            }
+            updateColors();
+            document.getElementById('status-bar').innerHTML = 
+                `<span class="badge">💧 BLURRED</span> ${neighbors.length} triangles`;
+        }
+
+        // Mouse events
+        canvas.addEventListener('mousemove', (e) => {
+            const world = screenToWorld(e.clientX, e.clientY);
+            document.getElementById('coordinates').innerHTML = 
+                `${world.x.toFixed(2)}, ${world.y.toFixed(2)}`;
+        });
+
+        canvas.addEventListener('click', (e) => {
+            const world = screenToWorld(e.clientX, e.clientY);
+            const id = findTriangle(world.x, world.y);
+            
+            if (id >= 0) {
+                if (currentTool === 'brush') {
+                    paint(id);
+                } else if (currentTool === 'blur') {
+                    blur(id);
+                }
+            } else {
+                document.getElementById('status-bar').innerHTML = 
+                    `<span class="badge">⬡ MISS</span> No triangle at this position`;
+            }
+        });
+
+        // Tool buttons
+        document.getElementById('tool-brush').addEventListener('click', () => {
+            document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('tool-brush').classList.add('active');
+            currentTool = 'brush';
+            document.getElementById('status-bar').innerHTML = 
+                '<span class="badge">🖌️ BRUSH MODE</span> Click to paint';
+        });
+
+        document.getElementById('tool-blur').addEventListener('click', () => {
+            document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+            document.getElementById('tool-blur').classList.add('active');
+            currentTool = 'blur';
+            document.getElementById('status-bar').innerHTML = 
+                '<span class="badge">💧 BLUR MODE</span> Click to smooth colors';
+        });
+
+        document.getElementById('tool-reset').addEventListener('click', () => {
+            for (let i = 0; i < triangleColors.length; i++) {
+                triangleColors[i] = [0.15, 0.18, 0.22];
+            }
+            updateColors();
+            document.getElementById('status-bar').innerHTML = 
+                '<span class="badge">↺ RESET</span> All triangles cleared';
+        });
+
+        // Preferences toggle
+        let prefsVisible = true;
+        document.getElementById('toggle-prefs').addEventListener('click', () => {
+            prefsVisible = !prefsVisible;
+            document.getElementById('prefs-pane').style.display = prefsVisible ? 'block' : 'none';
+        });
+
+        // Grid style
+        document.querySelectorAll('#grid-style .radio-option').forEach(opt => {
+            opt.addEventListener('click', () => {
+                document.querySelectorAll('#grid-style .radio-option').forEach(o => o.classList.remove('selected'));
+                opt.classList.add('selected');
+                gl.uniform1i(uGridStyle, parseInt(opt.dataset.style));
+            });
+        });
+
+        // Grid weight
+        document.getElementById('grid-weight').addEventListener('input', (e) => {
+            const val = parseFloat(e.target.value);
+            document.getElementById('grid-weight-val').innerHTML = val.toFixed(3);
+            gl.uniform1f(uLineWidth, val);
+        });
+
+        // Brush size
+        document.getElementById('brush-size').addEventListener('input', (e) => {
+            brushSize = parseInt(e.target.value);
+            document.getElementById('brush-size-val').innerHTML = brushSize;
+        });
+
+        // Color presets
+        document.querySelectorAll('.color-preset').forEach(preset => {
+            preset.addEventListener('click', () => {
+                document.querySelectorAll('.color-preset').forEach(p => p.classList.remove('selected'));
+                preset.classList.add('selected');
+                const rgb = preset.dataset.color.split(',').map(Number);
+                brushColor = rgb;
+            });
+        });
+
+        // Blur controls
+        document.getElementById('blur-radius').addEventListener('input', (e) => {
+            blurRadius = parseInt(e.target.value);
+            document.getElementById('blur-radius-val').innerHTML = blurRadius;
+        });
+
+        document.getElementById('blur-strength').addEventListener('input', (e) => {
+            blurStrength = parseFloat(e.target.value);
+            document.getElementById('blur-strength-val').innerHTML = blurStrength.toFixed(2);
+        });
+
+        // Animation loop
+        function animate() {
+            gl.drawArrays(gl.TRIANGLES, 0, positions.length / 2);
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        // Initial tool
+        document.getElementById('tool-brush').click();
+    </script>
+</body>
+</html>
