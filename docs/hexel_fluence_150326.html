@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>HEXELATION · GRID-INFLUENCED STROKES · ORGANIC</title>
+    <title>HEXELATION · FIXED COLOR</title>
     <style>
         * {
             margin: 0;
@@ -194,7 +194,7 @@
     
     <div id="panel">
         <div class="panel-title">
-            <span>⚡ HEXELATION · GRID-INFLUENCED STROKES</span>
+            <span>⚡ HEXELATION · FIXED COLORS</span>
             <span id="fps">60</span>
         </div>
         
@@ -216,12 +216,12 @@
                 <span class="stat-value" id="current-hexel">-</span>
             </div>
             <div class="stat-item">
-                <span class="stat-label">Snap</span>
-                <span class="stat-value" id="snap-strength">0.7</span>
+                <span class="stat-label">Color</span>
+                <span class="stat-value" id="current-color">#c4b5fd</span>
             </div>
             <div class="stat-item">
-                <span class="stat-label">Freq</span>
-                <span class="stat-value" id="frequency">1.2x</span>
+                <span class="stat-label">Tool</span>
+                <span class="stat-value" id="current-tool">paint</span>
             </div>
         </div>
         
@@ -309,17 +309,20 @@
             // Interaction
             let isDragging = false;
             let isPainting = false;
-            let currentTool = 'paint';
+            let currentTool = 'paint'; // 'pan', 'paint', 'erase'
             let lastX = 0, lastY = 0;
-            let lastPoint = null; // For interpolating between points
+            let lastPoint = null;
             
             // Paint state
-            let currentColor = '#c4b5fd';
+            let currentColor = '#c4b5fd'; // Default purple
             let brushSize = 8;
-            let snapStrength = 0.7; // 0 = no snap, 1 = full snap to grid
+            let snapStrength = 0.7;
             let paintPoints = [];
             
-            // Colors
+            // Background color (for eraser)
+            const BG_COLOR = '#0a0a0a';
+            
+            // Colors for grid
             const COLORS = {
                 diagonal: '#9f8be5',
                 dots: '#b4a5ee',
@@ -331,12 +334,10 @@
             // GRID INFLUENCE FUNCTIONS
             // ================================================
             
-            // Get nearest grid vertex (for snapping)
             function getNearestVertex(worldX, worldY) {
                 const col = Math.round(worldX / H_STEP);
                 const row = Math.round(worldY / V_STEP);
                 
-                // Adjust for staggered rows
                 let vertexX = col * H_STEP;
                 let vertexY = row * V_STEP;
                 
@@ -347,33 +348,26 @@
                 return { x: vertexX, y: vertexY, col, row };
             }
             
-            // Apply grid influence to a point
             function applyGridInfluence(point, strength) {
                 if (strength === 0) return point;
                 
                 const nearest = getNearestVertex(point.x, point.y);
                 
-                // Interpolate between original and snapped
                 return {
                     x: point.x * (1 - strength) + nearest.x * strength,
                     y: point.y * (1 - strength) + nearest.y * strength
                 };
             }
             
-            // Get frequency factor based on zoom and brush size
             function getFrequencyFactor() {
                 const cellSize = H_STEP * scale;
-                // Smaller cells = higher frequency (more detail)
                 const baseFreq = Math.max(0.5, Math.min(2.0, 30 / cellSize));
-                // Larger brushes = slightly lower frequency
                 const brushFactor = Math.max(0.5, Math.min(1.5, 16 / brushSize));
                 return baseFreq * brushFactor;
             }
             
-            // Generate organic squiggle offset
             function getSquiggleOffset(point, seed, frequency) {
                 const hash = (Math.sin(point.x * 0.1 + seed) * Math.cos(point.y * 0.1 + seed)) * 0.5;
-                // Higher frequency = more variation
                 const angle = hash * Math.PI * 2 * frequency;
                 const radius = (Math.sin(point.x * 0.2 + seed) * Math.cos(point.y * 0.2 + seed)) * 0.3;
                 
@@ -384,36 +378,38 @@
             }
             
             // ================================================
-            // PAINTING WITH GRID INFLUENCE
+            // PAINTING
             // ================================================
             function paintAt(screenX, screenY) {
                 const world = screenToWorld(screenX, screenY);
                 
-                // Get frequency for this zoom level
-                const frequency = getFrequencyFactor();
+                // Determine color based on tool
+                let colorToUse;
+                if (currentTool === 'erase') {
+                    colorToUse = BG_COLOR;
+                } else {
+                    colorToUse = currentColor;
+                }
                 
-                // Create multiple points for organic texture
+                const frequency = getFrequencyFactor();
                 const numPoints = Math.max(1, Math.floor(frequency * 3));
                 
                 for (let i = 0; i < numPoints; i++) {
-                    // Add squiggle offset for organic feel
                     const offset = getSquiggleOffset(world, i * 100, frequency);
                     
                     let point = {
                         x: world.x + offset.x,
                         y: world.y + offset.y,
-                        color: currentColor,
+                        color: colorToUse,
                         size: brushSize / scale,
                         timestamp: Date.now() + i
                     };
                     
-                    // Apply grid influence (snap to grid)
                     point = applyGridInfluence(point, snapStrength);
-                    
                     paintPoints.push(point);
                 }
                 
-                // Interpolate between last point and current for smooth strokes
+                // Interpolate between points for smooth strokes
                 if (lastPoint) {
                     const dist = Math.hypot(world.x - lastPoint.x, world.y - lastPoint.y);
                     const steps = Math.floor(dist / (brushSize / scale) * frequency * 2);
@@ -429,7 +425,7 @@
                             let point = {
                                 x: interpX + offset.x,
                                 y: interpY + offset.y,
-                                color: currentColor,
+                                color: colorToUse,
                                 size: brushSize / scale,
                                 timestamp: Date.now() + s * 1000 + i
                             };
@@ -467,7 +463,6 @@
                 };
             }
             
-            // Get hexel (triangle) at world position
             function getHexelAt(worldX, worldY) {
                 const col = Math.floor(worldX / H_STEP);
                 const row = Math.floor(worldY / V_STEP);
@@ -541,7 +536,8 @@
                     `${cameraWorldX.toFixed(1)},${cameraWorldY.toFixed(1)}`;
                 document.getElementById('zoom-level').innerHTML = scale.toFixed(2) + 'x';
                 document.getElementById('cell-size').innerHTML = Math.round(cellSize) + 'px';
-                document.getElementById('frequency').innerHTML = frequency.toFixed(1) + 'x';
+                document.getElementById('current-color').innerHTML = currentColor;
+                document.getElementById('current-tool').innerHTML = currentTool;
                 
                 // Update LOD indicators
                 const indicators = {
@@ -560,7 +556,6 @@
                 }
                 
                 // ========== PAINT LAYER ==========
-                // Sort by timestamp for proper blending
                 const sortedPoints = [...paintPoints].sort((a, b) => a.timestamp - b.timestamp);
                 
                 for (const point of sortedPoints) {
@@ -571,11 +566,10 @@
                         continue;
                     }
                     
-                    // No outline - just pure color with opacity
                     ctx.beginPath();
                     ctx.arc(screen.x, screen.y, point.size * scale, 0, Math.PI * 2);
                     ctx.fillStyle = point.color;
-                    ctx.globalAlpha = 0.7; // Slightly transparent for blending
+                    ctx.globalAlpha = 0.7;
                     ctx.fill();
                 }
                 
@@ -718,7 +712,7 @@
                 
                 lastX = clientX;
                 lastY = clientY;
-                lastPoint = null; // Reset interpolation
+                lastPoint = null;
                 
                 if (currentTool === 'pan') {
                     isDragging = true;
@@ -741,7 +735,7 @@
                     cameraWorldX -= (clientX - lastX) / scale;
                     cameraWorldY -= (clientY - lastY) / scale;
                     draw();
-                } else if (isPainting && (currentTool === 'paint' || currentTool === 'erase')) {
+                } else if (isPainting) {
                     paintAt(clientX, clientY);
                 }
                 
@@ -790,37 +784,55 @@
             canvas.addEventListener('touchcancel', handleEnd);
             
             // ================================================
-            // TOOL CONTROLS
+            // TOOL CONTROLS - FIXED VERSION
             // ================================================
             document.getElementById('tool-pan').addEventListener('click', () => {
                 currentTool = 'pan';
                 document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
                 document.getElementById('tool-pan').classList.add('active');
+                document.getElementById('current-tool').innerHTML = 'pan';
             });
             
             document.getElementById('tool-paint').addEventListener('click', () => {
                 currentTool = 'paint';
+                // Restore the last selected color from active swatch
+                const activeSwatch = document.querySelector('.color-swatch.active');
+                if (activeSwatch) {
+                    currentColor = activeSwatch.dataset.color;
+                }
                 document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
                 document.getElementById('tool-paint').classList.add('active');
+                document.getElementById('current-tool').innerHTML = 'paint';
             });
             
             document.getElementById('tool-erase').addEventListener('click', () => {
                 currentTool = 'erase';
-                currentColor = '#0a0a0a';
+                // Eraser uses background color, not a swatch color
                 document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
                 document.getElementById('tool-erase').classList.add('active');
+                document.getElementById('current-tool').innerHTML = 'erase';
+                
+                // Don't try to activate a color swatch for erase
+                // Just leave swatches as they are
             });
             
-            // Color picker
+            // Color picker - FIXED
             document.querySelectorAll('.color-swatch').forEach(swatch => {
                 swatch.addEventListener('click', () => {
+                    // Update active swatch
                     document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
                     swatch.classList.add('active');
-                    currentColor = swatch.dataset.color;
                     
+                    // Set current color
+                    currentColor = swatch.dataset.color;
+                    document.getElementById('current-color').innerHTML = currentColor;
+                    
+                    // If we were in erase mode, switch to paint mode
                     if (currentTool === 'erase') {
                         currentTool = 'paint';
-                        document.getElementById('tool-paint').click();
+                        document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
+                        document.getElementById('tool-paint').classList.add('active');
+                        document.getElementById('current-tool').innerHTML = 'paint';
                     }
                 });
             });
@@ -839,7 +851,6 @@
             snapInput.addEventListener('input', () => {
                 snapStrength = parseFloat(snapInput.value);
                 snapValue.innerHTML = snapStrength.toFixed(2);
-                document.getElementById('snap-strength').innerHTML = snapStrength.toFixed(2);
             });
             
             // Clear
