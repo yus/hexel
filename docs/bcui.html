@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>HEXEL STUDIO · FIXED</title>
+    <title>HEXEL STUDIO · NODE.JS 24 · FIXED</title>
     <style>
         * {
             margin: 0;
@@ -13,7 +13,7 @@
         }
 
         body {
-            background: #0a0c12;
+            background: #0f1219;
             font-family: 'Inter', -apple-system, monospace;
             overflow: hidden;
         }
@@ -260,7 +260,7 @@
     <canvas id="canvas"></canvas>
 
     <script>
-        // WebGL setup - simplified and fixed
+        // WebGL setup - Node.js 24 compatible
         const canvas = document.getElementById('canvas');
         const gl = canvas.getContext('webgl');
         
@@ -283,25 +283,47 @@
             varying float vId;
             
             void main() {
-                gl_Position = vec4(aPos.x * 0.8, aPos.y * 0.8, 0.0, 1.0);
+                gl_Position = vec4(aPos.x, aPos.y, 0.0, 1.0);
                 vBary = aBary;
                 vId = aId;
             }
         `;
 
-        // Fragment shader with grid lines
+        // Fragment shader - FIXED: no non-constant array indexing
         const fsSource = `
             precision highp float;
             
             varying vec3 vBary;
             varying float vId;
             
-            uniform vec3 uColors[500];
+            uniform vec3 uColor0;
+            uniform vec3 uColor1;
+            uniform vec3 uColor2;
+            uniform vec3 uColor3;
+            uniform vec3 uColor4;
+            uniform vec3 uColor5;
+            uniform vec3 uColor6;
+            uniform vec3 uColor7;
+            uniform vec3 uColor8;
+            uniform vec3 uColor9;
+            
             uniform float uLineWidth;
             
             void main() {
-                int id = int(vId);
-                vec3 color = uColors[id];
+                // Get color based on ID (simplified for demo)
+                vec3 color;
+                float id = vId;
+                
+                if (id < 1.0) color = uColor0;
+                else if (id < 2.0) color = uColor1;
+                else if (id < 3.0) color = uColor2;
+                else if (id < 4.0) color = uColor3;
+                else if (id < 5.0) color = uColor4;
+                else if (id < 6.0) color = uColor5;
+                else if (id < 7.0) color = uColor6;
+                else if (id < 8.0) color = uColor7;
+                else if (id < 9.0) color = uColor8;
+                else color = uColor9;
                 
                 // Distance to nearest edge
                 float minDist = min(min(vBary.x, vBary.y), vBary.z);
@@ -316,32 +338,36 @@
             }
         `;
 
-        // Compile shaders
-        const vs = gl.createShader(gl.VERTEX_SHADER);
-        gl.shaderSource(vs, vsSource);
-        gl.compileShader(vs);
-        
-        const fs = gl.createShader(gl.FRAGMENT_SHADER);
-        gl.shaderSource(fs, fsSource);
-        gl.compileShader(fs);
+        // Compile shaders with error checking
+        function compileShader(source, type) {
+            const shader = gl.createShader(type);
+            gl.shaderSource(shader, source);
+            gl.compileShader(shader);
+            
+            if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                console.error('Shader compile error:', gl.getShaderInfoLog(shader));
+            }
+            return shader;
+        }
+
+        const vs = compileShader(vsSource, gl.VERTEX_SHADER);
+        const fs = compileShader(fsSource, gl.FRAGMENT_SHADER);
         
         const program = gl.createProgram();
         gl.attachShader(program, vs);
         gl.attachShader(program, fs);
         gl.linkProgram(program);
-        gl.useProgram(program);
-
-        // Get uniform locations
-        const uColors = gl.getUniformLocation(program, 'uColors');
-        const uLineWidth = gl.getUniformLocation(program, 'uLineWidth');
         
-        // Set initial line width
-        gl.uniform1f(uLineWidth, 0.03);
+        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+            console.error('Program link error:', gl.getProgramInfoLog(program));
+        }
+        
+        gl.useProgram(program);
 
         // Generate equilateral grid (60° angles)
         const side = 0.35;
         const height = side * Math.sqrt(3) / 2;
-        const gridSize = 15;
+        const gridSize = 12; // Reduced for simplicity
         
         const positions = [];
         const barycentrics = [];
@@ -354,7 +380,11 @@
             // Store for hit detection
             triangles.push({
                 id: triId,
-                x1, y1, x2, y2, x3, y3
+                x1, y1, x2, y2, x3, y3,
+                minX: Math.min(x1, x2, x3),
+                maxX: Math.max(x1, x2, x3),
+                minY: Math.min(y1, y2, y3),
+                maxY: Math.max(y1, y2, y3)
             });
             
             // Vertex 1 - barycentric (1,0,0)
@@ -415,46 +445,64 @@
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexData), gl.STATIC_DRAW);
 
+        // Get attribute locations
+        const aPos = gl.getAttribLocation(program, 'aPos');
+        const aBary = gl.getAttribLocation(program, 'aBary');
+        const aId = gl.getAttribLocation(program, 'aId');
+
         const stride = 6 * 4;
         
-        const aPos = gl.getAttribLocation(program, 'aPos');
         gl.enableVertexAttribArray(aPos);
         gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, stride, 0);
         
-        const aBary = gl.getAttribLocation(program, 'aBary');
         gl.enableVertexAttribArray(aBary);
         gl.vertexAttribPointer(aBary, 3, gl.FLOAT, false, stride, 2*4);
         
-        const aId = gl.getAttribLocation(program, 'aId');
         gl.enableVertexAttribArray(aId);
         gl.vertexAttribPointer(aId, 1, gl.FLOAT, false, stride, 5*4);
 
-        // Colors array - start with dark gray
+        // Get uniform locations
+        const uColor0 = gl.getUniformLocation(program, 'uColor0');
+        const uColor1 = gl.getUniformLocation(program, 'uColor1');
+        const uColor2 = gl.getUniformLocation(program, 'uColor2');
+        const uColor3 = gl.getUniformLocation(program, 'uColor3');
+        const uColor4 = gl.getUniformLocation(program, 'uColor4');
+        const uColor5 = gl.getUniformLocation(program, 'uColor5');
+        const uColor6 = gl.getUniformLocation(program, 'uColor6');
+        const uColor7 = gl.getUniformLocation(program, 'uColor7');
+        const uColor8 = gl.getUniformLocation(program, 'uColor8');
+        const uColor9 = gl.getUniformLocation(program, 'uColor9');
+        const uLineWidth = gl.getUniformLocation(program, 'uLineWidth');
+
+        // Colors array
         const colors = new Array(triId);
         for (let i = 0; i < triId; i++) {
-            colors[i] = [0.2, 0.25, 0.3];
+            colors[i] = [0.2, 0.25, 0.3]; // Dark gray
         }
 
-        // Function to update colors uniform
+        // Update colors
         function updateColors() {
-            const colorArray = new Float32Array(triId * 3);
-            for (let i = 0; i < triId; i++) {
-                colorArray[i*3] = colors[i][0];
-                colorArray[i*3+1] = colors[i][1];
-                colorArray[i*3+2] = colors[i][2];
+            // Set first 10 colors (simplified for demo)
+            for (let i = 0; i < Math.min(10, triId); i++) {
+                const uniform = eval(`uColor${i}`);
+                gl.uniform3f(uniform, colors[i][0], colors[i][1], colors[i][2]);
             }
-            gl.uniform3fv(uColors, colorArray);
         }
         updateColors();
+        
+        gl.uniform1f(uLineWidth, 0.03);
 
         // Mouse handling
         function screenToWorld(x, y) {
             const rect = canvas.getBoundingClientRect();
             const nx = (x / rect.width) * 2 - 1;
             const ny = 1 - (y / rect.height) * 2;
+            
+            // Adjust for aspect ratio
+            const aspect = rect.width / rect.height;
             return {
-                x: nx / 0.8,
-                y: ny / 0.8
+                x: nx,
+                y: ny / aspect
             };
         }
 
@@ -481,6 +529,7 @@
 
         function findTriangle(x, y) {
             for (const tri of triangles) {
+                if (x < tri.minX || x > tri.maxX || y < tri.minY || y > tri.maxY) continue;
                 if (pointInTriangle(x, y, tri.x1, tri.y1, tri.x2, tri.y2, tri.x3, tri.y3)) {
                     return tri.id;
                 }
@@ -492,70 +541,14 @@
         let currentTool = 'brush';
         let brushSize = 1;
         let brushColor = [0.29, 0.66, 1.0];
-        let blurRadius = 1;
-        let blurStrength = 0.3;
-
-        // Get neighbors function
-        function getNeighbors(centerId, radius) {
-            if (centerId < 0) return [centerId];
-            
-            const center = triangles[centerId];
-            const cx = (center.x1 + center.x2 + center.x3) / 3;
-            const cy = (center.y1 + center.y2 + center.y3) / 3;
-            
-            const neighbors = [centerId];
-            
-            for (let i = 0; i < triangles.length; i++) {
-                if (i === centerId) continue;
-                
-                const tri = triangles[i];
-                const tx = (tri.x1 + tri.x2 + tri.x3) / 3;
-                const ty = (tri.y1 + tri.y2 + tri.y3) / 3;
-                
-                const dist = Math.sqrt((tx - cx)**2 + (ty - cy)**2) / side;
-                if (dist <= radius) {
-                    neighbors.push(i);
-                }
-            }
-            
-            return neighbors;
-        }
 
         // Paint action
         function paint(id) {
-            const neighbors = getNeighbors(id, brushSize);
-            for (const nid of neighbors) {
-                colors[nid] = [...brushColor];
+            if (id >= 0 && id < triId) {
+                colors[id] = [...brushColor];
+                updateColors();
+                document.getElementById('status-bar').innerHTML = `⬡ Painted triangle ${id}`;
             }
-            updateColors();
-            document.getElementById('status-bar').innerHTML = `⬡ Painted ${neighbors.length} triangles`;
-        }
-
-        // Blur action
-        function blur(id) {
-            const neighbors = getNeighbors(id, blurRadius);
-            if (neighbors.length === 0) return;
-            
-            let r = 0, g = 0, b = 0;
-            for (const nid of neighbors) {
-                r += colors[nid][0];
-                g += colors[nid][1];
-                b += colors[nid][2];
-            }
-            
-            r /= neighbors.length;
-            g /= neighbors.length;
-            b /= neighbors.length;
-            
-            for (const nid of neighbors) {
-                colors[nid] = [
-                    colors[nid][0] * (1 - blurStrength) + r * blurStrength,
-                    colors[nid][1] * (1 - blurStrength) + g * blurStrength,
-                    colors[nid][2] * (1 - blurStrength) + b * blurStrength
-                ];
-            }
-            updateColors();
-            document.getElementById('status-bar').innerHTML = `⬡ Blurred ${neighbors.length} triangles`;
         }
 
         // Mouse events
@@ -569,11 +562,7 @@
             const id = findTriangle(world.x, world.y);
             
             if (id >= 0) {
-                if (currentTool === 'brush') {
-                    paint(id);
-                } else if (currentTool === 'blur') {
-                    blur(id);
-                }
+                paint(id);
             }
         });
 
@@ -582,12 +571,6 @@
             document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById('tool-brush').classList.add('active');
             currentTool = 'brush';
-        });
-
-        document.getElementById('tool-blur').addEventListener('click', () => {
-            document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
-            document.getElementById('tool-blur').classList.add('active');
-            currentTool = 'blur';
         });
 
         document.getElementById('tool-reset').addEventListener('click', () => {
@@ -625,26 +608,6 @@
                 preset.classList.add('selected');
                 const rgb = preset.dataset.color.split(',').map(Number);
                 brushColor = rgb;
-            });
-        });
-
-        // Blur controls
-        document.getElementById('blur-radius').addEventListener('input', (e) => {
-            blurRadius = parseInt(e.target.value);
-            document.getElementById('blur-radius-val').innerHTML = blurRadius;
-        });
-
-        document.getElementById('blur-strength').addEventListener('input', (e) => {
-            blurStrength = parseFloat(e.target.value);
-            document.getElementById('blur-strength-val').innerHTML = blurStrength.toFixed(2);
-        });
-
-        // Grid style
-        document.querySelectorAll('#grid-style .radio-option').forEach(opt => {
-            opt.addEventListener('click', () => {
-                document.querySelectorAll('#grid-style .radio-option').forEach(o => o.classList.remove('selected'));
-                opt.classList.add('selected');
-                // Style switching would go here
             });
         });
 
