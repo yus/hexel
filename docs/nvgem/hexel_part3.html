@@ -1,0 +1,731 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>FLUID PAINT · AQUATINT · SLOW TURBULENCE · PAPER</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+        body {
+            background: #0a0a0a;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        /* Canvas layers */
+        #gridCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            background: #0a0a0a;
+            z-index: 1;
+            pointer-events: none;
+        }
+        
+        #paintCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 2;
+            background: transparent;
+            cursor: crosshair;
+            touch-action: none;
+        }
+        
+        #panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(25,20,30,0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid #b8a5dd40;
+            padding: 16px 20px;
+            color: #d8c5ff;
+            font-family: monospace;
+            font-size: 12px;
+            min-width: 340px;
+            z-index: 100;
+            pointer-events: none;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        
+        .panel-title {
+            color: #d8b5ff;
+            font-size: 14px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #b8a5dd30;
+            padding-bottom: 6px;
+            letter-spacing: 0.5px;
+        }
+        
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 12px;
+        }
+        
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .stat-label {
+            color: #aaa;
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .stat-value {
+            color: #ffd966;
+            font-size: 13px;
+            font-family: monospace;
+        }
+        
+        .tool-panel {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(25,20,30,0.85);
+            backdrop-filter: blur(8px);
+            border: 1px solid #b8a5dd40;
+            padding: 12px 24px;
+            display: flex;
+            gap: 24px;
+            align-items: center;
+            z-index: 100;
+            pointer-events: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        
+        .tool-btn {
+            background: transparent;
+            border: 1px solid #b8a5dd40;
+            color: #d8b5ff;
+            padding: 6px 14px;
+            font-size: 13px;
+            cursor: pointer;
+            min-width: 60px;
+            transition: all 0.1s;
+        }
+        
+        .tool-btn:hover {
+            background: #b8a5dd20;
+            border-color: #d8b5ff;
+        }
+        
+        .tool-btn.active {
+            background: #b8a5dd;
+            color: #0a0a0a;
+            border-color: #d8b5ff;
+        }
+        
+        .slider-control {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #d8b5ff;
+        }
+        
+        .slider-control input {
+            width: 90px;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid #b8a5dd40;
+            color: white;
+            padding: 4px 6px;
+        }
+        
+        .slider-control span {
+            min-width: 40px;
+            text-align: right;
+            font-family: monospace;
+        }
+        
+        .coord-display {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid #b8a5dd40;
+            color: #d8b5ff;
+            padding: 8px 16px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 100;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+        }
+        
+        * {
+            border-radius: 0 !important;
+        }
+    </style>
+</head>
+<body>
+    <canvas id="gridCanvas"></canvas>
+    <canvas id="paintCanvas"></canvas>
+    
+    <div id="panel">
+        <div class="panel-title">⚡ AQUATINT · SLOW TURBULENCE · PAPER GRAIN</div>
+        <div class="stat-grid">
+            <div class="stat-item">
+                <span class="stat-label">Paint Cells</span>
+                <span class="stat-value" id="point-count">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Absorbency</span>
+                <span class="stat-value" id="diffusion-value">0.008</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Flow</span>
+                <span class="stat-value" id="flow-value">0.15</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Turbulence</span>
+                <span class="stat-value" id="turbulence-value">0.3</span>
+            </div>
+        </div>
+        <div style="font-size:10px; color:#aaa; margin-top:4px; display: flex; gap: 12px;">
+            <span>⚫ Left-click paint</span>
+            <span>✥ Right-drag pan</span>
+            <span>🔍 Scroll zoom</span>
+            <span>🌀 Slow organic flow</span>
+        </div>
+    </div>
+    
+    <div class="tool-panel">
+        <button class="tool-btn active" id="btn-paint">● Paint</button>
+        <button class="tool-btn" id="btn-erase">⌫ Erase</button>
+        <button class="tool-btn" id="btn-clear">Clear</button>
+        
+        <div class="slider-control">
+            <span style="font-size:16px;">💧</span>
+            <input type="range" id="diffusion-slider" min="0" max="0.02" step="0.001" value="0.008">
+            <span id="diffusion-display">0.008</span>
+        </div>
+        
+        <div class="slider-control">
+            <span style="font-size:16px;">🌊</span>
+            <input type="range" id="flow-slider" min="0" max="0.5" step="0.01" value="0.15">
+            <span id="flow-display">0.15</span>
+        </div>
+        
+        <div class="slider-control">
+            <span style="font-size:16px;">🌀</span>
+            <input type="range" id="turbulence-slider" min="0" max="1.0" step="0.05" value="0.3">
+            <span id="turbulence-display">0.3</span>
+        </div>
+    </div>
+    
+    <div class="coord-display" id="coords">0.00 , 0.00</div>
+
+    <script>
+        (function() {
+            // Canvas setup
+            const gridCanvas = document.getElementById('gridCanvas');
+            const paintCanvas = document.getElementById('paintCanvas');
+            
+            const gridCtx = gridCanvas.getContext('2d');
+            const paintCtx = paintCanvas.getContext('2d');
+            
+            // Grid parameters - finer grid for smoother visuals
+            const BASE_SIZE = 24;
+            const H_STEP = BASE_SIZE * 2;
+            const V_STEP = BASE_SIZE * Math.sqrt(3);
+            
+            // Camera
+            let cameraX = 0, cameraY = 0, scale = 1.0;
+            
+            // Interaction
+            let isPainting = false;
+            let isPanning = false;
+            let currentTool = 'paint';
+            let lastX, lastY;
+            
+            // Higher resolution simulation grid for smoother paint
+            const GRID_SIZE = 256; // 256x256 for finer detail
+            const CELL_SIZE = 5; // pixels per cell at zoom=1
+            
+            // Paint field - stores density at each grid cell
+            let paintField = new Float32Array(GRID_SIZE * GRID_SIZE * 3);
+            let tempField = new Float32Array(GRID_SIZE * GRID_SIZE * 3);
+            let velocityField = new Float32Array(GRID_SIZE * GRID_SIZE * 2); // Precomputed velocity for performance
+            
+            // Parameters - slower, more organic
+            let diffusionRate = 0.008;
+            let flowStrength = 0.15;
+            let turbulenceStrength = 0.3;
+            let time = 0;
+            
+            // Paper-like color palette (soft, earthy)
+            const COLORS = [
+                [0.9, 0.5, 0.3], // terracotta
+                [0.4, 0.7, 0.6], // sage
+                [0.6, 0.5, 0.8], // lavender
+                [0.9, 0.8, 0.4], // warm yellow
+                [0.7, 0.4, 0.5]  // dusty rose
+            ];
+            let currentColor = COLORS[0];
+            
+            // ================================================
+            // GRID VELOCITY FIELD (SLOW ORGANIC FLOW)
+            // ================================================
+            function computeVelocityField() {
+                // Precompute velocity for the entire grid (for performance)
+                for (let y = 0; y < GRID_SIZE; y++) {
+                    for (let x = 0; x < GRID_SIZE; x++) {
+                        const worldX = cameraX + (x - GRID_SIZE/2) * CELL_SIZE;
+                        const worldY = cameraY + (y - GRID_SIZE/2) * CELL_SIZE;
+                        
+                        // Get grid cell for triangular lattice
+                        const col = Math.floor(worldX / H_STEP);
+                        const row = Math.floor(worldY / V_STEP);
+                        const inOddRow = (row % 2 !== 0);
+                        
+                        // Local position within cell (0-1)
+                        const localX = (worldX - col * H_STEP) / H_STEP;
+                        const localY = (worldY - row * V_STEP) / V_STEP;
+                        
+                        // VERY SLOW BASE FLOW (paper-like)
+                        const baseSpeed = flowStrength * 0.5;
+                        
+                        // Use multiple frequencies for organic turbulence
+                        const t = time * 0.1; // Slow time evolution
+                        
+                        // Primary flow along grid directions (very subtle)
+                        let vx = 0, vy = 0;
+                        
+                        // Gentle horizontal undulations
+                        vx += Math.sin(localY * Math.PI * 4 + t) * baseSpeed * 0.3;
+                        
+                        // Diagonal flows with phase shifts
+                        vx += Math.cos(localX * Math.PI * 3 + t * 0.7) * baseSpeed * 0.2;
+                        vy += Math.sin(localX * Math.PI * 3 + t * 0.7) * baseSpeed * 0.2;
+                        
+                        vx += Math.sin(localY * Math.PI * 5 + t * 1.3) * baseSpeed * 0.15;
+                        vy -= Math.cos(localY * Math.PI * 5 + t * 1.3) * baseSpeed * 0.15;
+                        
+                        // Add turbulence (like paper grain)
+                        const turbX = Math.sin(worldX * 0.02 + t * 2) * Math.cos(worldY * 0.02 + t) * turbulenceStrength * 0.2;
+                        const turbY = Math.cos(worldX * 0.02 + t * 1.5) * Math.sin(worldY * 0.02 + t * 2) * turbulenceStrength * 0.2;
+                        
+                        vx += turbX;
+                        vy += turbY;
+                        
+                        // Store in velocity field
+                        const idx = (y * GRID_SIZE + x) * 2;
+                        velocityField[idx] = vx;
+                        velocityField[idx + 1] = vy;
+                    }
+                }
+            }
+            
+            // ================================================
+            // DIFFUSION (Jacobi iteration) - SLOWER FOR PAPER
+            // ================================================
+            function diffuse(dt) {
+                const alpha = dt * diffusionRate * 0.5; // Slower diffusion for paper feel
+                const beta = 1 / (1 + 4 * alpha);
+                
+                // Jacobi iteration - fewer iterations for softer diffusion
+                for (let iter = 0; iter < 3; iter++) {
+                    for (let y = 1; y < GRID_SIZE - 1; y++) {
+                        for (let x = 1; x < GRID_SIZE - 1; x++) {
+                            const idx = (y * GRID_SIZE + x) * 3;
+                            
+                            const leftIdx = idx - 3;
+                            const rightIdx = idx + 3;
+                            const topIdx = idx - GRID_SIZE * 3;
+                            const bottomIdx = idx + GRID_SIZE * 3;
+                            
+                            for (let c = 0; c < 3; c++) {
+                                const neighbors = 
+                                    paintField[leftIdx + c] +
+                                    paintField[rightIdx + c] +
+                                    paintField[topIdx + c] +
+                                    paintField[bottomIdx + c];
+                                
+                                tempField[idx + c] = (paintField[idx + c] + alpha * neighbors) * beta;
+                            }
+                        }
+                    }
+                    
+                    // Swap buffers
+                    [paintField, tempField] = [tempField, paintField];
+                }
+            }
+            
+            // ================================================
+            // ADVECTION (semi-Lagrangian) - SLOW ORGANIC MOVEMENT
+            // ================================================
+            function advect(dt) {
+                // Precompute velocity field
+                computeVelocityField();
+                
+                // Clear temp field
+                tempField.fill(0);
+                
+                // For each cell, trace backwards to find where paint comes from
+                for (let y = 1; y < GRID_SIZE - 1; y++) {
+                    for (let x = 1; x < GRID_SIZE - 1; x++) {
+                        const velIdx = (y * GRID_SIZE + x) * 2;
+                        const vx = velocityField[velIdx];
+                        const vy = velocityField[velIdx + 1];
+                        
+                        // Trace backwards (small steps for slow flow)
+                        const prevX = x - vx * dt * 15; // Scaled for grid cells
+                        const prevY = y - vy * dt * 15;
+                        
+                        // Bilinear interpolation of source
+                        if (prevX >= 0 && prevX < GRID_SIZE - 1 && prevY >= 0 && prevY < GRID_SIZE - 1) {
+                            const x0 = Math.floor(prevX);
+                            const x1 = x0 + 1;
+                            const y0 = Math.floor(prevY);
+                            const y1 = y0 + 1;
+                            
+                            const fx = prevX - x0;
+                            const fy = prevY - y0;
+                            
+                            const idx00 = (y0 * GRID_SIZE + x0) * 3;
+                            const idx10 = (y0 * GRID_SIZE + x1) * 3;
+                            const idx01 = (y1 * GRID_SIZE + x0) * 3;
+                            const idx11 = (y1 * GRID_SIZE + x1) * 3;
+                            
+                            const targetIdx = (y * GRID_SIZE + x) * 3;
+                            
+                            for (let c = 0; c < 3; c++) {
+                                const v00 = paintField[idx00 + c];
+                                const v10 = paintField[idx10 + c];
+                                const v01 = paintField[idx01 + c];
+                                const v11 = paintField[idx11 + c];
+                                
+                                // Bilinear interpolation
+                                const v0 = v00 * (1 - fx) + v10 * fx;
+                                const v1 = v01 * (1 - fx) + v11 * fx;
+                                tempField[targetIdx + c] = v0 * (1 - fy) + v1 * fy;
+                            }
+                        }
+                    }
+                }
+                
+                // Swap buffers
+                [paintField, tempField] = [tempField, paintField];
+            }
+            
+            // ================================================
+            // PAINTING (add density) - SOFTER APPLICATION
+            // ================================================
+            function addPaint(screenX, screenY) {
+                // Convert screen to world
+                const worldX = cameraX + (screenX - paintCanvas.width/2) / scale;
+                const worldY = cameraY + (screenY - paintCanvas.height/2) / scale;
+                
+                // Convert world to grid cell
+                const gridX = Math.floor((worldX - cameraX) / CELL_SIZE + GRID_SIZE/2);
+                const gridY = Math.floor((worldY - cameraY) / CELL_SIZE + GRID_SIZE/2);
+                
+                // Soft brush with falloff
+                const radius = 4;
+                for (let dy = -radius; dy <= radius; dy++) {
+                    for (let dx = -radius; dx <= radius; dx++) {
+                        const nx = gridX + dx;
+                        const ny = gridY + dy;
+                        
+                        if (nx >= 0 && nx < GRID_SIZE && ny >= 0 && ny < GRID_SIZE) {
+                            const dist = Math.sqrt(dx*dx + dy*dy);
+                            if (dist <= radius) {
+                                const idx = (ny * GRID_SIZE + nx) * 3;
+                                // Softer falloff for natural feel
+                                const strength = 0.15 * (1 - dist/radius) * (0.8 + 0.2 * Math.sin(dist * 2));
+                                
+                                if (currentTool === 'paint') {
+                                    paintField[idx] = Math.min(1, paintField[idx] + currentColor[0] * strength);
+                                    paintField[idx+1] = Math.min(1, paintField[idx+1] + currentColor[1] * strength);
+                                    paintField[idx+2] = Math.min(1, paintField[idx+2] + currentColor[2] * strength);
+                                } else {
+                                    // Erase gently
+                                    paintField[idx] = Math.max(0, paintField[idx] - strength * 0.5);
+                                    paintField[idx+1] = Math.max(0, paintField[idx+1] - strength * 0.5);
+                                    paintField[idx+2] = Math.max(0, paintField[idx+2] - strength * 0.5);
+                                }
+                            }
+                        }
+                    }
+                }
+            }
+            
+            // ================================================
+            // RENDERING - SOFTER, PAPER-LIKE
+            // ================================================
+            function drawGrid() {
+                gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+                
+                const centerX = gridCanvas.width / 2;
+                const centerY = gridCanvas.height / 2;
+                
+                const worldLeft = cameraX - (gridCanvas.width / 2) / scale;
+                const worldRight = cameraX + (gridCanvas.width / 2) / scale;
+                const worldTop = cameraY - (gridCanvas.height / 2) / scale;
+                const worldBottom = cameraY + (gridCanvas.height / 2) / scale;
+                
+                const minCol = Math.floor(worldLeft / H_STEP) - 2;
+                const maxCol = Math.ceil(worldRight / H_STEP) + 2;
+                const minRow = Math.floor(worldTop / V_STEP) - 2;
+                const maxRow = Math.ceil(worldBottom / V_STEP) + 2;
+                
+                // Very subtle grid
+                gridCtx.strokeStyle = '#b8a5dd';
+                gridCtx.lineWidth = 0.5;
+                gridCtx.globalAlpha = 0.1;
+                
+                for (let row = minRow; row <= maxRow; row++) {
+                    for (let col = minCol; col <= maxCol; col++) {
+                        const x = centerX + (col * H_STEP - cameraX) * scale;
+                        const y = centerY + (row * V_STEP - cameraY) * scale;
+                        const xOffset = (row % 2 === 0) ? 0 : (H_STEP * scale) / 2;
+                        
+                        gridCtx.beginPath();
+                        gridCtx.moveTo(x + xOffset - 8, y - 13.86);
+                        gridCtx.lineTo(x + xOffset + 8, y + 13.86);
+                        gridCtx.stroke();
+                        
+                        gridCtx.beginPath();
+                        gridCtx.moveTo(x + xOffset - 8, y + 13.86);
+                        gridCtx.lineTo(x + xOffset + 8, y - 13.86);
+                        gridCtx.stroke();
+                    }
+                }
+            }
+            
+            function drawPaint() {
+                paintCtx.clearRect(0, 0, paintCanvas.width, paintCanvas.height);
+                
+                const centerX = paintCanvas.width / 2;
+                const centerY = paintCanvas.height / 2;
+                const cellSizeScreen = CELL_SIZE * scale;
+                
+                // Draw with soft blending
+                for (let y = 0; y < GRID_SIZE; y++) {
+                    for (let x = 0; x < GRID_SIZE; x++) {
+                        const idx = (y * GRID_SIZE + x) * 3;
+                        const r = paintField[idx];
+                        const g = paintField[idx + 1];
+                        const b = paintField[idx + 2];
+                        
+                        const density = (r + g + b) / 3;
+                        if (density < 0.005) continue;
+                        
+                        // Convert grid to screen
+                        const worldX = cameraX + (x - GRID_SIZE/2) * CELL_SIZE;
+                        const worldY = cameraY + (y - GRID_SIZE/2) * CELL_SIZE;
+                        
+                        const screenX = centerX + (worldX - cameraX) * scale;
+                        const screenY = centerY + (worldY - cameraY) * scale;
+                        
+                        // Soft square with slight transparency
+                        paintCtx.fillStyle = `rgba(${Math.floor(r*255)}, ${Math.floor(g*255)}, ${Math.floor(b*255)}, ${density * 0.7})`;
+                        paintCtx.fillRect(screenX - cellSizeScreen/2, screenY - cellSizeScreen/2, cellSizeScreen, cellSizeScreen);
+                    }
+                }
+            }
+            
+            // ================================================
+            // ANIMATION LOOP - SLOWER, MORE CONTEMPLATIVE
+            // ================================================
+            function update() {
+                time += 0.02; // Slow time evolution
+                
+                // Apply physics - slower updates for paper feel
+                for (let i = 0; i < 2; i++) { // Multiple sub-steps for stability
+                    diffuse(0.05);
+                    advect(0.05);
+                }
+                
+                // Update UI
+                let activeCells = 0;
+                for (let i = 0; i < paintField.length; i += 3) {
+                    if (paintField[i] + paintField[i+1] + paintField[i+2] > 0.01) activeCells++;
+                }
+                document.getElementById('point-count').innerHTML = activeCells;
+                
+                // Render
+                drawGrid();
+                drawPaint();
+                
+                requestAnimationFrame(update);
+            }
+            
+            // ================================================
+            // INTERACTION
+            // ================================================
+            paintCanvas.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                
+                const rect = paintCanvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                if (e.button === 2) {
+                    isPanning = true;
+                    paintCanvas.style.cursor = 'grabbing';
+                } else {
+                    isPainting = true;
+                    addPaint(x, y);
+                }
+                
+                lastX = x;
+                lastY = y;
+            });
+            
+            paintCanvas.addEventListener('mousemove', (e) => {
+                e.preventDefault();
+                
+                const rect = paintCanvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                const world = {
+                    x: cameraX + (x - paintCanvas.width/2) / scale,
+                    y: cameraY + (y - paintCanvas.height/2) / scale
+                };
+                document.getElementById('coords').innerHTML = `${world.x.toFixed(2)} , ${world.y.toFixed(2)}`;
+                
+                if (isPanning) {
+                    cameraX -= (x - lastX) / scale;
+                    cameraY -= (y - lastY) / scale;
+                } else if (isPainting) {
+                    const dist = Math.hypot(x - lastX, y - lastY);
+                    const steps = Math.max(1, Math.floor(dist / 3));
+                    
+                    for (let i = 0; i <= steps; i++) {
+                        const t = i / steps;
+                        const ix = lastX * (1 - t) + x * t;
+                        const iy = lastY * (1 - t) + y * t;
+                        addPaint(ix, iy);
+                    }
+                }
+                
+                lastX = x;
+                lastY = y;
+            });
+            
+            paintCanvas.addEventListener('mouseup', () => {
+                isPainting = false;
+                isPanning = false;
+                paintCanvas.style.cursor = 'crosshair';
+            });
+            
+            paintCanvas.addEventListener('mouseleave', () => {
+                isPainting = false;
+                isPanning = false;
+                paintCanvas.style.cursor = 'crosshair';
+            });
+            
+            paintCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
+            
+            paintCanvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                
+                const rect = paintCanvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                const worldBefore = {
+                    x: cameraX + (mouseX - paintCanvas.width/2) / scale,
+                    y: cameraY + (mouseY - paintCanvas.height/2) / scale
+                };
+                
+                const zoomFactor = e.deltaY > 0 ? 0.95 : 1.05;
+                scale *= zoomFactor;
+                scale = Math.max(0.2, Math.min(5, scale));
+                
+                const worldAfter = {
+                    x: cameraX + (mouseX - paintCanvas.width/2) / scale,
+                    y: cameraY + (mouseY - paintCanvas.height/2) / scale
+                };
+                
+                cameraX += worldBefore.x - worldAfter.x;
+                cameraY += worldBefore.y - worldAfter.y;
+            }, { passive: false });
+            
+            // ================================================
+            // UI CONTROLS
+            // ================================================
+            document.getElementById('btn-paint').addEventListener('click', () => {
+                currentTool = 'paint';
+                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                document.getElementById('btn-paint').classList.add('active');
+                // Cycle through colors on double-click? For now, pick random
+                currentColor = COLORS[Math.floor(Math.random() * COLORS.length)];
+            });
+            
+            document.getElementById('btn-erase').addEventListener('click', () => {
+                currentTool = 'erase';
+                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                document.getElementById('btn-erase').classList.add('active');
+            });
+            
+            document.getElementById('btn-clear').addEventListener('click', () => {
+                paintField.fill(0);
+            });
+            
+            const diffusionSlider = document.getElementById('diffusion-slider');
+            diffusionSlider.addEventListener('input', () => {
+                diffusionRate = parseFloat(diffusionSlider.value);
+                document.getElementById('diffusion-display').innerHTML = diffusionRate.toFixed(3);
+                document.getElementById('diffusion-value').innerHTML = diffusionRate.toFixed(3);
+            });
+            
+            const flowSlider = document.getElementById('flow-slider');
+            flowSlider.addEventListener('input', () => {
+                flowStrength = parseFloat(flowSlider.value);
+                document.getElementById('flow-display').innerHTML = flowStrength.toFixed(2);
+                document.getElementById('flow-value').innerHTML = flowStrength.toFixed(2);
+            });
+            
+            const turbulenceSlider = document.getElementById('turbulence-slider');
+            turbulenceSlider.addEventListener('input', () => {
+                turbulenceStrength = parseFloat(turbulenceSlider.value);
+                document.getElementById('turbulence-display').innerHTML = turbulenceStrength.toFixed(2);
+                document.getElementById('turbulence-value').innerHTML = turbulenceStrength.toFixed(2);
+            });
+            
+            // Resize handler
+            function resize() {
+                gridCanvas.width = window.innerWidth;
+                gridCanvas.height = window.innerHeight;
+                paintCanvas.width = window.innerWidth;
+                paintCanvas.height = window.innerHeight;
+                drawGrid();
+                drawPaint();
+            }
+            
+            window.addEventListener('resize', resize);
+            resize();
+            
+            // Start animation
+            update();
+            
+            // Initialize with some organic paint drops
+            setTimeout(() => {
+                for (let i = 0; i < 8; i++) {
+                    const x = paintCanvas.width * (0.2 + 0.6 * Math.random());
+                    const y = paintCanvas.height * (0.2 + 0.6 * Math.random());
+                    addPaint(x, y);
+                }
+            }, 500);
+        })();
+    </script>
+</body>
+</html>
