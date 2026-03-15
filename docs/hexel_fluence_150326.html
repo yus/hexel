@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>HEXELATION · FIXED EVENTS</title>
+    <title>HEXELATION · DUAL LAYER · GRID + PAINT</title>
     <style>
         * {
             margin: 0;
@@ -16,12 +16,28 @@
             overflow: hidden;
             font-family: 'Inter', system-ui, sans-serif;
         }
-        canvas {
-            display: block;
+        
+        /* Canvas layers */
+        #gridCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
             width: 100vw;
             height: 100vh;
             background: #0a0a0a;
+            z-index: 1;
+            pointer-events: none; /* Grid doesn't block interaction */
+        }
+        
+        #paintCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            z-index: 2;
             cursor: crosshair;
+            background: transparent;
         }
         
         #panel {
@@ -188,10 +204,11 @@
 </head>
 <body>
     <canvas id="gridCanvas"></canvas>
+    <canvas id="paintCanvas"></canvas>
     
     <div id="panel">
         <div class="panel-title">
-            <span>⚡ HEXELATION · FIXED EVENTS</span>
+            <span>⚡ HEXELATION · DUAL LAYER</span>
             <span id="fps">60</span>
         </div>
         
@@ -209,16 +226,16 @@
                 <span class="stat-value" id="cell-size">48px</span>
             </div>
             <div class="stat-item">
+                <span class="stat-label">Points</span>
+                <span class="stat-value" id="point-count">0</span>
+            </div>
+            <div class="stat-item">
                 <span class="stat-label">Hexel</span>
                 <span class="stat-value" id="current-hexel">-</span>
             </div>
             <div class="stat-item">
                 <span class="stat-label">Color</span>
                 <span class="stat-value" id="current-color">#c4b5fd</span>
-            </div>
-            <div class="stat-item">
-                <span class="stat-label">Tool</span>
-                <span class="stat-value" id="current-tool">paint</span>
             </div>
         </div>
         
@@ -228,7 +245,7 @@
                 <div class="lod-level">
                     <span class="lod-indicator" id="lod-snap"></span>
                     <span>Snap only</span>
-                    <span class="lod-range" style="margin-left: auto;">&lt;8px</span>
+                    <span class="lod-range">&lt;8px</span>
                 </div>
                 <div class="lod-level">
                     <span class="lod-indicator" id="lod-dots-sparse"></span>
@@ -271,8 +288,8 @@
         
         <div class="brush-control">
             <span>⚫</span>
-            <input type="range" id="brush-size" min="2" max="32" value="8" step="1">
-            <span id="brush-value">8px</span>
+            <input type="range" id="brush-size" min="2" max="50" value="12" step="1">
+            <span id="brush-value">12px</span>
         </div>
         
         <div class="brush-control">
@@ -288,8 +305,12 @@
 
     <script>
         (function() {
-            const canvas = document.getElementById('gridCanvas');
-            const ctx = canvas.getContext('2d');
+            // Two canvases!
+            const gridCanvas = document.getElementById('gridCanvas');
+            const paintCanvas = document.getElementById('paintCanvas');
+            
+            const gridCtx = gridCanvas.getContext('2d');
+            const paintCtx = paintCanvas.getContext('2d');
             
             // ================================================
             // CORE PARAMETERS
@@ -298,7 +319,7 @@
             const H_STEP = BASE_SIZE * 2;
             const V_STEP = BASE_SIZE * Math.sqrt(3);
             
-            // Camera
+            // Camera (shared between both canvases)
             let cameraWorldX = 0;
             let cameraWorldY = 0;
             let scale = 1.0;
@@ -312,13 +333,15 @@
             
             // Paint state
             let currentColor = '#c4b5fd';
-            let brushSize = 8;
+            let brushSize = 12;
             let snapStrength = 0.7;
             let paintPoints = [];
             
             const BG_COLOR = '#0a0a0a';
             
+            // Grid colors
             const COLORS = {
+                horizontal: '#c4b5fd',
                 diagonal: '#9f8be5',
                 dots: '#b4a5ee',
                 dotsSparse: '#a094d0',
@@ -434,7 +457,8 @@
                     paintPoints = paintPoints.slice(-1500);
                 }
                 
-                draw();
+                document.getElementById('point-count').innerHTML = paintPoints.length;
+                drawPaint(); // Only redraw paint layer
             }
             
             // ================================================
@@ -442,15 +466,15 @@
             // ================================================
             function worldToScreen(worldX, worldY) {
                 return {
-                    x: canvas.width / 2 + (worldX - cameraWorldX) * scale,
-                    y: canvas.height / 2 + (worldY - cameraWorldY) * scale
+                    x: gridCanvas.width / 2 + (worldX - cameraWorldX) * scale,
+                    y: gridCanvas.height / 2 + (worldY - cameraWorldY) * scale
                 };
             }
             
             function screenToWorld(screenX, screenY) {
                 return {
-                    x: cameraWorldX + (screenX - canvas.width / 2) / scale,
-                    y: cameraWorldY + (screenY - canvas.height / 2) / scale
+                    x: cameraWorldX + (screenX - gridCanvas.width / 2) / scale,
+                    y: cameraWorldY + (screenY - gridCanvas.height / 2) / scale
                 };
             }
             
@@ -500,35 +524,28 @@
             }
             
             // ================================================
-            // RENDERING
+            // GRID RENDERING (background layer)
             // ================================================
-            function draw() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
+            function drawGrid() {
+                gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
                 
                 const cellSize = getCellSizePx();
                 const lod = getLODInfo();
-                const frequency = getFrequencyFactor();
-                const centerScreenX = canvas.width / 2;
-                const centerScreenY = canvas.height / 2;
+                const centerX = gridCanvas.width / 2;
+                const centerY = gridCanvas.height / 2;
                 
-                const worldLeft = cameraWorldX - (canvas.width / 2) / scale;
-                const worldRight = cameraWorldX + (canvas.width / 2) / scale;
-                const worldTop = cameraWorldY - (canvas.height / 2) / scale;
-                const worldBottom = cameraWorldY + (canvas.height / 2) / scale;
+                // Visible world bounds
+                const worldLeft = cameraWorldX - (gridCanvas.width / 2) / scale;
+                const worldRight = cameraWorldX + (gridCanvas.width / 2) / scale;
+                const worldTop = cameraWorldY - (gridCanvas.height / 2) / scale;
+                const worldBottom = cameraWorldY + (gridCanvas.height / 2) / scale;
                 
                 const minCol = Math.floor(worldLeft / H_STEP) - 4;
                 const maxCol = Math.ceil(worldRight / H_STEP) + 4;
                 const minRow = Math.floor(worldTop / V_STEP) - 4;
                 const maxRow = Math.ceil(worldBottom / V_STEP) + 4;
                 
-                // Update UI
-                document.getElementById('camera-pos').innerHTML = 
-                    `${cameraWorldX.toFixed(1)},${cameraWorldY.toFixed(1)}`;
-                document.getElementById('zoom-level').innerHTML = scale.toFixed(2) + 'x';
-                document.getElementById('cell-size').innerHTML = Math.round(cellSize) + 'px';
-                document.getElementById('current-color').innerHTML = currentColor;
-                document.getElementById('current-tool').innerHTML = currentTool;
-                
+                // Update LOD indicators
                 const indicators = {
                     'lod-snap': lod.snapOnly,
                     'lod-dots-sparse': lod.sparseDots,
@@ -544,93 +561,79 @@
                     }
                 }
                 
-                // PAINT LAYER
-                const sortedPoints = [...paintPoints].sort((a, b) => a.timestamp - b.timestamp);
+                // ========== DRAW GRID ==========
+                gridCtx.lineWidth = Math.max(0.5, Math.min(2.0, 1.5 / Math.sqrt(scale)));
                 
-                for (const point of sortedPoints) {
-                    const screen = worldToScreen(point.x, point.y);
-                    
-                    if (screen.x < -100 || screen.x > canvas.width + 100 ||
-                        screen.y < -100 || screen.y > canvas.height + 100) {
-                        continue;
-                    }
-                    
-                    ctx.beginPath();
-                    ctx.arc(screen.x, screen.y, point.size * scale, 0, Math.PI * 2);
-                    ctx.fillStyle = point.color;
-                    ctx.globalAlpha = 0.7;
-                    ctx.fill();
-                }
-                
-                // GRID LAYER
-                ctx.globalAlpha = 1.0;
-                ctx.lineWidth = Math.max(0.5, Math.min(2.0, 1.5 / Math.sqrt(scale)));
-                
-                if (lod.diagonals || lod.horizontals) {
-                    ctx.strokeStyle = COLORS.diagonal;
-                    ctx.globalAlpha = 0.2;
-                    
-                    ctx.beginPath();
-                    for (let row = minRow - 2; row <= maxRow + 2; row++) {
-                        for (let col = minCol - 2; col <= maxCol + 2; col++) {
-                            const worldX = col * H_STEP;
-                            const worldY = row * V_STEP;
-                            
-                            const screenX = centerScreenX + (worldX - cameraWorldX) * scale;
-                            const screenY = centerScreenY + (worldY - cameraWorldY) * scale;
-                            
-                            const xOffset = (row % 2 === 0) ? 0 : (H_STEP * scale) / 2;
-                            
-                            const extend = Math.max(canvas.width, canvas.height) * 1.5;
-                            ctx.moveTo(screenX + xOffset - extend, screenY - extend * 1.732);
-                            ctx.lineTo(screenX + xOffset + extend, screenY + extend * 1.732);
-                        }
-                    }
-                    ctx.stroke();
-                    
-                    ctx.beginPath();
-                    for (let row = minRow - 2; row <= maxRow + 2; row++) {
-                        for (let col = minCol - 2; col <= maxCol + 2; col++) {
-                            const worldX = col * H_STEP;
-                            const worldY = row * V_STEP;
-                            
-                            const screenX = centerScreenX + (worldX - cameraWorldX) * scale;
-                            const screenY = centerScreenY + (worldY - cameraWorldY) * scale;
-                            
-                            const xOffset = (row % 2 === 0) ? 0 : (H_STEP * scale) / 2;
-                            
-                            const extend = Math.max(canvas.width, canvas.height) * 1.5;
-                            ctx.moveTo(screenX + xOffset - extend, screenY + extend * 1.732);
-                            ctx.lineTo(screenX + xOffset + extend, screenY - extend * 1.732);
-                        }
-                    }
-                    ctx.stroke();
-                }
-                
+                // HORIZONTALS
                 if (lod.horizontals) {
-                    ctx.strokeStyle = COLORS.diagonal;
-                    ctx.globalAlpha = 0.15;
-                    ctx.beginPath();
+                    gridCtx.strokeStyle = COLORS.horizontal;
+                    gridCtx.globalAlpha = 0.2;
+                    gridCtx.beginPath();
                     
                     for (let row = minRow; row <= maxRow; row++) {
                         const worldY = row * V_STEP;
-                        const screenY = centerScreenY + (worldY - cameraWorldY) * scale;
+                        const screenY = centerY + (worldY - cameraWorldY) * scale;
                         
-                        if (screenY >= -100 && screenY <= canvas.height + 100) {
-                            ctx.moveTo(0, screenY);
-                            ctx.lineTo(canvas.width, screenY);
+                        if (screenY >= -100 && screenY <= gridCanvas.height + 100) {
+                            gridCtx.moveTo(0, screenY);
+                            gridCtx.lineTo(gridCanvas.width, screenY);
                         }
                     }
-                    ctx.stroke();
+                    gridCtx.stroke();
                 }
                 
+                // DIAGONALS
+                if (lod.diagonals || lod.horizontals) {
+                    gridCtx.strokeStyle = COLORS.diagonal;
+                    gridCtx.globalAlpha = 0.2;
+                    
+                    // +60° diagonals
+                    gridCtx.beginPath();
+                    for (let row = minRow - 2; row <= maxRow + 2; row++) {
+                        for (let col = minCol - 2; col <= maxCol + 2; col++) {
+                            const worldX = col * H_STEP;
+                            const worldY = row * V_STEP;
+                            
+                            const screenX = centerX + (worldX - cameraWorldX) * scale;
+                            const screenY = centerY + (worldY - cameraWorldY) * scale;
+                            
+                            const xOffset = (row % 2 === 0) ? 0 : (H_STEP * scale) / 2;
+                            
+                            const extend = Math.max(gridCanvas.width, gridCanvas.height) * 1.5;
+                            gridCtx.moveTo(screenX + xOffset - extend, screenY - extend * 1.732);
+                            gridCtx.lineTo(screenX + xOffset + extend, screenY + extend * 1.732);
+                        }
+                    }
+                    gridCtx.stroke();
+                    
+                    // -60° diagonals
+                    gridCtx.beginPath();
+                    for (let row = minRow - 2; row <= maxRow + 2; row++) {
+                        for (let col = minCol - 2; col <= maxCol + 2; col++) {
+                            const worldX = col * H_STEP;
+                            const worldY = row * V_STEP;
+                            
+                            const screenX = centerX + (worldX - cameraWorldX) * scale;
+                            const screenY = centerY + (worldY - cameraWorldY) * scale;
+                            
+                            const xOffset = (row % 2 === 0) ? 0 : (H_STEP * scale) / 2;
+                            
+                            const extend = Math.max(gridCanvas.width, gridCanvas.height) * 1.5;
+                            gridCtx.moveTo(screenX + xOffset - extend, screenY + extend * 1.732);
+                            gridCtx.lineTo(screenX + xOffset + extend, screenY - extend * 1.732);
+                        }
+                    }
+                    gridCtx.stroke();
+                }
+                
+                // DOTS
                 if (!lod.snapOnly) {
                     if (lod.sparseDots) {
-                        ctx.fillStyle = COLORS.dotsSparse;
-                        ctx.globalAlpha = 0.2 * ((cellSize - 8) / 7);
+                        gridCtx.fillStyle = COLORS.dotsSparse;
+                        gridCtx.globalAlpha = 0.2 * ((cellSize - 8) / 7);
                     } else {
-                        ctx.fillStyle = COLORS.dots;
-                        ctx.globalAlpha = 0.25;
+                        gridCtx.fillStyle = COLORS.dots;
+                        gridCtx.globalAlpha = 0.2;
                     }
                     
                     for (let row = minRow; row <= maxRow; row++) {
@@ -643,49 +646,91 @@
                             const worldX = col * H_STEP;
                             const worldY = row * V_STEP;
                             
-                            const screenX = centerScreenX + (worldX - cameraWorldX) * scale;
-                            const screenY = centerScreenY + (worldY - cameraWorldY) * scale;
+                            const screenX = centerX + (worldX - cameraWorldX) * scale;
+                            const screenY = centerY + (worldY - cameraWorldY) * scale;
                             
                             const dotSize = lod.sparseDots ? 1.0 : 1.5;
                             
                             if (row % 2 === 0) {
-                                ctx.beginPath();
-                                ctx.arc(screenX, screenY, dotSize, 0, Math.PI * 2);
-                                ctx.fill();
+                                gridCtx.beginPath();
+                                gridCtx.arc(screenX, screenY, dotSize, 0, Math.PI * 2);
+                                gridCtx.fill();
                             } else {
-                                ctx.beginPath();
-                                ctx.arc(screenX + (H_STEP * scale)/2, screenY, dotSize, 0, Math.PI * 2);
-                                ctx.fill();
+                                gridCtx.beginPath();
+                                gridCtx.arc(screenX + (H_STEP * scale)/2, screenY, dotSize, 0, Math.PI * 2);
+                                gridCtx.fill();
                             }
                         }
                     }
                 }
                 
+                // ORIGIN MARKER
                 const originScreen = worldToScreen(0, 0);
-                if (originScreen.x >= -50 && originScreen.x <= canvas.width + 50 &&
-                    originScreen.y >= -50 && originScreen.y <= canvas.height + 50) {
+                if (originScreen.x >= -50 && originScreen.x <= gridCanvas.width + 50 &&
+                    originScreen.y >= -50 && originScreen.y <= gridCanvas.height + 50) {
                     
-                    ctx.fillStyle = COLORS.origin;
-                    ctx.globalAlpha = 0.9;
+                    gridCtx.fillStyle = COLORS.origin;
+                    gridCtx.globalAlpha = 0.5;
                     
                     const originSize = Math.max(3, Math.min(8, 5 / Math.sqrt(scale)));
-                    ctx.beginPath();
-                    ctx.arc(originScreen.x, originScreen.y, originSize, 0, Math.PI * 2);
-                    ctx.fill();
+                    gridCtx.beginPath();
+                    gridCtx.arc(originScreen.x, originScreen.y, originSize, 0, Math.PI * 2);
+                    gridCtx.fill();
                 }
                 
-                if (lastX && lastY) {
-                    const world = screenToWorld(lastX, lastY);
-                    const hexel = getHexelAt(world.x, world.y);
-                    document.getElementById('current-hexel').innerHTML = 
-                        `${hexel.col},${hexel.row}:${hexel.triangle}`;
-                }
-                
-                ctx.globalAlpha = 1.0;
+                gridCtx.globalAlpha = 1.0;
             }
             
             // ================================================
-            // FIXED INTERACTION HANDLERS
+            // PAINT RENDERING (top layer)
+            // ================================================
+            function drawPaint() {
+                paintCtx.clearRect(0, 0, paintCanvas.width, paintCanvas.height);
+                
+                if (paintPoints.length === 0) return;
+                
+                const centerX = paintCanvas.width / 2;
+                const centerY = paintCanvas.height / 2;
+                
+                // Sort by timestamp for proper blending
+                const sortedPoints = [...paintPoints].sort((a, b) => a.timestamp - b.timestamp);
+                
+                for (const point of sortedPoints) {
+                    const screenX = centerX + (point.x - cameraWorldX) * scale;
+                    const screenY = centerY + (point.y - cameraWorldY) * scale;
+                    
+                    if (screenX < -100 || screenX > paintCanvas.width + 100 ||
+                        screenY < -100 || screenY > paintCanvas.height + 100) {
+                        continue;
+                    }
+                    
+                    const screenRadius = Math.max(2, point.size * scale);
+                    
+                    // Main blob
+                    paintCtx.beginPath();
+                    paintCtx.arc(screenX, screenY, screenRadius, 0, Math.PI * 2);
+                    paintCtx.fillStyle = point.color;
+                    paintCtx.globalAlpha = 0.9;
+                    paintCtx.fill();
+                    
+                    // Subtle highlight
+                    paintCtx.beginPath();
+                    paintCtx.arc(screenX - 1, screenY - 1, screenRadius * 0.3, 0, Math.PI * 2);
+                    paintCtx.fillStyle = 'rgba(255,255,255,0.3)';
+                    paintCtx.fill();
+                }
+                
+                paintCtx.globalAlpha = 1.0;
+            }
+            
+            // Update both canvases
+            function redrawAll() {
+                drawGrid();
+                drawPaint();
+            }
+            
+            // ================================================
+            // INTERACTION (on paint canvas only)
             // ================================================
             function handleStart(e) {
                 e.preventDefault();
@@ -693,11 +738,9 @@
                 let clientX, clientY;
                 
                 if (e.touches) {
-                    // Touch event
                     clientX = e.touches[0].clientX;
                     clientY = e.touches[0].clientY;
                 } else {
-                    // Mouse event
                     clientX = e.clientX;
                     clientY = e.clientY;
                 }
@@ -731,10 +774,15 @@
                 document.getElementById('coords').innerHTML = 
                     `${world.x.toFixed(2)} , ${world.y.toFixed(2)}`;
                 
+                // Update hexel under mouse
+                const hexel = getHexelAt(world.x, world.y);
+                document.getElementById('current-hexel').innerHTML = 
+                    `${hexel.col},${hexel.row}:${hexel.triangle}`;
+                
                 if (isDragging) {
                     cameraWorldX -= (clientX - lastX) / scale;
                     cameraWorldY -= (clientY - lastY) / scale;
-                    draw();
+                    redrawAll(); // Update both layers
                 } else if (isPainting) {
                     paintAt(clientX, clientY);
                 }
@@ -751,10 +799,10 @@
             }
             
             // Mouse wheel zoom
-            canvas.addEventListener('wheel', (e) => {
+            paintCanvas.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 
-                const rect = canvas.getBoundingClientRect();
+                const rect = paintCanvas.getBoundingClientRect();
                 const mouseX = e.clientX - rect.left;
                 const mouseY = e.clientY - rect.top;
                 
@@ -762,26 +810,26 @@
                 
                 const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
                 scale *= zoomFactor;
-                scale = Math.max(0.03, Math.min(50, scale));
+                scale = Math.max(0.05, Math.min(30, scale));
                 
                 const worldAfter = screenToWorld(mouseX, mouseY);
                 
                 cameraWorldX += worldBefore.x - worldAfter.x;
                 cameraWorldY += worldBefore.y - worldAfter.y;
                 
-                draw();
+                redrawAll();
             }, { passive: false });
             
-            // Event listeners
-            canvas.addEventListener('mousedown', handleStart);
-            canvas.addEventListener('mousemove', handleMove);
-            canvas.addEventListener('mouseup', handleEnd);
-            canvas.addEventListener('mouseleave', handleEnd);
+            // Event listeners on paint canvas only
+            paintCanvas.addEventListener('mousedown', handleStart);
+            paintCanvas.addEventListener('mousemove', handleMove);
+            paintCanvas.addEventListener('mouseup', handleEnd);
+            paintCanvas.addEventListener('mouseleave', handleEnd);
             
-            canvas.addEventListener('touchstart', handleStart);
-            canvas.addEventListener('touchmove', handleMove);
-            canvas.addEventListener('touchend', handleEnd);
-            canvas.addEventListener('touchcancel', handleEnd);
+            paintCanvas.addEventListener('touchstart', handleStart);
+            paintCanvas.addEventListener('touchmove', handleMove);
+            paintCanvas.addEventListener('touchend', handleEnd);
+            paintCanvas.addEventListener('touchcancel', handleEnd);
             
             // ================================================
             // TOOL CONTROLS
@@ -790,7 +838,6 @@
                 currentTool = 'pan';
                 document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
                 document.getElementById('tool-pan').classList.add('active');
-                document.getElementById('current-tool').innerHTML = 'pan';
             });
             
             document.getElementById('tool-paint').addEventListener('click', () => {
@@ -801,14 +848,12 @@
                 }
                 document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
                 document.getElementById('tool-paint').classList.add('active');
-                document.getElementById('current-tool').innerHTML = 'paint';
             });
             
             document.getElementById('tool-erase').addEventListener('click', () => {
                 currentTool = 'erase';
                 document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
                 document.getElementById('tool-erase').classList.add('active');
-                document.getElementById('current-tool').innerHTML = 'erase';
             });
             
             document.querySelectorAll('.color-swatch').forEach(swatch => {
@@ -823,7 +868,6 @@
                         currentTool = 'paint';
                         document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
                         document.getElementById('tool-paint').classList.add('active');
-                        document.getElementById('current-tool').innerHTML = 'paint';
                     }
                 });
             });
@@ -844,7 +888,8 @@
             
             document.getElementById('clear-btn').addEventListener('click', () => {
                 paintPoints = [];
-                draw();
+                document.getElementById('point-count').innerHTML = '0';
+                drawPaint(); // Only clear paint layer
             });
             
             window.addEventListener('keydown', (e) => {
@@ -859,19 +904,25 @@
                     cameraWorldX = 0;
                     cameraWorldY = 0;
                     scale = 1.0;
-                    draw();
+                    redrawAll();
                 }
             });
             
-            canvas.width = window.innerWidth;
-            canvas.height = window.innerHeight;
+            // Resize both canvases
+            function resizeCanvases() {
+                gridCanvas.width = window.innerWidth;
+                gridCanvas.height = window.innerHeight;
+                paintCanvas.width = window.innerWidth;
+                paintCanvas.height = window.innerHeight;
+                redrawAll();
+            }
             
-            window.addEventListener('resize', () => {
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight;
-                draw();
-            });
+            window.addEventListener('resize', resizeCanvases);
             
+            // Initialize
+            resizeCanvases();
+            
+            // FPS counter
             let frameCount = 0;
             let lastTime = performance.now();
             
@@ -886,7 +937,6 @@
                 requestAnimationFrame(updateFPS);
             }
             
-            draw();
             updateFPS();
         })();
     </script>
