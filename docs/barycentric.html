@@ -1,0 +1,431 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Node.js 24 · Pure Equilateral Grid 60°</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { 
+            background: #0a0c10; 
+            display: flex; 
+            justify-content: center; 
+            align-items: center; 
+            min-height: 100vh;
+            font-family: 'Segoe UI', system-ui, monospace;
+        }
+        canvas { 
+            display: block; 
+            width: 100vw; 
+            height: 100vh; 
+            position: fixed;
+            top: 0;
+            left: 0;
+        }
+        #info {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: rgba(20, 28, 36, 0.9);
+            backdrop-filter: blur(8px);
+            color: #b4e6f0;
+            padding: 16px 24px;
+            border-radius: 40px;
+            border: 1px solid #2a4a5a;
+            box-shadow: 0 8px 24px rgba(0,0,0,0.5);
+            font-size: 15px;
+            letter-spacing: 0.3px;
+            z-index: 100;
+            pointer-events: none;
+        }
+        #info span {
+            color: #ffb56b;
+            font-weight: 600;
+        }
+        .badge {
+            position: fixed;
+            top: 24px;
+            left: 24px;
+            background: #1e3a4a;
+            color: #b4e6f0;
+            padding: 8px 16px;
+            border-radius: 32px;
+            font-size: 14px;
+            border: 1px solid #3a6a7a;
+            z-index: 100;
+        }
+    </style>
+</head>
+<body>
+    <div class="badge">⚡ Node.js 24 · WebGL 1.0</div>
+    <div id="info">🔺 <span>PERFECT EQUILATERAL</span> · 60° angles · barycentric grid</div>
+    
+    <canvas id="gridCanvas"></canvas>
+
+    <script type="module">
+        // Node.js 24 compatible ES module with zero deprecated patterns
+        class EquilateralBarycentricGrid {
+            #gl;
+            #program;
+            #buffers = {};
+            #uniforms = {};
+            #vertexCount = 0;
+            #config;
+            
+            constructor(canvas, options = {}) {
+                this.canvas = canvas;
+                this.#config = {
+                    triangleSide: 0.28,        // Base side length
+                    gridCells: 24,              // Number of cells in each direction
+                    lineWidth: 0.042,            // Barycentric line width
+                    lineColor: [1.0, 0.75, 0.4], // Warm amber
+                    bgColor: [0.07, 0.12, 0.16, 1.0], // Deep blue-black
+                    brightness: 0.95,
+                    ...options
+                };
+                
+                this.transform = {
+                    x: 0.0,
+                    y: 0.0,
+                    scale: 1.0
+                };
+                
+                this.#initWebGL();
+                this.#createGrid();
+                this.#setupBuffers();
+                this.#setupUniforms();
+            }
+            
+            #initWebGL() {
+                const gl = this.canvas.getContext('webgl') || this.canvas.getContext('experimental-webgl');
+                if (!gl) throw new Error('WebGL unavailable');
+                this.#gl = gl;
+                
+                // Vertex shader - pure GLSL 100
+                const vsSource = `#version 100
+                    attribute vec2 aPosition;
+                    attribute vec3 aBarycentric;
+                    
+                    uniform mat3 uProjection;
+                    uniform vec2 uTranslation;
+                    uniform float uScale;
+                    
+                    varying vec3 vBary;
+                    
+                    void main() {
+                        vec2 pos = uScale * (aPosition + uTranslation);
+                        vec3 clip = uProjection * vec3(pos, 1.0);
+                        gl_Position = vec4(clip.xy, 0.0, 1.0);
+                        vBary = aBarycentric;
+                    }
+                `;
+                
+                // Fragment shader - precise line rendering
+                const fsSource = `#version 100
+                    precision highp float;
+                    
+                    varying vec3 vBary;
+                    
+                    uniform float uLineWidth;
+                    uniform float uBrightness;
+                    uniform vec3 uColor;
+                    
+                    void main() {
+                        // Discard outside triangle
+                        if (vBary.x < -0.02 || vBary.y < -0.02 || vBary.z < -0.02) discard;
+                        
+                        // Distances to edges (barycentric coordinates)
+                        float d0 = vBary.x;
+                        float d1 = vBary.y;
+                        float d2 = vBary.z;
+                        
+                        // Distance to nearest edge
+                        float minDist = min(min(d0, d1), d2);
+                        
+                        // Smooth step for anti-aliased lines
+                        float lineIntensity = 1.0 - smoothstep(0.0, uLineWidth, minDist);
+                        
+                        // Brightness falloff from edges
+                        float glow = 0.6 + 0.5 * lineIntensity;
+                        vec3 finalColor = uColor * (uBrightness * glow);
+                        
+                        gl_FragColor = vec4(finalColor, 1.0);
+                    }
+                `;
+                
+                // Compile shaders
+                const vs = this.#compileShader(vsSource, gl.VERTEX_SHADER);
+                const fs = this.#compileShader(fsSource, gl.FRAGMENT_SHADER);
+                
+                this.#program = gl.createProgram();
+                gl.attachShader(this.#program, vs);
+                gl.attachShader(this.#program, fs);
+                gl.linkProgram(this.#program);
+                
+                if (!gl.getProgramParameter(this.#program, gl.LINK_STATUS)) {
+                    throw new Error('Program link failed: ' + gl.getProgramInfoLog(this.#program));
+                }
+                
+                gl.useProgram(this.#program);
+                
+                // Get attribute locations
+                this.#uniforms.projection = gl.getUniformLocation(this.#program, 'uProjection');
+                this.#uniforms.translation = gl.getUniformLocation(this.#program, 'uTranslation');
+                this.#uniforms.scale = gl.getUniformLocation(this.#program, 'uScale');
+                this.#uniforms.lineWidth = gl.getUniformLocation(this.#program, 'uLineWidth');
+                this.#uniforms.brightness = gl.getUniformLocation(this.#program, 'uBrightness');
+                this.#uniforms.color = gl.getUniformLocation(this.#program, 'uColor');
+                
+                this.#uniforms.aPosition = gl.getAttribLocation(this.#program, 'aPosition');
+                this.#uniforms.aBarycentric = gl.getAttribLocation(this.#program, 'aBarycentric');
+                
+                // Enable blending for smooth lines
+                gl.enable(gl.BLEND);
+                gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+            }
+            
+            #compileShader(source, type) {
+                const gl = this.#gl;
+                const shader = gl.createShader(type);
+                gl.shaderSource(shader, source);
+                gl.compileShader(shader);
+                
+                if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                    throw new Error('Shader compile error: ' + gl.getShaderInfoLog(shader));
+                }
+                return shader;
+            }
+            
+            #createGrid() {
+                // Perfect equilateral triangle geometry with exact 60° angles
+                const side = this.#config.triangleSide;
+                const height = side * Math.sqrt(3) / 2; // Exact height for 60°
+                
+                const cells = this.#config.gridCells;
+                const positions = [];
+                const barycentrics = [];
+                
+                // Helper to add triangle with barycentric weights
+                const addTriangle = (v0, v1, v2, b0, b1, b2) => {
+                    positions.push(v0[0], v0[1]);
+                    barycentrics.push(b0[0], b0[1], b0[2]);
+                    
+                    positions.push(v1[0], v1[1]);
+                    barycentrics.push(b1[0], b1[1], b1[2]);
+                    
+                    positions.push(v2[0], v2[1]);
+                    barycentrics.push(b2[0], b2[1], b2[2]);
+                };
+                
+                // Generate grid of equilateral triangles (60°-60°-60°)
+                for (let row = -cells; row < cells; row++) {
+                    for (let col = -cells; col < cells; col++) {
+                        // Base position with offset for alternating rows
+                        const xBase = col * side;
+                        const yBase = row * height;
+                        
+                        // Shift every other row by half side for perfect tiling
+                        const xOffset = (Math.abs(row) % 2) * (side / 2);
+                        
+                        // Four vertices of the rhombus
+                        const Ax = xBase + xOffset;
+                        const Ay = yBase;
+                        
+                        const Bx = Ax + side;
+                        const By = yBase;
+                        
+                        const Cx = Ax + side/2;
+                        const Cy = yBase + height;
+                        
+                        const Dx = Ax + side/2;
+                        const Dy = yBase - height;
+                        
+                        // Upward pointing triangle (A, B, C) - 60° at each vertex
+                        addTriangle(
+                            [Ax, Ay], [Bx, By], [Cx, Cy],
+                            [1, 0, 0], [0, 1, 0], [0, 0, 1]
+                        );
+                        
+                        // Downward pointing triangle (B, A, D) - completes the grid
+                        addTriangle(
+                            [Bx, By], [Ax, Ay], [Dx, Dy],
+                            [1, 0, 0], [0, 1, 0], [0, 0, 1]
+                        );
+                    }
+                }
+                
+                // Store as Float32Arrays for buffer upload
+                this.positions = new Float32Array(positions);
+                this.barycentrics = new Float32Array(barycentrics);
+                this.#vertexCount = positions.length / 2;
+            }
+            
+            #setupBuffers() {
+                const gl = this.#gl;
+                
+                // Interleaved buffer: [pos.x, pos.y, bary.x, bary.y, bary.z]
+                const interleavedData = [];
+                for (let i = 0; i < this.positions.length; i += 2) {
+                    interleavedData.push(
+                        this.positions[i], this.positions[i + 1],
+                        this.barycentrics[i * 1.5], this.barycentrics[i * 1.5 + 1], this.barycentrics[i * 1.5 + 2]
+                    );
+                }
+                
+                const vertexData = new Float32Array(interleavedData);
+                
+                this.#buffers.vertex = gl.createBuffer();
+                gl.bindBuffer(gl.ARRAY_BUFFER, this.#buffers.vertex);
+                gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.STATIC_DRAW);
+                
+                const stride = 5 * 4; // 5 floats * 4 bytes
+                
+                // Position attribute (2 floats)
+                gl.enableVertexAttribArray(this.#uniforms.aPosition);
+                gl.vertexAttribPointer(this.#uniforms.aPosition, 2, gl.FLOAT, false, stride, 0);
+                
+                // Barycentric attribute (3 floats)
+                gl.enableVertexAttribArray(this.#uniforms.aBarycentric);
+                gl.vertexAttribPointer(this.#uniforms.aBarycentric, 3, gl.FLOAT, false, stride, 2 * 4);
+            }
+            
+            #setupUniforms() {
+                const gl = this.#gl;
+                gl.useProgram(this.#program);
+                
+                // Set constant uniforms
+                gl.uniform1f(this.#uniforms.lineWidth, this.#config.lineWidth);
+                gl.uniform1f(this.#uniforms.brightness, this.#config.brightness);
+                gl.uniform3fv(this.#uniforms.color, new Float32Array(this.#config.lineColor));
+                
+                // Initial transform
+                gl.uniform2f(this.#uniforms.translation, this.transform.x, this.transform.y);
+                gl.uniform1f(this.#uniforms.scale, this.transform.scale);
+            }
+            
+            #updateProjection() {
+                const gl = this.#gl;
+                const width = this.canvas.clientWidth;
+                const height = this.canvas.clientHeight;
+                
+                // Set viewport
+                gl.viewport(0, 0, width * devicePixelRatio, height * devicePixelRatio);
+                
+                // Orthographic projection with proper aspect ratio
+                const aspect = width / height;
+                const viewSize = 8.0; // World units visible
+                
+                const left = -viewSize * aspect / 2;
+                const right = viewSize * aspect / 2;
+                const bottom = -viewSize / 2;
+                const top = viewSize / 2;
+                
+                // 3x3 orthographic matrix
+                const projection = new Float32Array([
+                    2/(right-left), 0, -(right+left)/(right-left),
+                    0, 2/(top-bottom), -(top+bottom)/(top-bottom),
+                    0, 0, 1
+                ]);
+                
+                gl.uniformMatrix3fv(this.#uniforms.projection, false, projection);
+            }
+            
+            resize() {
+                const width = this.canvas.clientWidth;
+                const height = this.canvas.clientHeight;
+                
+                if (this.canvas.width !== width * devicePixelRatio || 
+                    this.canvas.height !== height * devicePixelRatio) {
+                    this.canvas.width = width * devicePixelRatio;
+                    this.canvas.height = height * devicePixelRatio;
+                }
+                
+                this.#updateProjection();
+            }
+            
+            render() {
+                const gl = this.#gl;
+                
+                this.resize();
+                
+                // Clear with background color
+                gl.clearColor(...this.#config.bgColor);
+                gl.clear(gl.COLOR_BUFFER_BIT);
+                
+                // Update transform uniforms (for animation)
+                gl.uniform2f(this.#uniforms.translation, this.transform.x, this.transform.y);
+                gl.uniform1f(this.#uniforms.scale, this.transform.scale);
+                
+                // Draw grid
+                gl.drawArrays(gl.TRIANGLES, 0, this.#vertexCount);
+            }
+            
+            // Public API for animations
+            setTranslation(x, y) {
+                this.transform.x = x;
+                this.transform.y = y;
+            }
+            
+            setScale(scale) {
+                this.transform.scale = scale;
+            }
+            
+            setBrightness(value) {
+                this.#config.brightness = value;
+                this.#gl.uniform1f(this.#uniforms.brightness, value);
+            }
+            
+            dispose() {
+                const gl = this.#gl;
+                gl.deleteBuffer(this.#buffers.vertex);
+                gl.deleteProgram(this.#program);
+            }
+        }
+
+        // Initialize and animate
+        const canvas = document.getElementById('gridCanvas');
+        const grid = new EquilateralBarycentricGrid(canvas, {
+            triangleSide: 0.32,
+            gridCells: 28,
+            lineWidth: 0.038,
+            lineColor: [1.0, 0.8, 0.45],
+            bgColor: [0.06, 0.1, 0.14, 1.0]
+        });
+
+        // Animation loop with smooth transforms
+        let time = 0;
+        
+        function animate() {
+            time += 0.005;
+            
+            // Subtle floating animation - preserves perfect 60° geometry
+            grid.setTranslation(
+                Math.sin(time * 0.5) * 0.25,
+                Math.cos(time * 0.3) * 0.15
+            );
+            
+            // Gentle breathing scale
+            grid.setScale(1.0 + Math.sin(time * 0.4) * 0.08);
+            
+            // Animate brightness
+            grid.setBrightness(0.9 + Math.sin(time * 0.8) * 0.15);
+            
+            grid.render();
+            
+            requestAnimationFrame(animate);
+        }
+        
+        animate();
+
+        // Handle resize
+        window.addEventListener('resize', () => {
+            grid.resize();
+        });
+
+        // Clean up on page unload
+        window.addEventListener('beforeunload', () => {
+            grid.dispose();
+        });
+    </script>
+</body>
+</html>
