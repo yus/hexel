@@ -1,0 +1,978 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>HEXEL · SIZE + GRID TOGGLE · PERFORMANCE</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+        body {
+            background: #0a0a0a;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        #gridCanvas, #paintCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+        }
+        
+        #gridCanvas { 
+            z-index: 1; 
+            background: #0a0a0a; 
+            pointer-events: none;
+            transition: opacity 0.2s;
+        }
+        #paintCanvas { z-index: 2; background: transparent; cursor: crosshair; touch-action: none; }
+        
+        #panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(25,20,30,0.95);
+            backdrop-filter: blur(8px);
+            border: 1px solid #b8a5dd40;
+            padding: 16px 20px;
+            color: #d8c5ff;
+            font-family: monospace;
+            font-size: 12px;
+            min-width: 420px;
+            z-index: 100;
+            pointer-events: none;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        
+        .panel-title {
+            color: #d8b5ff;
+            font-size: 14px;
+            margin-bottom: 12px;
+            border-bottom: 1px solid #b8a5dd30;
+            padding-bottom: 6px;
+            display: flex;
+            justify-content: space-between;
+        }
+        
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .stat-label {
+            color: #aaa;
+            font-size: 8px;
+            text-transform: uppercase;
+        }
+        
+        .stat-value {
+            color: #ffd966;
+            font-size: 14px;
+            font-family: monospace;
+        }
+        
+        .slider-container {
+            margin: 12px 0;
+            border-top: 1px solid #b8a5dd20;
+            padding-top: 10px;
+        }
+        
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 8px 0;
+            pointer-events: auto;
+        }
+        
+        .slider-label {
+            width: 85px;
+            color: #b8a5dd;
+            font-size: 11px;
+        }
+        
+        .slider-row input {
+            flex: 1;
+            height: 4px;
+            background: #333;
+            outline: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+        
+        .slider-row input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #d8b5ff;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .slider-value {
+            width: 60px;
+            text-align: right;
+            font-family: monospace;
+            color: #ffd966;
+            font-size: 11px;
+        }
+        
+        .slider-scale {
+            font-size: 8px;
+            color: #888;
+            display: flex;
+            justify-content: space-between;
+            margin-top: 2px;
+            padding-left: 97px;
+            pointer-events: none;
+        }
+        
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 12px 0 8px 0;
+            pointer-events: auto;
+        }
+        
+        .toggle-label {
+            width: 85px;
+            color: #b8a5dd;
+            font-size: 11px;
+        }
+        
+        .toggle-btn {
+            background: transparent;
+            border: 1px solid #b8a5dd40;
+            color: #d8b5ff;
+            padding: 4px 12px;
+            font-size: 11px;
+            cursor: pointer;
+            min-width: 60px;
+        }
+        
+        .toggle-btn.active {
+            background: #b8a5dd;
+            color: #0a0a0a;
+        }
+        
+        .tool-panel {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(25,20,30,0.95);
+            backdrop-filter: blur(8px);
+            border: 1px solid #b8a5dd40;
+            padding: 12px 24px;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            z-index: 100;
+            pointer-events: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        
+        .tool-btn {
+            background: transparent;
+            border: 1px solid #b8a5dd40;
+            color: #d8b5ff;
+            padding: 6px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            min-width: 50px;
+        }
+        
+        .tool-btn.active {
+            background: #b8a5dd;
+            color: #0a0a0a;
+        }
+        
+        .color-palette {
+            display: flex;
+            gap: 6px;
+        }
+        
+        .color-swatch {
+            width: 24px;
+            height: 24px;
+            border: 1px solid transparent;
+            cursor: pointer;
+        }
+        
+        .color-swatch.active {
+            border-color: white;
+        }
+        
+        .coord-display {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid #b8a5dd40;
+            color: #d8b5ff;
+            padding: 8px 16px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        .perf-note {
+            position: fixed;
+            bottom: 24px;
+            left: 24px;
+            background: rgba(0,0,0,0.3);
+            color: #888;
+            padding: 4px 8px;
+            font-size: 9px;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        * { border-radius: 0 !important; }
+    </style>
+</head>
+<body>
+    <canvas id="gridCanvas"></canvas>
+    <canvas id="paintCanvas"></canvas>
+    
+    <div id="panel">
+        <div class="panel-title">
+            <span>⚡ HEXEL · SIZE + GRID TOGGLE · OPTIMIZED</span>
+            <span id="fps">60</span>
+        </div>
+        
+        <div class="stat-grid">
+            <div class="stat-item">
+                <span class="stat-label">Hexels</span>
+                <span class="stat-value" id="cell-count">0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Size</span>
+                <span class="stat-value" id="size-display">1.0</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Absorb</span>
+                <span class="stat-value" id="absorb-display">0.008</span>
+            </div>
+            <div class="stat-item">
+                <span class="stat-label">Flow</span>
+                <span class="stat-value" id="flow-display">0.15</span>
+            </div>
+        </div>
+        
+        <div class="slider-container">
+            <div class="slider-row">
+                <span class="slider-label">HEXEL SIZE</span>
+                <input type="range" id="size-slider" min="0" max="100" value="50">
+                <span class="slider-value" id="size-value">1.0</span>
+            </div>
+            <div class="slider-scale">
+                <span>dot (0.3)</span>
+                <span>blob (2.0)</span>
+            </div>
+            
+            <div class="slider-row">
+                <span class="slider-label">ABSORB</span>
+                <input type="range" id="absorb-slider" min="0" max="100" value="20">
+                <span class="slider-value" id="absorb-value">0.008</span>
+            </div>
+            <div class="slider-scale">
+                <span>paper</span>
+                <span>blotter</span>
+            </div>
+            
+            <div class="slider-row">
+                <span class="slider-label">FLOW</span>
+                <input type="range" id="flow-slider" min="0" max="100" value="12">
+                <span class="slider-value" id="flow-value">0.15</span>
+            </div>
+            <div class="slider-scale">
+                <span>still</span>
+                <span>river</span>
+            </div>
+            
+            <div class="slider-row">
+                <span class="slider-label">GRID SNAP</span>
+                <input type="range" id="snap-slider" min="0" max="100" value="30">
+                <span class="slider-value" id="snap-value">0.3</span>
+            </div>
+            <div class="slider-scale">
+                <span>fluid</span>
+                <span>crystal</span>
+            </div>
+            
+            <div class="slider-row">
+                <span class="slider-label">MORPH</span>
+                <input type="range" id="morph-slider" min="0" max="100" value="20">
+                <span class="slider-value" id="morph-value">0.2</span>
+            </div>
+            <div class="slider-scale">
+                <span>sharp</span>
+                <span>blend</span>
+            </div>
+            
+            <div class="toggle-row">
+                <span class="toggle-label">GRID VIEW</span>
+                <button class="toggle-btn active" id="grid-on">ON</button>
+                <button class="toggle-btn" id="grid-off">OFF</button>
+            </div>
+        </div>
+    </div>
+    
+    <div class="tool-panel">
+        <button class="tool-btn active" id="btn-paint">● Paint</button>
+        <button class="tool-btn" id="btn-erase">⌫ Erase</button>
+        <button class="tool-btn" id="btn-clear">Clear</button>
+        
+        <div class="color-palette">
+            <div class="color-swatch" style="background: #c4a5dd;" data-color="0.77,0.65,0.87"></div>
+            <div class="color-swatch active" style="background: #dda5c4;" data-color="0.87,0.65,0.77"></div>
+            <div class="color-swatch" style="background: #a5ddc4;" data-color="0.65,0.87,0.77"></div>
+            <div class="color-swatch" style="background: #ddc4a5;" data-color="0.87,0.77,0.65"></div>
+        </div>
+        
+        <span style="color:#888; font-size:10px;">⏱️ perf: adaptive</span>
+    </div>
+    
+    <div class="coord-display" id="coords">0.00 , 0.00</div>
+    <div class="perf-note" id="perf-note">⚡ 60fps target · throttling at 15k cells</div>
+
+    <script>
+        (function() {
+            // ================================================
+            // LOG SLIDER CLASS (with snap curve)
+            // ================================================
+            class LogSlider {
+                constructor(elementId, displayId, minVal, maxVal, expFactor = 2.5, defaultVal = null) {
+                    this.slider = document.getElementById(elementId);
+                    this.display = document.getElementById(displayId);
+                    this.minVal = minVal;
+                    this.maxVal = maxVal;
+                    this.expFactor = expFactor;
+                    this.value = defaultVal || minVal;
+                    this.callbacks = [];
+                    
+                    if (defaultVal !== null) {
+                        this.setValue(defaultVal);
+                    }
+                    
+                    this.slider.addEventListener('input', (e) => {
+                        this.updateFromSlider(parseInt(e.target.value));
+                    });
+                }
+                
+                sliderToValue(sliderPos) {
+                    const t = sliderPos / 100;
+                    const curved = Math.pow(t, this.expFactor);
+                    return this.minVal + (this.maxVal - this.minVal) * curved;
+                }
+                
+                valueToSlider(val) {
+                    const t = (val - this.minVal) / (this.maxVal - this.minVal);
+                    const curved = Math.pow(t, 1 / this.expFactor);
+                    return curved * 100;
+                }
+                
+                updateFromSlider(sliderPos) {
+                    this.value = this.sliderToValue(sliderPos);
+                    this.display.innerHTML = this.value.toFixed(3);
+                    this.callbacks.forEach(cb => cb(this.value));
+                }
+                
+                setValue(val) {
+                    this.value = Math.max(this.minVal, Math.min(this.maxVal, val));
+                    this.slider.value = this.valueToSlider(this.value);
+                    this.display.innerHTML = this.value.toFixed(3);
+                }
+                
+                onChange(callback) {
+                    this.callbacks.push(callback);
+                    callback(this.value);
+                }
+            }
+            
+            // ================================================
+            // Canvas setup
+            // ================================================
+            const gridCanvas = document.getElementById('gridCanvas');
+            const paintCanvas = document.getElementById('paintCanvas');
+            
+            const gridCtx = gridCanvas.getContext('2d');
+            const paintCtx = paintCanvas.getContext('2d');
+            
+            // Grid parameters
+            const BASE_SIZE = 24;
+            const H_STEP = BASE_SIZE * 2;
+            const V_STEP = BASE_SIZE * Math.sqrt(3);
+            
+            // Camera
+            let cameraX = 0, cameraY = 0, scale = 1.0;
+            
+            // Interaction
+            let isPainting = false;
+            let isPanning = false;
+            let currentTool = 'paint';
+            let lastX, lastY;
+            
+            // Paint cells
+            let paintCells = new Map();
+            const MAX_CELLS = 15000;
+            let frameSkip = 0; // For performance throttling
+            
+            // Parameters
+            let hexelSize = 1.0;        // Size multiplier for paint dots
+            let absorbRate = 0.008;
+            let flowStrength = 0.15;
+            let gridSnap = 0.3;
+            let morphRate = 0.2;
+            let showGrid = true;
+            let time = 0;
+            
+            // Colors
+            let currentColor = [0.87, 0.65, 0.77];
+            
+            // ================================================
+            // Initialize Log Sliders
+            // ================================================
+            const sizeSlider = new LogSlider('size-slider', 'size-value', 0.3, 2.0, 2.0, hexelSize);
+            const absorbSlider = new LogSlider('absorb-slider', 'absorb-value', 0.0001, 0.1, 2.5, absorbRate);
+            const flowSlider = new LogSlider('flow-slider', 'flow-value', 0.01, 2.0, 2.0, flowStrength);
+            const snapSlider = new LogSlider('snap-slider', 'snap-value', 0.0, 1.0, 2.0, gridSnap);
+            const morphSlider = new LogSlider('morph-slider', 'morph-value', 0.0, 1.0, 2.0, morphRate);
+            
+            sizeSlider.onChange(val => hexelSize = val);
+            absorbSlider.onChange(val => absorbRate = val);
+            flowSlider.onChange(val => flowStrength = val);
+            snapSlider.onChange(val => gridSnap = val);
+            morphSlider.onChange(val => morphRate = val);
+            
+            // Update displays
+            sizeSlider.onChange(val => document.getElementById('size-display').innerHTML = val.toFixed(3));
+            absorbSlider.onChange(val => document.getElementById('absorb-display').innerHTML = val.toFixed(3));
+            flowSlider.onChange(val => document.getElementById('flow-display').innerHTML = val.toFixed(3));
+            
+            // ================================================
+            // Grid Toggle
+            // ================================================
+            document.getElementById('grid-on').addEventListener('click', () => {
+                showGrid = true;
+                document.getElementById('grid-on').classList.add('active');
+                document.getElementById('grid-off').classList.remove('active');
+                gridCanvas.style.opacity = '1';
+            });
+            
+            document.getElementById('grid-off').addEventListener('click', () => {
+                showGrid = false;
+                document.getElementById('grid-off').classList.add('active');
+                document.getElementById('grid-on').classList.remove('active');
+                gridCanvas.style.opacity = '0';
+            });
+            
+            // ================================================
+            // Hex grid utilities
+            // ================================================
+            function getHexKey(col, row) {
+                return `${col},${row}`;
+            }
+            
+            function getHexCenter(col, row) {
+                let x = col * H_STEP;
+                let y = row * V_STEP;
+                if (row % 2 !== 0) x += H_STEP / 2;
+                return { x, y };
+            }
+            
+            // ================================================
+            // Painting - with size influence
+            // ================================================
+            function addPaint(screenX, screenY) {
+                const worldX = cameraX + (screenX - paintCanvas.width/2) / scale;
+                const worldY = cameraY + (screenY - paintCanvas.height/2) / scale;
+                
+                const centerCol = Math.round(worldX / H_STEP);
+                const centerRow = Math.round(worldY / H_STEP);
+                
+                // Size affects brush radius
+                const brushRadius = Math.max(1, Math.floor(2 * hexelSize));
+                
+                for (let dr = -brushRadius; dr <= brushRadius; dr++) {
+                    for (let dc = -brushRadius; dc <= brushRadius; dc++) {
+                        if (Math.abs(dr) + Math.abs(dc) > brushRadius * 1.5) continue;
+                        
+                        const row = centerRow + dr;
+                        const col = centerCol + dc;
+                        const key = getHexKey(col, row);
+                        const center = getHexCenter(col, row);
+                        
+                        const dx = worldX - center.x;
+                        const dy = worldY - center.y;
+                        const dist = Math.sqrt(dx*dx + dy*dy);
+                        
+                        if (dist < H_STEP * 1.2 * hexelSize) {
+                            // Size affects strength falloff
+                            const strength = 0.3 * (1 - dist / (H_STEP * 1.2 * hexelSize)) * hexelSize;
+                            
+                            if (!paintCells.has(key) && paintCells.size >= MAX_CELLS) continue;
+                            
+                            let cell = paintCells.get(key);
+                            if (!cell) {
+                                cell = { r: 0, g: 0, b: 0, age: 0, size: 1.0 };
+                                paintCells.set(key, cell);
+                            }
+                            
+                            if (currentTool === 'paint') {
+                                cell.r = Math.min(1, cell.r + currentColor[0] * strength);
+                                cell.g = Math.min(1, cell.g + currentColor[1] * strength);
+                                cell.b = Math.min(1, cell.b + currentColor[2] * strength);
+                                cell.size = (cell.size + hexelSize) / 2; // Blend sizes
+                            } else {
+                                cell.r = Math.max(0, cell.r - strength * 0.3);
+                                cell.g = Math.max(0, cell.g - strength * 0.3);
+                                cell.b = Math.max(0, cell.b - strength * 0.3);
+                                
+                                if (cell.r + cell.g + cell.b < 0.01) {
+                                    paintCells.delete(key);
+                                }
+                            }
+                            
+                            cell.age = 0;
+                        }
+                    }
+                }
+            }
+            
+            // ================================================
+            // Fluid simulation with performance optimization
+            // ================================================
+            function getCellVelocity(col, row, t) {
+                const baseSpeed = flowStrength * 0.3;
+                const phaseX = col * 0.5 + t * 0.05;
+                const phaseY = row * 0.3 + t * 0.03;
+                
+                let vx = Math.sin(phaseY * 2) * baseSpeed;
+                let vy = Math.cos(phaseX * 2) * baseSpeed;
+                
+                vx += Math.cos(phaseX * 1.5 + phaseY) * baseSpeed * 0.3;
+                vy += Math.sin(phaseY * 1.5 - phaseX) * baseSpeed * 0.3;
+                
+                return { vx, vy };
+            }
+            
+            function updateCells(dt) {
+                // Performance: skip frames if too many cells
+                const cellCount = paintCells.size;
+                if (cellCount > 10000) {
+                    frameSkip = (frameSkip + 1) % 2;
+                    if (frameSkip === 0) return;
+                }
+                if (cellCount > 14000) {
+                    frameSkip = (frameSkip + 1) % 3;
+                    if (frameSkip !== 1) return;
+                }
+                
+                const newCells = new Map();
+                const cellArray = Array.from(paintCells.entries());
+                
+                // First pass: advection
+                for (const [key, cell] of cellArray) {
+                    const [col, row] = key.split(',').map(Number);
+                    const { vx, vy } = getCellVelocity(col, row, time);
+                    
+                    const newCol = col + vx * dt * 5;
+                    const newRow = row + vy * dt * 5;
+                    
+                    const targetCol = Math.round(newCol);
+                    const targetRow = Math.round(newRow);
+                    const targetKey = getHexKey(targetCol, targetRow);
+                    
+                    // Grid snap influence
+                    if (Math.random() < gridSnap * dt * 10) {
+                        let existing = newCells.get(targetKey);
+                        if (existing) {
+                            existing.r = (existing.r + cell.r) / 2;
+                            existing.g = (existing.g + cell.g) / 2;
+                            existing.b = (existing.b + cell.b) / 2;
+                            existing.size = (existing.size + cell.size) / 2;
+                        } else {
+                            newCells.set(targetKey, { ...cell });
+                        }
+                    } else {
+                        let existing = newCells.get(key);
+                        if (existing) {
+                            existing.r = (existing.r + cell.r) / 2;
+                            existing.g = (existing.g + cell.g) / 2;
+                            existing.b = (existing.b + cell.b) / 2;
+                            existing.size = (existing.size + cell.size) / 2;
+                        } else {
+                            newCells.set(key, { ...cell });
+                        }
+                    }
+                }
+                
+                // Second pass: diffusion and morph (optimized)
+                if ((absorbRate > 0.001 || morphRate > 0.01) && cellCount < 14000) {
+                    const diffused = new Map();
+                    
+                    for (const [key, cell] of newCells) {
+                        const [col, row] = key.split(',').map(Number);
+                        
+                        let r = cell.r, g = cell.g, b = cell.b;
+                        let size = cell.size;
+                        let neighborCount = 0;
+                        
+                        // Only process neighbors if we have enough cells
+                        if (cellCount < 12000) {
+                            const neighbors = [
+                                [col+1, row], [col-1, row],
+                                [col, row+1], [col, row-1],
+                                [col + (row%2===0?1:-1), row+1],
+                                [col + (row%2===0?1:-1), row-1]
+                            ];
+                            
+                            for (const [ncol, nrow] of neighbors) {
+                                const nkey = `${ncol},${nrow}`;
+                                const ncell = newCells.get(nkey);
+                                if (ncell) {
+                                    if (absorbRate > 0.001) {
+                                        r += ncell.r * absorbRate;
+                                        g += ncell.g * absorbRate;
+                                        b += ncell.b * absorbRate;
+                                    }
+                                    
+                                    if (morphRate > 0.01 && Math.random() < morphRate * 0.1) {
+                                        r = (r + ncell.r) / 2;
+                                        g = (g + ncell.g) / 2;
+                                        b = (b + ncell.b) / 2;
+                                        size = (size + ncell.size) / 2;
+                                    }
+                                    
+                                    neighborCount++;
+                                }
+                            }
+                        }
+                        
+                        const denom = 1 + neighborCount * absorbRate;
+                        diffused.set(key, {
+                            r: r / denom,
+                            g: g / denom,
+                            b: b / denom,
+                            size: size,
+                            age: cell.age + 1
+                        });
+                    }
+                    
+                    paintCells = diffused;
+                } else {
+                    paintCells = newCells;
+                }
+                
+                // Enforce limit with size consideration
+                if (paintCells.size > MAX_CELLS) {
+                    const sorted = Array.from(paintCells.entries())
+                        .sort((a, b) => {
+                            const valA = (a[1].r + a[1].g + a[1].b) * a[1].size;
+                            const valB = (b[1].r + b[1].g + b[1].b) * b[1].size;
+                            return valB - valA;
+                        })
+                        .slice(0, MAX_CELLS);
+                    paintCells = new Map(sorted);
+                }
+                
+                // Update perf note
+                if (cellCount > 12000) {
+                    document.getElementById('perf-note').innerHTML = '⚠️ heavy load · throttling';
+                } else {
+                    document.getElementById('perf-note').innerHTML = '⚡ 60fps target';
+                }
+            }
+            
+            // ================================================
+            // Rendering
+            // ================================================
+            function drawGrid() {
+                if (!showGrid) {
+                    gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+                    return;
+                }
+                
+                gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+                
+                const centerX = gridCanvas.width / 2;
+                const centerY = gridCanvas.height / 2;
+                
+                const worldLeft = cameraX - (gridCanvas.width / 2) / scale;
+                const worldRight = cameraX + (gridCanvas.width / 2) / scale;
+                const worldTop = cameraY - (gridCanvas.height / 2) / scale;
+                const worldBottom = cameraY + (gridCanvas.height / 2) / scale;
+                
+                const minCol = Math.floor(worldLeft / H_STEP) - 2;
+                const maxCol = Math.ceil(worldRight / H_STEP) + 2;
+                const minRow = Math.floor(worldTop / V_STEP) - 2;
+                const maxRow = Math.ceil(worldBottom / V_STEP) + 2;
+                
+                gridCtx.strokeStyle = '#b8a5dd';
+                gridCtx.lineWidth = 0.5;
+                gridCtx.globalAlpha = 0.15;
+                
+                for (let row = minRow; row <= maxRow; row++) {
+                    for (let col = minCol; col <= maxCol; col++) {
+                        const x = centerX + (col * H_STEP - cameraX) * scale;
+                        const y = centerY + (row * V_STEP - cameraY) * scale;
+                        const xOffset = (row % 2 === 0) ? 0 : (H_STEP * scale) / 2;
+                        
+                        gridCtx.beginPath();
+                        gridCtx.moveTo(x + xOffset - 8, y - 13.86);
+                        gridCtx.lineTo(x + xOffset + 8, y + 13.86);
+                        gridCtx.stroke();
+                        
+                        gridCtx.beginPath();
+                        gridCtx.moveTo(x + xOffset - 8, y + 13.86);
+                        gridCtx.lineTo(x + xOffset + 8, y - 13.86);
+                        gridCtx.stroke();
+                    }
+                }
+            }
+            
+            function drawPaint() {
+                paintCtx.clearRect(0, 0, paintCanvas.width, paintCanvas.height);
+                
+                const centerX = paintCanvas.width / 2;
+                const centerY = paintCanvas.height / 2;
+                const cellCount = paintCells.size;
+                
+                // Adaptive quality based on cell count
+                const quality = cellCount > 12000 ? 0.5 : 1.0;
+                
+                for (const [key, cell] of paintCells) {
+                    const [col, row] = key.split(',').map(Number);
+                    const center = getHexCenter(col, row);
+                    
+                    const screenX = centerX + (center.x - cameraX) * scale;
+                    const screenY = centerY + (center.y - cameraY) * scale;
+                    
+                    if (screenX < -100 || screenX > paintCanvas.width + 100 ||
+                        screenY < -100 || screenY > paintCanvas.height + 100) continue;
+                    
+                    const density = (cell.r + cell.g + cell.b) / 3;
+                    if (density < 0.01) continue;
+                    
+                    // Size affects the hexagon radius
+                    const cellSize = cell.size || 1.0;
+                    const size = H_STEP * scale * 0.4 * cellSize * hexelSize * quality;
+                    
+                    paintCtx.beginPath();
+                    for (let i = 0; i < 6; i++) {
+                        const angle = i * Math.PI / 3;
+                        const hx = screenX + size * Math.cos(angle);
+                        const hy = screenY + size * Math.sin(angle);
+                        if (i === 0) paintCtx.moveTo(hx, hy);
+                        else paintCtx.lineTo(hx, hy);
+                    }
+                    paintCtx.closePath();
+                    
+                    paintCtx.fillStyle = `rgba(${Math.floor(cell.r*255)}, ${Math.floor(cell.g*255)}, ${Math.floor(cell.b*255)}, ${density * 0.8})`;
+                    paintCtx.fill();
+                    
+                    if (cellCount < 12000) {
+                        paintCtx.strokeStyle = `rgba(255,255,255,${density * 0.2})`;
+                        paintCtx.lineWidth = 0.5;
+                        paintCtx.stroke();
+                    }
+                }
+            }
+            
+            // ================================================
+            // Utilities
+            // ================================================
+            function screenToWorld(screenX, screenY) {
+                return {
+                    x: cameraX + (screenX - paintCanvas.width/2) / scale,
+                    y: cameraY + (screenY - paintCanvas.height/2) / scale
+                };
+            }
+            
+            // ================================================
+            // Animation
+            // ================================================
+            function update() {
+                time += 0.02;
+                
+                updateCells(0.1);
+                
+                // Update UI
+                document.getElementById('cell-count').innerHTML = paintCells.size;
+                
+                // FPS counter
+                frameCount++;
+                const now = performance.now();
+                if (now - lastFPSUpdate >= 1000) {
+                    document.getElementById('fps').innerHTML = frameCount;
+                    frameCount = 0;
+                    lastFPSUpdate = now;
+                }
+                
+                drawGrid();
+                drawPaint();
+                
+                requestAnimationFrame(update);
+            }
+            
+            // ================================================
+            // Interaction
+            // ================================================
+            paintCanvas.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                
+                const rect = paintCanvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                if (e.button === 2) {
+                    isPanning = true;
+                    paintCanvas.style.cursor = 'grabbing';
+                } else {
+                    isPainting = true;
+                    addPaint(x, y);
+                }
+                
+                lastX = x;
+                lastY = y;
+            });
+            
+            paintCanvas.addEventListener('mousemove', (e) => {
+                e.preventDefault();
+                
+                const rect = paintCanvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                const world = screenToWorld(x, y);
+                document.getElementById('coords').innerHTML = `${world.x.toFixed(2)} , ${world.y.toFixed(2)}`;
+                
+                if (isPanning) {
+                    cameraX -= (x - lastX) / scale;
+                    cameraY -= (y - lastY) / scale;
+                } else if (isPainting) {
+                    const dist = Math.hypot(x - lastX, y - lastY);
+                    const steps = Math.max(1, Math.floor(dist / 5));
+                    
+                    for (let i = 0; i <= steps; i++) {
+                        const t = i / steps;
+                        const ix = lastX * (1 - t) + x * t;
+                        const iy = lastY * (1 - t) + y * t;
+                        addPaint(ix, iy);
+                    }
+                }
+                
+                lastX = x;
+                lastY = y;
+            });
+            
+            paintCanvas.addEventListener('mouseup', () => {
+                isPainting = false;
+                isPanning = false;
+                paintCanvas.style.cursor = 'crosshair';
+            });
+            
+            paintCanvas.addEventListener('mouseleave', () => {
+                isPainting = false;
+                isPanning = false;
+                paintCanvas.style.cursor = 'crosshair';
+            });
+            
+            paintCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
+            
+            paintCanvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                
+                const rect = paintCanvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                const worldBefore = screenToWorld(mouseX, mouseY);
+                
+                const zoomFactor = e.deltaY > 0 ? 0.95 : 1.05;
+                scale *= zoomFactor;
+                scale = Math.max(0.2, Math.min(5, scale));
+                
+                const worldAfter = screenToWorld(mouseX, mouseY);
+                
+                cameraX += worldBefore.x - worldAfter.x;
+                cameraY += worldBefore.y - worldAfter.y;
+            }, { passive: false });
+            
+            // ================================================
+            // UI Controls
+            // ================================================
+            document.getElementById('btn-paint').addEventListener('click', () => {
+                currentTool = 'paint';
+                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                document.getElementById('btn-paint').classList.add('active');
+            });
+            
+            document.getElementById('btn-erase').addEventListener('click', () => {
+                currentTool = 'erase';
+                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                document.getElementById('btn-erase').classList.add('active');
+            });
+            
+            document.getElementById('btn-clear').addEventListener('click', () => {
+                paintCells.clear();
+            });
+            
+            document.querySelectorAll('.color-swatch').forEach(swatch => {
+                swatch.addEventListener('click', () => {
+                    document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
+                    swatch.classList.add('active');
+                    const colorStr = swatch.dataset.color;
+                    currentColor = colorStr.split(',').map(Number);
+                });
+            });
+            
+            // ================================================
+            // Initialize
+            // ================================================
+            let frameCount = 0;
+            let lastFPSUpdate = performance.now();
+            
+            function resize() {
+                gridCanvas.width = window.innerWidth;
+                gridCanvas.height = window.innerHeight;
+                paintCanvas.width = window.innerWidth;
+                paintCanvas.height = window.innerHeight;
+                drawGrid();
+                drawPaint();
+            }
+            
+            window.addEventListener('resize', resize);
+            resize();
+            
+            update();
+            
+            // Add some initial paint
+            setTimeout(() => {
+                for (let i = 0; i < 10; i++) {
+                    const x = paintCanvas.width * (0.2 + 0.6 * Math.random());
+                    const y = paintCanvas.height * (0.2 + 0.6 * Math.random());
+                    addPaint(x, y);
+                }
+            }, 500);
+        })();
+    </script>
+</body>
+</html>
