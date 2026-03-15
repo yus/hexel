@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>HEXELATION · FIXED COLOR</title>
+    <title>HEXELATION · FIXED EVENTS</title>
     <style>
         * {
             margin: 0;
@@ -24,7 +24,6 @@
             cursor: crosshair;
         }
         
-        /* Main panel - no rounding */
         #panel {
             position: fixed;
             top: 20px;
@@ -106,7 +105,6 @@
             box-shadow: 0 0 8px #6f6;
         }
         
-        /* Tool panel */
         .tool-panel {
             position: fixed;
             bottom: 24px;
@@ -183,7 +181,6 @@
             z-index: 100;
         }
         
-        /* No rounding on anything */
         * {
             border-radius: 0 !important;
         }
@@ -194,7 +191,7 @@
     
     <div id="panel">
         <div class="panel-title">
-            <span>⚡ HEXELATION · FIXED COLORS</span>
+            <span>⚡ HEXELATION · FIXED EVENTS</span>
             <span id="fps">60</span>
         </div>
         
@@ -309,20 +306,18 @@
             // Interaction
             let isDragging = false;
             let isPainting = false;
-            let currentTool = 'paint'; // 'pan', 'paint', 'erase'
+            let currentTool = 'paint';
             let lastX = 0, lastY = 0;
             let lastPoint = null;
             
             // Paint state
-            let currentColor = '#c4b5fd'; // Default purple
+            let currentColor = '#c4b5fd';
             let brushSize = 8;
             let snapStrength = 0.7;
             let paintPoints = [];
             
-            // Background color (for eraser)
             const BG_COLOR = '#0a0a0a';
             
-            // Colors for grid
             const COLORS = {
                 diagonal: '#9f8be5',
                 dots: '#b4a5ee',
@@ -331,9 +326,8 @@
             };
             
             // ================================================
-            // GRID INFLUENCE FUNCTIONS
+            // GRID FUNCTIONS
             // ================================================
-            
             function getNearestVertex(worldX, worldY) {
                 const col = Math.round(worldX / H_STEP);
                 const row = Math.round(worldY / V_STEP);
@@ -383,7 +377,6 @@
             function paintAt(screenX, screenY) {
                 const world = screenToWorld(screenX, screenY);
                 
-                // Determine color based on tool
                 let colorToUse;
                 if (currentTool === 'erase') {
                     colorToUse = BG_COLOR;
@@ -409,7 +402,6 @@
                     paintPoints.push(point);
                 }
                 
-                // Interpolate between points for smooth strokes
                 if (lastPoint) {
                     const dist = Math.hypot(world.x - lastPoint.x, world.y - lastPoint.y);
                     const steps = Math.floor(dist / (brushSize / scale) * frequency * 2);
@@ -438,7 +430,6 @@
                 
                 lastPoint = { x: world.x, y: world.y };
                 
-                // Limit points for performance
                 if (paintPoints.length > 2000) {
                     paintPoints = paintPoints.slice(-1500);
                 }
@@ -520,7 +511,6 @@
                 const centerScreenX = canvas.width / 2;
                 const centerScreenY = canvas.height / 2;
                 
-                // Visible world bounds
                 const worldLeft = cameraWorldX - (canvas.width / 2) / scale;
                 const worldRight = cameraWorldX + (canvas.width / 2) / scale;
                 const worldTop = cameraWorldY - (canvas.height / 2) / scale;
@@ -539,7 +529,6 @@
                 document.getElementById('current-color').innerHTML = currentColor;
                 document.getElementById('current-tool').innerHTML = currentTool;
                 
-                // Update LOD indicators
                 const indicators = {
                     'lod-snap': lod.snapOnly,
                     'lod-dots-sparse': lod.sparseDots,
@@ -555,7 +544,7 @@
                     }
                 }
                 
-                // ========== PAINT LAYER ==========
+                // PAINT LAYER
                 const sortedPoints = [...paintPoints].sort((a, b) => a.timestamp - b.timestamp);
                 
                 for (const point of sortedPoints) {
@@ -573,16 +562,14 @@
                     ctx.fill();
                 }
                 
-                // ========== GRID LAYER ==========
+                // GRID LAYER
                 ctx.globalAlpha = 1.0;
                 ctx.lineWidth = Math.max(0.5, Math.min(2.0, 1.5 / Math.sqrt(scale)));
                 
-                // DIAGONALS
                 if (lod.diagonals || lod.horizontals) {
                     ctx.strokeStyle = COLORS.diagonal;
                     ctx.globalAlpha = 0.2;
                     
-                    // +60° diagonals
                     ctx.beginPath();
                     for (let row = minRow - 2; row <= maxRow + 2; row++) {
                         for (let col = minCol - 2; col <= maxCol + 2; col++) {
@@ -601,7 +588,6 @@
                     }
                     ctx.stroke();
                     
-                    // -60° diagonals
                     ctx.beginPath();
                     for (let row = minRow - 2; row <= maxRow + 2; row++) {
                         for (let col = minCol - 2; col <= maxCol + 2; col++) {
@@ -621,7 +607,6 @@
                     ctx.stroke();
                 }
                 
-                // HORIZONTALS
                 if (lod.horizontals) {
                     ctx.strokeStyle = COLORS.diagonal;
                     ctx.globalAlpha = 0.15;
@@ -639,7 +624,6 @@
                     ctx.stroke();
                 }
                 
-                // DOTS
                 if (!lod.snapOnly) {
                     if (lod.sparseDots) {
                         ctx.fillStyle = COLORS.dotsSparse;
@@ -677,7 +661,6 @@
                     }
                 }
                 
-                // ORIGIN MARKER
                 const originScreen = worldToScreen(0, 0);
                 if (originScreen.x >= -50 && originScreen.x <= canvas.width + 50 &&
                     originScreen.y >= -50 && originScreen.y <= canvas.height + 50) {
@@ -691,7 +674,6 @@
                     ctx.fill();
                 }
                 
-                // Update hexel under mouse
                 if (lastX && lastY) {
                     const world = screenToWorld(lastX, lastY);
                     const hexel = getHexelAt(world.x, world.y);
@@ -703,12 +685,22 @@
             }
             
             // ================================================
-            // INTERACTION
+            // FIXED INTERACTION HANDLERS
             // ================================================
             function handleStart(e) {
                 e.preventDefault();
-                const clientX = e.clientX ?? e.touches[0].clientX;
-                const clientY = e.clientY ?? e.touches[0].clientY;
+                
+                let clientX, clientY;
+                
+                if (e.touches) {
+                    // Touch event
+                    clientX = e.touches[0].clientX;
+                    clientY = e.touches[0].clientY;
+                } else {
+                    // Mouse event
+                    clientX = e.clientX;
+                    clientY = e.clientY;
+                }
                 
                 lastX = clientX;
                 lastY = clientY;
@@ -724,8 +716,16 @@
             
             function handleMove(e) {
                 e.preventDefault();
-                const clientX = e.clientX ?? e.touches[0].clientX;
-                const clientY = e.clientY ?? e.touches[0].clientY;
+                
+                let clientX, clientY;
+                
+                if (e.touches) {
+                    clientX = e.touches[0].clientX;
+                    clientY = e.touches[0].clientY;
+                } else {
+                    clientX = e.clientX;
+                    clientY = e.clientY;
+                }
                 
                 const world = screenToWorld(clientX, clientY);
                 document.getElementById('coords').innerHTML = 
@@ -784,7 +784,7 @@
             canvas.addEventListener('touchcancel', handleEnd);
             
             // ================================================
-            // TOOL CONTROLS - FIXED VERSION
+            // TOOL CONTROLS
             // ================================================
             document.getElementById('tool-pan').addEventListener('click', () => {
                 currentTool = 'pan';
@@ -795,7 +795,6 @@
             
             document.getElementById('tool-paint').addEventListener('click', () => {
                 currentTool = 'paint';
-                // Restore the last selected color from active swatch
                 const activeSwatch = document.querySelector('.color-swatch.active');
                 if (activeSwatch) {
                     currentColor = activeSwatch.dataset.color;
@@ -807,27 +806,19 @@
             
             document.getElementById('tool-erase').addEventListener('click', () => {
                 currentTool = 'erase';
-                // Eraser uses background color, not a swatch color
                 document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
                 document.getElementById('tool-erase').classList.add('active');
                 document.getElementById('current-tool').innerHTML = 'erase';
-                
-                // Don't try to activate a color swatch for erase
-                // Just leave swatches as they are
             });
             
-            // Color picker - FIXED
             document.querySelectorAll('.color-swatch').forEach(swatch => {
                 swatch.addEventListener('click', () => {
-                    // Update active swatch
                     document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
                     swatch.classList.add('active');
                     
-                    // Set current color
                     currentColor = swatch.dataset.color;
                     document.getElementById('current-color').innerHTML = currentColor;
                     
-                    // If we were in erase mode, switch to paint mode
                     if (currentTool === 'erase') {
                         currentTool = 'paint';
                         document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
@@ -837,7 +828,6 @@
                 });
             });
             
-            // Brush size
             const brushInput = document.getElementById('brush-size');
             const brushValue = document.getElementById('brush-value');
             brushInput.addEventListener('input', () => {
@@ -845,7 +835,6 @@
                 brushValue.innerHTML = brushSize + 'px';
             });
             
-            // Snap strength
             const snapInput = document.getElementById('snap-strength');
             const snapValue = document.getElementById('snap-value');
             snapInput.addEventListener('input', () => {
@@ -853,13 +842,11 @@
                 snapValue.innerHTML = snapStrength.toFixed(2);
             });
             
-            // Clear
             document.getElementById('clear-btn').addEventListener('click', () => {
                 paintPoints = [];
                 draw();
             });
             
-            // Keyboard shortcuts
             window.addEventListener('keydown', (e) => {
                 if (e.key === ' ') {
                     e.preventDefault();
@@ -876,7 +863,6 @@
                 }
             });
             
-            // Initialize
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             
@@ -886,7 +872,6 @@
                 draw();
             });
             
-            // FPS counter
             let frameCount = 0;
             let lastTime = performance.now();
             
