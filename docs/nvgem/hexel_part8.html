@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>HEXEL · TIMELINE · DRIP · FIXED</title>
+    <title>HEXEL · TIMELINE · DRIP · FIXED IDS</title>
     <style>
         * {
             margin: 0;
@@ -411,8 +411,8 @@
                     <span class="stat-value" id="drip-display">0.5</span>
                 </div>
                 <div class="stat-item">
-                    <span class="stat-label">Absorb</span>
-                    <span class="stat-value" id="absorb-display">0.008</span>
+                    <span class="stat-label">Flow</span>
+                    <span class="stat-value" id="flow-display">0.15</span>
                 </div>
             </div>
             
@@ -457,16 +457,6 @@
                 </div>
                 
                 <div class="slider-row">
-                    <span class="slider-label">ABSORB</span>
-                    <input type="range" id="absorb-slider" min="0" max="100" value="20">
-                    <span class="slider-value" id="absorb-value">0.008</span>
-                </div>
-                <div class="slider-scale">
-                    <span>paper</span>
-                    <span>blotter</span>
-                </div>
-                
-                <div class="slider-row">
                     <span class="slider-label">FLOW</span>
                     <input type="range" id="flow-slider" min="0" max="100" value="12">
                     <span class="slider-value" id="flow-value">0.15</span>
@@ -474,6 +464,16 @@
                 <div class="slider-scale">
                     <span>still</span>
                     <span>river</span>
+                </div>
+                
+                <div class="slider-row">
+                    <span class="slider-label">ABSORB</span>
+                    <input type="range" id="absorb-slider" min="0" max="100" value="20">
+                    <span class="slider-value" id="absorb-value">0.008</span>
+                </div>
+                <div class="slider-scale">
+                    <span>paper</span>
+                    <span>blotter</span>
                 </div>
                 
                 <div class="toggle-row">
@@ -514,6 +514,11 @@
                 constructor(elementId, displayId, minVal, maxVal, expFactor = 2.5, defaultVal = null) {
                     this.slider = document.getElementById(elementId);
                     this.display = document.getElementById(displayId);
+                    
+                    // Safety check
+                    if (!this.slider) console.error(`Slider element ${elementId} not found`);
+                    if (!this.display) console.error(`Display element ${displayId} not found`);
+                    
                     this.minVal = minVal;
                     this.maxVal = maxVal;
                     this.expFactor = expFactor;
@@ -543,14 +548,18 @@
                 
                 updateFromSlider(sliderPos) {
                     this.value = this.sliderToValue(sliderPos);
-                    this.display.innerHTML = this.value.toFixed(3);
+                    if (this.display) {
+                        this.display.innerHTML = this.value.toFixed(3);
+                    }
                     this.callbacks.forEach(cb => cb(this.value));
                 }
                 
                 setValue(val) {
                     this.value = Math.max(this.minVal, Math.min(this.maxVal, val));
                     this.slider.value = this.valueToSlider(this.value);
-                    this.display.innerHTML = this.value.toFixed(3);
+                    if (this.display) {
+                        this.display.innerHTML = this.value.toFixed(3);
+                    }
                 }
                 
                 onChange(callback) {
@@ -591,8 +600,8 @@
             // Parameters
             let brushSize = 1.0;
             let dripRate = 0.5;
-            let absorbRate = 0.008;
             let flowStrength = 0.15;
+            let absorbRate = 0.008;
             let showGrid = true;
             let time = 0;
             
@@ -607,32 +616,38 @@
             let currentColor = [0.87, 0.65, 0.77];
             
             // ================================================
-            // Initialize Log Sliders - FIXED
+            // Initialize Log Sliders - FIXED IDS
             // ================================================
-            const sizeSlider = new LogSlider('size-slider', 'size-value', 0.3, 2.0, 2.0, brushSize);
-            const dripSlider = new LogSlider('drip-slider', 'drip-value', 0.1, 2.0, 2.0, dripRate);
-            const absorbSlider = new LogSlider('absorb-slider', 'absorb-value', 0.0001, 0.1, 2.5, absorbRate);
-            const flowSlider = new LogSlider('flow-slider', 'flow-value', 0.01, 2.0, 2.0, flowStrength);
             
-            // Update displays - FIXED: removed optional chaining, elements exist now
+            // Brush size slider
+            const sizeSlider = new LogSlider('size-slider', 'size-value', 0.3, 2.0, 2.0, brushSize);
             sizeSlider.onChange(val => {
                 brushSize = val;
-                document.getElementById('brush-size-display').innerHTML = val.toFixed(3);
+                const display = document.getElementById('brush-size-display');
+                if (display) display.innerHTML = val.toFixed(3);
             });
             
+            // Drip rate slider
+            const dripSlider = new LogSlider('drip-slider', 'drip-value', 0.1, 2.0, 2.0, dripRate);
             dripSlider.onChange(val => {
                 dripRate = val;
-                document.getElementById('drip-display').innerHTML = val.toFixed(3);
+                const display = document.getElementById('drip-display');
+                if (display) display.innerHTML = val.toFixed(3);
             });
             
-            absorbSlider.onChange(val => {
-                absorbRate = val;
-                document.getElementById('absorb-display').innerHTML = val.toFixed(3);
-            });
-            
+            // Flow slider
+            const flowSlider = new LogSlider('flow-slider', 'flow-value', 0.01, 2.0, 2.0, flowStrength);
             flowSlider.onChange(val => {
                 flowStrength = val;
-                document.getElementById('flow-display').innerHTML = val.toFixed(3);
+                const display = document.getElementById('flow-display');
+                if (display) display.innerHTML = val.toFixed(3);
+            });
+            
+            // Absorb slider
+            const absorbSlider = new LogSlider('absorb-slider', 'absorb-value', 0.0001, 0.1, 2.5, absorbRate);
+            absorbSlider.onChange(val => {
+                absorbRate = val;
+                // No display for absorb in stats grid, that's fine
             });
             
             // ================================================
