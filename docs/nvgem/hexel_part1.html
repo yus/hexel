@@ -1,0 +1,523 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>FLUID PAINT · GRID VELOCITY FIELD</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+        body {
+            background: #0a0a0a;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        /* Three canvases: grid, velocity, paint */
+        #gridCanvas, #velocityCanvas, #paintCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+        }
+        
+        #gridCanvas { z-index: 1; background: #0a0a0a; }
+        #velocityCanvas { z-index: 2; opacity: 0.3; pointer-events: none; } /* Debug view */
+        #paintCanvas { z-index: 3; background: transparent; pointer-events: auto; cursor: crosshair; }
+        
+        #panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(20,20,30,0.9);
+            backdrop-filter: blur(8px);
+            border: 1px solid #c4b5fd40;
+            padding: 16px 20px;
+            color: #e0e0ff;
+            font-family: monospace;
+            font-size: 13px;
+            min-width: 300px;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        .tool-panel {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(20,20,30,0.9);
+            backdrop-filter: blur(8px);
+            border: 1px solid #c4b5fd40;
+            padding: 12px 20px;
+            display: flex;
+            gap: 20px;
+            z-index: 100;
+            pointer-events: auto;
+        }
+        
+        button {
+            background: transparent;
+            border: 1px solid #c4b5fd40;
+            color: #c4b5fd;
+            padding: 6px 12px;
+            cursor: pointer;
+        }
+        
+        button.active {
+            background: #c4b5fd;
+            color: #0a0a0a;
+        }
+        
+        .coord-display {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid #c4b5fd40;
+            color: #c4b5fd;
+            padding: 8px 16px;
+            font-family: monospace;
+            z-index: 100;
+        }
+        
+        * { border-radius: 0 !important; }
+    </style>
+</head>
+<body>
+    <canvas id="gridCanvas"></canvas>
+    <canvas id="velocityCanvas"></canvas>
+    <canvas id="paintCanvas"></canvas>
+    
+    <div id="panel">
+        <div style="color:#c4b5fd; margin-bottom:8px;">⚡ FLUID PAINT · GRID VELOCITY</div>
+        <div>Time <span id="time">0</span></div>
+        <div>Paint Points <span id="point-count">0</span></div>
+        <div>Velocity Scale <span id="vel-scale">1.0</span></div>
+    </div>
+    
+    <div class="tool-panel">
+        <button id="btn-paint" class="active">● Paint</button>
+        <button id="btn-erase">⌫ Erase</button>
+        <button id="btn-clear">Clear</button>
+        <input type="range" id="vel-strength" min="0" max="2" step="0.1" value="1.0">
+        <span id="vel-value">1.0</span>
+    </div>
+    
+    <div class="coord-display" id="coords">0.00 , 0.00</div>
+
+    <script>
+        (function() {
+            // Canvas setup
+            const gridCanvas = document.getElementById('gridCanvas');
+            const velCanvas = document.getElementById('velocityCanvas');
+            const paintCanvas = document.getElementById('paintCanvas');
+            
+            const gridCtx = gridCanvas.getContext('2d');
+            const velCtx = velCanvas.getContext('2d');
+            const paintCtx = paintCanvas.getContext('2d');
+            
+            // Grid parameters
+            const BASE_SIZE = 24;
+            const H_STEP = BASE_SIZE * 2;
+            const V_STEP = BASE_SIZE * Math.sqrt(3);
+            
+            // Camera
+            let cameraX = 0, cameraY = 0, scale = 1.0;
+            
+            // Paint state
+            let paintPoints = [];
+            let isPainting = false;
+            let currentTool = 'paint';
+            let lastX, lastY;
+            
+            // Velocity field parameters
+            let velocityStrength = 1.0;
+            let time = 0;
+            
+            // ================================================
+            // GRID VELOCITY FIELD
+            // ================================================
+            // This defines how paint flows along the triangular grid
+            function getGridVelocity(worldX, worldY) {
+                // Get nearest grid vertex
+                const col = Math.round(worldX / H_STEP);
+                const row = Math.round(worldY / V_STEP);
+                const inOddRow = (row % 2 !== 0);
+                
+                // Calculate local position within cell
+                const localX = (worldX - col * H_STEP) / H_STEP;
+                const localY = (worldY - row * V_STEP) / V_STEP;
+                
+                // Velocity field that follows the three grid directions
+                // Direction 1: horizontal (along u direction)
+                // Direction 2: +60° diagonal
+                // Direction 3: -60° diagonal
+                
+                // Base velocity magnitude varies with position
+                // This creates swirling patterns
+                const baseSpeed = 0.5;
+                
+                // Velocity components
+                let vx = 0, vy = 0;
+                
+                // Add velocity along horizontal grid lines
+                vx += Math.sin(localY * Math.PI * 2 + time) * baseSpeed;
+                
+                // Add velocity along +60° diagonals
+                vx += Math.cos(localX * Math.PI * 2 + time * 0.5) * baseSpeed * 0.7;
+                vy += Math.sin(localX * Math.PI * 2 + time * 0.5) * baseSpeed * 0.7;
+                
+                // Add velocity along -60° diagonals
+                vx += Math.sin(localY * Math.PI * 2 + time * 0.3) * baseSpeed * 0.5;
+                vy -= Math.cos(localY * Math.PI * 2 + time * 0.3) * baseSpeed * 0.5;
+                
+                // Scale by user control
+                vx *= velocityStrength;
+                vy *= velocityStrength;
+                
+                return { x: vx, y: vy };
+            }
+            
+            // ================================================
+            // PAINT ADVECTION (fluid-inspired transport)
+            // ================================================
+            function advectPaint(dt) {
+                // Semi-Lagrangian advection: trace particles backwards
+                const newPoints = [];
+                
+                for (let i = 0; i < paintPoints.length; i++) {
+                    const point = paintPoints[i];
+                    
+                    // Get velocity at current position
+                    const vel = getGridVelocity(point.x, point.y);
+                    
+                    // Trace backwards in time
+                    const prevX = point.x - vel.x * dt;
+                    const prevY = point.y - vel.y * dt;
+                    
+                    // Get velocity at previous position
+                    const prevVel = getGridVelocity(prevX, prevY);
+                    
+                    // Use midpoint method for better accuracy
+                    const midX = point.x - (vel.x + prevVel.x) * 0.5 * dt;
+                    const midY = point.y - (vel.y + prevVel.y) * 0.5 * dt;
+                    
+                    // New position is advected
+                    const newX = point.x - (getGridVelocity(midX, midY).x) * dt;
+                    const newY = point.y - (getGridVelocity(midX, midY).y) * dt;
+                    
+                    // Keep within reasonable bounds
+                    newPoints.push({
+                        x: newX,
+                        y: newY,
+                        color: point.color,
+                        size: point.size,
+                        age: point.age + 1
+                    });
+                }
+                
+                paintPoints = newPoints;
+            }
+            
+            // ================================================
+            // PAINTING
+            // ================================================
+            function addPaint(screenX, screenY) {
+                const world = screenToWorld(screenX, screenY);
+                
+                // Add multiple points for density
+                for (let i = 0; i < 5; i++) {
+                    paintPoints.push({
+                        x: world.x + (Math.random() - 0.5) * 5,
+                        y: world.y + (Math.random() - 0.5) * 5,
+                        color: currentTool === 'paint' ? '#c4b5fd' : '#0a0a0a',
+                        size: 3 + Math.random() * 4,
+                        age: 0
+                    });
+                }
+                
+                document.getElementById('point-count').innerHTML = paintPoints.length;
+            }
+            
+            // ================================================
+            // RENDERING
+            // ================================================
+            function drawGrid() {
+                gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+                
+                const centerX = gridCanvas.width / 2;
+                const centerY = gridCanvas.height / 2;
+                
+                const worldLeft = cameraX - (gridCanvas.width / 2) / scale;
+                const worldRight = cameraX + (gridCanvas.width / 2) / scale;
+                const worldTop = cameraY - (gridCanvas.height / 2) / scale;
+                const worldBottom = cameraY + (gridCanvas.height / 2) / scale;
+                
+                const minCol = Math.floor(worldLeft / H_STEP) - 2;
+                const maxCol = Math.ceil(worldRight / H_STEP) + 2;
+                const minRow = Math.floor(worldTop / V_STEP) - 2;
+                const maxRow = Math.ceil(worldBottom / V_STEP) + 2;
+                
+                gridCtx.strokeStyle = '#c4b5fd';
+                gridCtx.lineWidth = 0.5;
+                gridCtx.globalAlpha = 0.2;
+                
+                // Draw diagonals
+                for (let row = minRow; row <= maxRow; row++) {
+                    for (let col = minCol; col <= maxCol; col++) {
+                        const x = centerX + (col * H_STEP - cameraX) * scale;
+                        const y = centerY + (row * V_STEP - cameraY) * scale;
+                        const xOffset = (row % 2 === 0) ? 0 : (H_STEP * scale) / 2;
+                        
+                        // Draw short line segments to show grid
+                        gridCtx.beginPath();
+                        gridCtx.moveTo(x + xOffset - 10, y - 17.32);
+                        gridCtx.lineTo(x + xOffset + 10, y + 17.32);
+                        gridCtx.stroke();
+                        
+                        gridCtx.beginPath();
+                        gridCtx.moveTo(x + xOffset - 10, y + 17.32);
+                        gridCtx.lineTo(x + xOffset + 10, y - 17.32);
+                        gridCtx.stroke();
+                    }
+                }
+            }
+            
+            function drawVelocity() {
+                velCtx.clearRect(0, 0, velCanvas.width, velCanvas.height);
+                
+                const centerX = velCanvas.width / 2;
+                const centerY = velCanvas.height / 2;
+                
+                // Sample velocity at grid points
+                const step = 20; // Sample every 20 pixels
+                
+                velCtx.strokeStyle = '#ff6b6b';
+                velCtx.lineWidth = 1;
+                velCtx.globalAlpha = 0.5;
+                
+                for (let x = 0; x < velCanvas.width; x += step) {
+                    for (let y = 0; y < velCanvas.height; y += step) {
+                        const world = screenToWorld(x, y);
+                        const vel = getGridVelocity(world.x, world.y);
+                        
+                        // Scale velocity for visualization
+                        const scaleFactor = 10;
+                        const dx = vel.x * scaleFactor;
+                        const dy = vel.y * scaleFactor;
+                        
+                        velCtx.beginPath();
+                        velCtx.moveTo(x, y);
+                        velCtx.lineTo(x + dx, y + dy);
+                        velCtx.stroke();
+                        
+                        // Draw arrow head
+                        const angle = Math.atan2(dy, dx);
+                        const headSize = 5;
+                        velCtx.beginPath();
+                        velCtx.moveTo(x + dx, y + dy);
+                        velCtx.lineTo(x + dx - headSize * Math.cos(angle - 0.3), y + dy - headSize * Math.sin(angle - 0.3));
+                        velCtx.lineTo(x + dx - headSize * Math.cos(angle + 0.3), y + dy - headSize * Math.sin(angle + 0.3));
+                        velCtx.closePath();
+                        velCtx.fillStyle = '#ff6b6b';
+                        velCtx.fill();
+                    }
+                }
+            }
+            
+            function drawPaint() {
+                paintCtx.clearRect(0, 0, paintCanvas.width, paintCanvas.height);
+                
+                const centerX = paintCanvas.width / 2;
+                const centerY = paintCanvas.height / 2;
+                
+                for (const point of paintPoints) {
+                    const screenX = centerX + (point.x - cameraX) * scale;
+                    const screenY = centerY + (point.y - cameraY) * scale;
+                    
+                    if (screenX < 0 || screenX > paintCanvas.width || screenY < 0 || screenY > paintCanvas.height) continue;
+                    
+                    const radius = point.size * scale;
+                    
+                    paintCtx.beginPath();
+                    paintCtx.arc(screenX, screenY, radius, 0, Math.PI * 2);
+                    paintCtx.fillStyle = point.color;
+                    paintCtx.globalAlpha = 0.7;
+                    paintCtx.fill();
+                }
+            }
+            
+            // ================================================
+            // UTILITIES
+            // ================================================
+            function worldToScreen(worldX, worldY) {
+                return {
+                    x: gridCanvas.width / 2 + (worldX - cameraX) * scale,
+                    y: gridCanvas.height / 2 + (worldY - cameraY) * scale
+                };
+            }
+            
+            function screenToWorld(screenX, screenY) {
+                return {
+                    x: cameraX + (screenX - gridCanvas.width / 2) / scale,
+                    y: cameraY + (screenY - gridCanvas.height / 2) / scale
+                };
+            }
+            
+            // ================================================
+            // ANIMATION LOOP
+            // ================================================
+            function animate() {
+                time += 0.05;
+                document.getElementById('time').innerHTML = time.toFixed(2);
+                
+                // Advect paint
+                advectPaint(0.1);
+                
+                // Render everything
+                drawGrid();
+                drawVelocity();
+                drawPaint();
+                
+                requestAnimationFrame(animate);
+            }
+            
+            // ================================================
+            // INTERACTION
+            // ================================================
+            paintCanvas.addEventListener('mousedown', (e) => {
+                e.preventDefault();
+                isPainting = true;
+                const rect = paintCanvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                lastX = x; lastY = y;
+                addPaint(x, y);
+            });
+            
+            paintCanvas.addEventListener('mousemove', (e) => {
+                e.preventDefault();
+                const rect = paintCanvas.getBoundingClientRect();
+                const x = e.clientX - rect.left;
+                const y = e.clientY - rect.top;
+                
+                const world = screenToWorld(x, y);
+                document.getElementById('coords').innerHTML = `${world.x.toFixed(2)} , ${world.y.toFixed(2)}`;
+                
+                if (isPainting) {
+                    // Add points along the line
+                    const steps = 5;
+                    for (let i = 1; i <= steps; i++) {
+                        const t = i / steps;
+                        const interpX = lastX * (1 - t) + x * t;
+                        const interpY = lastY * (1 - t) + y * t;
+                        addPaint(interpX, interpY);
+                    }
+                }
+                
+                lastX = x; lastY = y;
+            });
+            
+            paintCanvas.addEventListener('mouseup', () => isPainting = false);
+            paintCanvas.addEventListener('mouseleave', () => isPainting = false);
+            
+            // Zoom
+            paintCanvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const rect = paintCanvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                
+                const worldBefore = screenToWorld(mouseX, mouseY);
+                
+                const zoomFactor = e.deltaY > 0 ? 0.9 : 1.1;
+                scale *= zoomFactor;
+                scale = Math.max(0.1, Math.min(10, scale));
+                
+                const worldAfter = screenToWorld(mouseX, mouseY);
+                
+                cameraX += worldBefore.x - worldAfter.x;
+                cameraY += worldBefore.y - worldAfter.y;
+            });
+            
+            // Pan with right button
+            paintCanvas.addEventListener('mousedown', (e) => {
+                if (e.button === 2) {
+                    e.preventDefault();
+                    isDragging = true;
+                    const rect = paintCanvas.getBoundingClientRect();
+                    lastX = e.clientX - rect.left;
+                    lastY = e.clientY - rect.top;
+                }
+            });
+            
+            paintCanvas.addEventListener('mousemove', (e) => {
+                if (isDragging) {
+                    const rect = paintCanvas.getBoundingClientRect();
+                    const x = e.clientX - rect.left;
+                    const y = e.clientY - rect.top;
+                    
+                    cameraX -= (x - lastX) / scale;
+                    cameraY -= (y - lastY) / scale;
+                    
+                    lastX = x; lastY = y;
+                }
+            });
+            
+            paintCanvas.addEventListener('mouseup', () => isDragging = false);
+            paintCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
+            
+            // UI Controls
+            document.getElementById('btn-paint').addEventListener('click', () => {
+                currentTool = 'paint';
+                document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+                document.getElementById('btn-paint').classList.add('active');
+            });
+            
+            document.getElementById('btn-erase').addEventListener('click', () => {
+                currentTool = 'erase';
+                document.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+                document.getElementById('btn-erase').classList.add('active');
+            });
+            
+            document.getElementById('btn-clear').addEventListener('click', () => {
+                paintPoints = [];
+                document.getElementById('point-count').innerHTML = '0';
+            });
+            
+            const velSlider = document.getElementById('vel-strength');
+            velSlider.addEventListener('input', () => {
+                velocityStrength = parseFloat(velSlider.value);
+                document.getElementById('vel-value').innerHTML = velocityStrength.toFixed(1);
+                document.getElementById('vel-scale').innerHTML = velocityStrength.toFixed(1);
+            });
+            
+            // Resize
+            function resize() {
+                gridCanvas.width = window.innerWidth;
+                gridCanvas.height = window.innerHeight;
+                velCanvas.width = window.innerWidth;
+                velCanvas.height = window.innerHeight;
+                paintCanvas.width = window.innerWidth;
+                paintCanvas.height = window.innerHeight;
+                drawGrid();
+                drawVelocity();
+                drawPaint();
+            }
+            
+            window.addEventListener('resize', resize);
+            resize();
+            
+            // Start animation
+            animate();
+        })();
+    </script>
+</body>
+</html>
