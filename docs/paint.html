@@ -1,0 +1,336 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SIMPLE HEXEL PAINTER</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body { background: #0a0c12; overflow: hidden; font-family: monospace; }
+        canvas { display: block; width: 100vw; height: 100vh; }
+        #status {
+            position: fixed; bottom: 20px; left: 20px;
+            background: #1e2430; color: #aac3d4;
+            padding: 8px 16px; border-radius: 2px;
+            font-size: 13px; z-index: 100;
+        }
+        #tools {
+            position: fixed; top: 20px; left: 20px;
+            background: #1e2430; border-radius: 2px;
+            padding: 8px; display: flex; gap: 4px;
+            z-index: 100;
+        }
+        .tool-btn {
+            background: #2a2f3a; border: none;
+            color: white; padding: 6px 12px;
+            border-radius: 2px; cursor: pointer;
+            font-size: 12px;
+        }
+        .tool-btn.active { background: #4a6a9a; }
+    </style>
+</head>
+<body>
+    <div id="tools">
+        <button class="tool-btn active" id="tool-pan">PAN</button>
+        <button class="tool-btn" id="tool-paint">PAINT</button>
+        <button class="tool-btn" id="reset">RESET</button>
+    </div>
+    <div id="status">⬡ Click to paint | Drag to pan</div>
+    <canvas id="canvas"></canvas>
+
+    <script>
+        const canvas = document.getElementById('canvas');
+        const gl = canvas.getContext('webgl');
+        
+        // Setup canvas
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+        gl.viewport(0, 0, canvas.width, canvas.height);
+
+        // Simple shaders - just show colors
+        const vsSource = `
+            attribute vec2 aPos;
+            attribute vec3 aBary;
+            attribute float aId;
+            varying float vId;
+            varying vec3 vBary;
+            uniform vec2 uPan;
+            uniform float uZoom;
+            void main() {
+                vec2 pos = (aPos + uPan) * uZoom;
+                gl_Position = vec4(pos.x, pos.y, 0.0, 1.0);
+                vId = aId;
+                vBary = aBary;
+            }
+        `;
+
+        const fsSource = `
+            precision highp float;
+            varying float vId;
+            varying vec3 vBary;
+            uniform vec3 uColors[2000];
+            void main() {
+                int id = int(vId);
+                vec3 color = uColors[id];
+                
+                // Simple grid lines
+                float minDist = min(min(vBary.x, vBary.y), vBary.z);
+                if (minDist < 0.03) {
+                    color = vec3(0.9, 0.95, 1.0);
+                }
+                
+                gl_FragColor = vec4(color, 1.0);
+            }
+        `;
+
+        // Compile shaders
+        function compileShader(src, type) {
+            const s = gl.createShader(type);
+            gl.shaderSource(s, src);
+            gl.compileShader(s);
+            return s;
+        }
+
+        const vs = compileShader(vsSource, gl.VERTEX_SHADER);
+        const fs = compileShader(fsSource, gl.FRAGMENT_SHADER);
+        
+        const program = gl.createProgram();
+        gl.attachShader(program, vs);
+        gl.attachShader(program, fs);
+        gl.linkProgram(program);
+        gl.useProgram(program);
+
+        // Generate equilateral grid
+        const side = 0.3;
+        const height = side * Math.sqrt(3) / 2;
+        const gridSize = 20;
+        
+        const positions = [];
+        const bary = [];
+        const ids = [];
+        const triangles = []; // For hit detection
+        
+        let triId = 0;
+
+        // Store triangle vertices
+        function addTriangle(x1, y1, x2, y2, x3, y3) {
+            triangles.push({ id: triId, x1, y1, x2, y2, x3, y3 });
+            
+            positions.push(x1, y1, x2, y2, x3, y3);
+            bary.push(1,0,0, 0,1,0, 0,0,1);
+            ids.push(triId, triId, triId);
+            
+            triId++;
+        }
+
+        // Generate grid
+        for (let row = -gridSize; row < gridSize; row++) {
+            for (let col = -gridSize; col < gridSize; col++) {
+                const x = col * side;
+                const y = row * height;
+                const offset = (Math.abs(row) % 2) * (side / 2);
+                
+                // Up triangle
+                addTriangle(
+                    x + offset, y,
+                    x + offset + side, y,
+                    x + offset + side/2, y + height
+                );
+                
+                // Down triangle
+                addTriangle(
+                    x + offset + side, y,
+                    x + offset, y,
+                    x + offset + side/2, y - height
+                );
+            }
+        }
+
+        console.log('Triangles:', triId);
+
+        // Create buffer
+        const vertexData = [];
+        for (let i = 0; i < positions.length; i += 2) {
+            const vi = i / 2;
+            vertexData.push(
+                positions[i], positions[i+1],
+                bary[vi*3], bary[vi*3+1], bary[vi*3+2],
+                ids[vi]
+            );
+        }
+
+        const buffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
+        gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexData), gl.STATIC_DRAW);
+
+        const stride = 6 * 4;
+        
+        const aPos = gl.getAttribLocation(program, 'aPos');
+        const aBary = gl.getAttribLocation(program, 'aBary');
+        const aId = gl.getAttribLocation(program, 'aId');
+        
+        gl.enableVertexAttribArray(aPos);
+        gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, stride, 0);
+        gl.enableVertexAttribArray(aBary);
+        gl.vertexAttribPointer(aBary, 3, gl.FLOAT, false, stride, 2*4);
+        gl.enableVertexAttribArray(aId);
+        gl.vertexAttribPointer(aId, 1, gl.FLOAT, false, stride, 5*4);
+
+        // Colors array - SIMPLE
+        const colors = new Array(triId);
+        for (let i = 0; i < triId; i++) {
+            colors[i] = [0.2, 0.25, 0.3]; // Dark gray
+        }
+
+        const uColors = gl.getUniformLocation(program, 'uColors');
+        const uPan = gl.getUniformLocation(program, 'uPan');
+        const uZoom = gl.getUniformLocation(program, 'uZoom');
+
+        function updateColors() {
+            const flat = new Float32Array(triId * 3);
+            for (let i = 0; i < triId; i++) {
+                flat[i*3] = colors[i][0];
+                flat[i*3+1] = colors[i][1];
+                flat[i*3+2] = colors[i][2];
+            }
+            gl.uniform3fv(uColors, flat);
+        }
+        updateColors();
+
+        // Pan & zoom state
+        let panX = 0, panY = 0;
+        let zoom = 0.7;
+        gl.uniform2f(uPan, panX, panY);
+        gl.uniform1f(uZoom, zoom);
+
+        // Mouse handling
+        let isDragging = false;
+        let lastX, lastY;
+        let currentTool = 'pan';
+
+        // Screen to world conversion - SIMPLE and CORRECT
+        function screenToWorld(screenX, screenY) {
+            const rect = canvas.getBoundingClientRect();
+            
+            // Normalized device coordinates [-1, 1]
+            const ndcX = (screenX / rect.width) * 2 - 1;
+            const ndcY = 1 - (screenY / rect.height) * 2;
+            
+            // Reverse transform
+            const worldX = ndcX / zoom - panX;
+            const worldY = ndcY / zoom - panY;
+            
+            return { x: worldX, y: worldY };
+        }
+
+        // Point in triangle test
+        function pointInTriangle(px, py, x1, y1, x2, y2, x3, y3) {
+            const area = 0.5 * Math.abs((x2 - x1) * (y3 - y1) - (x3 - x1) * (y2 - y1));
+            const a1 = 0.5 * Math.abs((x1 - px) * (y2 - py) - (x2 - px) * (y1 - py));
+            const a2 = 0.5 * Math.abs((x2 - px) * (y3 - py) - (x3 - px) * (y2 - py));
+            const a3 = 0.5 * Math.abs((x3 - px) * (y1 - py) - (x1 - px) * (y3 - py));
+            return Math.abs(area - (a1 + a2 + a3)) < 0.001;
+        }
+
+        // Find triangle at world coordinates
+        function findTriangle(wx, wy) {
+            for (const tri of triangles) {
+                if (pointInTriangle(wx, wy, tri.x1, tri.y1, tri.x2, tri.y2, tri.x3, tri.y3)) {
+                    return tri.id;
+                }
+            }
+            return -1;
+        }
+
+        // Paint triangle
+        function paintTriangle(id) {
+            if (id >= 0 && id < triId) {
+                colors[id] = [0.3, 0.7, 1.0]; // Bright blue
+                updateColors();
+                return true;
+            }
+            return false;
+        }
+
+        // Mouse events
+        canvas.addEventListener('mousedown', (e) => {
+            if (currentTool === 'pan') {
+                isDragging = true;
+                lastX = e.clientX;
+                lastY = e.clientY;
+            } else {
+                const world = screenToWorld(e.clientX, e.clientY);
+                const id = findTriangle(world.x, world.y);
+                if (id >= 0) {
+                    paintTriangle(id);
+                }
+            }
+        });
+
+        canvas.addEventListener('mousemove', (e) => {
+            if (isDragging) {
+                const dx = (e.clientX - lastX) * 0.005 / zoom;
+                const dy = (e.clientY - lastY) * -0.005 / zoom;
+                
+                panX += dx;
+                panY += dy;
+                
+                gl.uniform2f(uPan, panX, panY);
+                
+                lastX = e.clientX;
+                lastY = e.clientY;
+            } else if (currentTool === 'paint' && e.buttons === 1) {
+                const world = screenToWorld(e.clientX, e.clientY);
+                const id = findTriangle(world.x, world.y);
+                if (id >= 0) {
+                    paintTriangle(id);
+                }
+            }
+        });
+
+        canvas.addEventListener('mouseup', () => isDragging = false);
+        canvas.addEventListener('mouseleave', () => isDragging = false);
+
+        canvas.addEventListener('wheel', (e) => {
+            e.preventDefault();
+            zoom *= e.deltaY > 0 ? 0.9 : 1.1;
+            zoom = Math.max(0.2, Math.min(2.0, zoom));
+            gl.uniform1f(uZoom, zoom);
+        });
+
+        // UI
+        document.getElementById('tool-pan').addEventListener('click', () => {
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tool-pan').classList.add('active');
+            currentTool = 'pan';
+        });
+
+        document.getElementById('tool-paint').addEventListener('click', () => {
+            document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('tool-paint').classList.add('active');
+            currentTool = 'paint';
+        });
+
+        document.getElementById('reset').addEventListener('click', () => {
+            for (let i = 0; i < triId; i++) {
+                colors[i] = [0.2, 0.25, 0.3];
+            }
+            updateColors();
+        });
+
+        // Animation
+        function animate() {
+            gl.drawArrays(gl.TRIANGLES, 0, positions.length / 2);
+            requestAnimationFrame(animate);
+        }
+        animate();
+
+        // Resize
+        window.addEventListener('resize', () => {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+            gl.viewport(0, 0, canvas.width, canvas.height);
+        });
+    </script>
+</body>
+</html>
