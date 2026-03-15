@@ -1,0 +1,6 @@
+collections:
+  docs:
+    output: true
+  watch:
+    output: true
+    permalink: /watch/
