@@ -295,7 +295,7 @@
                 vec2 pos = (aPos + uTranslate) * uScale;
                 // Correct for aspect ratio so the grid doesn't stretch with the window
                 pos.x *= uAspect;
-                gl_Position = vec4(pos.x, pos.y, 0.0, 1.0);
+                gl_Position = vec4(pos.x, pos.y, 0.0, 1.0);   
                 vBary = aBary;
                 vId = aId;
             }
@@ -535,17 +535,28 @@
 
         // --- Screen to World Coordinate Conversion ---
         // This is the inverse of the vertex shader transformation.
-        function screenToWorld(x, y) {
+        // --- Corrected Screen to World Coordinate Conversion ---
+        function screenToWorld(screenX, screenY) {
+            // 1. Get canvas dimensions and mouse position relative to the canvas
             const rect = canvas.getBoundingClientRect();
-            
-            // Convert screen pixel to Normalized Device Coordinates (NDC): [-1, 1]
-            const ndcX = (x / rect.width) * 2 - 1;
-            const ndcY = 1 - (y / rect.height) * 2;
-            
-            // Undo the aspect correction and pan/zoom to get world coordinates.
-            const worldX = (ndcX / aspect - translateX) / scale;
-            const worldY = (ndcY - translateY) / scale;
-            
+            // Ensure coordinates are within the canvas
+            const canvasX = Math.min(rect.width, Math.max(0, screenX - rect.left));
+            const canvasY = Math.min(rect.height, Math.max(0, screenY - rect.top));
+        
+            // 2. Convert to Normalized Device Coordinates (NDC): range [-1, 1]
+            //    (0,0) at canvas center, +Y is up.
+            const ndcX = (canvasX / rect.width) * 2 - 1;
+            const ndcY = 1 - (canvasY / rect.height) * 2; // Flip Y because canvas Y is top-left
+        
+            // 3. Reverse the aspect correction (this was the last step in the shader)
+            //    We divide by uAspect to get back to the pre-aspect-corrected NDC.
+            const preAspectX = ndcX / aspect; // 'aspect' is the uniform uAspect value
+        
+            // 4. Reverse the scale and translation to get world coordinates
+            //    Order matters: Scale was applied after translation, so we reverse scale first.
+            const worldX = (preAspectX - translateX) / scale;
+            const worldY = (ndcY - translateY) / scale; // Y didn't have aspect correction
+        
             return { x: worldX, y: worldY };
         }
 
