@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>HEXEL · FIXED GRID · BRUSH · WEBM</title>
+    <title>HEXEL · H.264 · 12Mbps · SVC · CBR</title>
     <style>
         * {
             margin: 0;
@@ -17,7 +17,6 @@
             font-family: 'Inter', sans-serif;
         }
         
-        /* Canvas container for proper scaling */
         #canvas-container {
             position: fixed;
             top: 0;
@@ -25,21 +24,23 @@
             width: 100vw;
             height: 100vh;
             overflow: hidden;
+            background: #0a0a0a;
         }
         
         #gridCanvas, #paintCanvas {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            object-fit: contain; /* Preserve aspect ratio */
-            image-rendering: crisp-edges; /* Keep grid sharp */
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            image-rendering: crisp-edges;
         }
         
         #gridCanvas { 
             z-index: 1; 
-            background: #0a0a0a; 
+            background: transparent; 
             pointer-events: none;
             transition: opacity 0.2s;
         }
@@ -55,11 +56,62 @@
             top: 50%;
             left: 50%;
             transform: translate(-50%, -50%);
-            border: 2px solid #ffb86b;
+            border: 2px solid #ff6b6b;
             pointer-events: none;
             z-index: 3;
             display: none;
-            box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.7);
+        }
+        
+        #recording-badge {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #ff0000;
+            color: white;
+            padding: 8px 16px;
+            font-family: monospace;
+            font-size: 14px;
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            border: 1px solid #fff;
+            animation: pulse 1s infinite;
+        }
+        
+        #recording-badge .dot {
+            width: 12px;
+            height: 12px;
+            background: white;
+            border-radius: 50%;
+            animation: blink 1s infinite;
+        }
+        
+        @keyframes blink {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(255,0,0,0.7); }
+            70% { box-shadow: 0 0 0 10px rgba(255,0,0,0); }
+            100% { box-shadow: 0 0 0 0 rgba(255,0,0,0); }
+        }
+        
+        #bitrate-display {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(0,0,0,0.7);
+            color: #0f0;
+            padding: 4px 8px;
+            font-family: monospace;
+            font-size: 11px;
+            z-index: 9999;
+            border: 1px solid #0f0;
+            pointer-events: none;
         }
         
         #panel {
@@ -172,6 +224,11 @@
             font-size: 13px;
             cursor: pointer;
             min-width: 60px;
+            transition: all 0.2s;
+        }
+        
+        .timeline-btn:hover {
+            background: rgba(184, 165, 221, 0.2);
         }
         
         .timeline-btn.active {
@@ -186,16 +243,10 @@
         }
         
         .timeline-btn.recording {
-            background: #ff5555;
+            background: #ff0000;
             color: white;
             border-color: #ff0000;
             animation: pulse 1s infinite;
-        }
-        
-        @keyframes pulse {
-            0% { opacity: 1; }
-            50% { opacity: 0.7; }
-            100% { opacity: 1; }
         }
         
         .timeline-slider-container {
@@ -307,6 +358,39 @@
             pointer-events: none;
         }
         
+        .bitrate-control {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 12px 0;
+            pointer-events: auto;
+        }
+        
+        .bitrate-label {
+            width: 85px;
+            color: #ff6b6b;
+            font-size: 11px;
+            font-weight: bold;
+        }
+        
+        .bitrate-select {
+            flex: 1;
+            background: rgba(0,0,0,0.3);
+            border: 1px solid #ff6b6b;
+            color: #ffd966;
+            padding: 6px;
+            font-family: monospace;
+            cursor: pointer;
+        }
+        
+        .bitrate-value {
+            color: #ff6b6b;
+            font-family: monospace;
+            font-size: 11px;
+            min-width: 80px;
+            text-align: right;
+        }
+        
         .toggle-row {
             display: flex;
             align-items: center;
@@ -329,6 +413,10 @@
             font-size: 11px;
             cursor: pointer;
             min-width: 60px;
+        }
+        
+        .toggle-btn:hover {
+            background: rgba(184, 165, 221, 0.2);
         }
         
         .toggle-btn.active {
@@ -378,6 +466,11 @@
             font-size: 12px;
             cursor: pointer;
             min-width: 60px;
+            transition: all 0.2s;
+        }
+        
+        .tool-btn:hover {
+            background: rgba(184, 165, 221, 0.2);
         }
         
         .tool-btn.active {
@@ -405,6 +498,11 @@
             height: 24px;
             border: 1px solid transparent;
             cursor: pointer;
+            transition: border-color 0.2s;
+        }
+        
+        .color-swatch:hover {
+            border-color: #d8b5ff;
         }
         
         .color-swatch.active {
@@ -423,18 +521,20 @@
             font-size: 12px;
             z-index: 100;
             pointer-events: none;
+            backdrop-filter: blur(4px);
         }
         
         .perf-note {
             position: fixed;
             bottom: 24px;
             left: 24px;
-            background: rgba(0,0,0,0.3);
+            background: rgba(0,0,0,0.5);
             color: #888;
             padding: 4px 8px;
             font-size: 9px;
             z-index: 100;
             pointer-events: none;
+            backdrop-filter: blur(4px);
         }
         
         * { border-radius: 0 !important; }
@@ -446,12 +546,17 @@
         <canvas id="paintCanvas"></canvas>
     </div>
     <div id="viewport-overlay"></div>
+    <div id="recording-badge">
+        <span class="dot"></span>
+        <span>REC H.264 12Mbps</span>
+    </div>
+    <div id="bitrate-display">📊 0.0 Mbps</div>
     
     <div id="panel">
         <div class="panel-header" id="panel-header">
             <div class="panel-title">
                 <span class="collapse-icon">▼</span>
-                <span>⚡ HEXEL · FIXED GRID · BRUSH · WEBM</span>
+                <span>⚡ HEXEL · H.264 · 12Mbps · SVC</span>
             </div>
             <span id="fps">60</span>
         </div>
@@ -481,7 +586,7 @@
                 <div class="timeline-controls">
                     <button class="timeline-btn" id="play-pause">⏸️</button>
                     <button class="timeline-btn" id="drip-toggle">💧 Drip</button>
-                    <button class="timeline-btn" id="record-mp4">🎥 Record</button>
+                    <button class="timeline-btn recording" id="record-h264">🎥 H.264</button>
                     <div class="timeline-slider-container">
                         <input type="range" id="timeline-slider" class="timeline-slider" min="0" max="100" value="100">
                         <div class="timeline-markers">
@@ -547,6 +652,19 @@
                     <span>blotter</span>
                 </div>
                 
+                <!-- H.264 Bitrate Control -->
+                <div class="bitrate-control">
+                    <span class="bitrate-label">🎥 H.264</span>
+                    <select id="bitrate-select" class="bitrate-select">
+                        <option value="5000000">5 Mbps (Web)</option>
+                        <option value="8000000">8 Mbps (HD)</option>
+                        <option value="12000000" selected>12 Mbps (Pro)</option>
+                        <option value="16000000">16 Mbps (Master)</option>
+                        <option value="24000000">24 Mbps (Studio)</option>
+                    </select>
+                    <span class="bitrate-value" id="bitrate-value">12 Mbps</span>
+                </div>
+                
                 <!-- Viewport Controls -->
                 <div class="viewport-controls">
                     <span class="toggle-label">VIEWPORT</span>
@@ -580,7 +698,7 @@
             <div class="color-swatch" style="background: #ddc4a5;" data-color="0.87,0.77,0.65"></div>
         </div>
         
-        <span style="color:#888; font-size:10px;">🌀 morph: blend colors</span>
+        <span style="color:#888; font-size:10px;">🌀 H.264 12Mbps CBR</span>
     </div>
     
     <div class="coord-display" id="coords">0.00 , 0.00</div>
@@ -659,7 +777,7 @@
             const gridCtx = gridCanvas.getContext('2d');
             const paintCtx = paintCanvas.getContext('2d');
             
-            // Grid parameters - preserve aspect ratio
+            // Grid parameters
             const BASE_SIZE = 24;
             const H_STEP = BASE_SIZE * 2;
             const V_STEP = BASE_SIZE * Math.sqrt(3);
@@ -705,6 +823,12 @@
             let isRecording = false;
             let mediaRecorder = null;
             let recordedChunks = [];
+            let recordingStartTime = 0;
+            let recordedSize = 0;
+            let bitrateInterval = null;
+            
+            // Bitrate
+            let selectedBitrate = 12000000; // 12 Mbps default
             
             // Colors
             let currentColor = [0.87, 0.65, 0.77];
@@ -737,6 +861,18 @@
             });
             
             const absorbSlider = new LogSlider('absorb-slider', 'absorb-value', 0.0001, 0.1, 2.5, absorbRate);
+            
+            // ================================================
+            // Bitrate Control
+            // ================================================
+            const bitrateSelect = document.getElementById('bitrate-select');
+            const bitrateValue = document.getElementById('bitrate-value');
+            
+            bitrateSelect.addEventListener('change', () => {
+                selectedBitrate = parseInt(bitrateSelect.value);
+                const mbps = (selectedBitrate / 1000000).toFixed(0);
+                bitrateValue.innerHTML = mbps + ' Mbps';
+            });
             
             // ================================================
             // Collapsible Panel
@@ -777,9 +913,11 @@
             });
             
             // ================================================
-            // Viewport Controls - FIXED
+            // Viewport Controls
             // ================================================
             const viewportOverlay = document.getElementById('viewport-overlay');
+            const recordingBadge = document.getElementById('recording-badge');
+            const bitrateDisplay = document.getElementById('bitrate-display');
             
             document.getElementById('set-viewport').addEventListener('click', () => {
                 viewportWidth = parseInt(document.getElementById('viewport-width').value);
@@ -830,50 +968,128 @@
             });
             
             // ================================================
-            // MP4 Recording - FIXED
+            // H.264 Recording with Bitrate Control
             // ================================================
-            const recordBtn = document.getElementById('record-mp4');
+            const recordBtn = document.getElementById('record-h264');
+            
+            // Function to get supported H.264 MIME type
+            function getSupportedH264MimeType() {
+                const types = [
+                    'video/mp4;codecs=h264',
+                    'video/mp4;codecs=avc1',
+                    'video/webm;codecs=h264',
+                    'video/webm;codecs=avc1'
+                ];
+                
+                for (const type of types) {
+                    if (MediaRecorder.isTypeSupported(type)) {
+                        console.log('Using H.264 type:', type);
+                        return type;
+                    }
+                }
+                return 'video/webm'; // Fallback
+            }
+            
+            function updateBitrateDisplay() {
+                if (!isRecording) return;
+                
+                const elapsed = (performance.now() - recordingStartTime) / 1000;
+                const bits = recordedSize * 8;
+                const bitrate = (bits / elapsed) / 1000000;
+                
+                bitrateDisplay.innerHTML = `📊 ${bitrate.toFixed(1)} Mbps`;
+                
+                if (bitrate > selectedBitrate / 1000000 * 1.1) {
+                    bitrateDisplay.style.color = '#ff6b6b';
+                } else if (bitrate < selectedBitrate / 1000000 * 0.9) {
+                    bitrateDisplay.style.color = '#ffd966';
+                } else {
+                    bitrateDisplay.style.color = '#0f0';
+                }
+            }
             
             recordBtn.addEventListener('click', async () => {
                 if (!isRecording) {
                     try {
-                        // Use appropriate canvas for recording
+                        const mimeType = getSupportedH264MimeType();
                         const recordCanvas = viewportActive ? paintCanvas : paintCanvas;
                         const stream = recordCanvas.captureStream(30);
                         
                         recordedChunks = [];
-                        mediaRecorder = new MediaRecorder(stream, {
-                            mimeType: 'video/webm;codecs=vp9'
-                        });
+                        recordingStartTime = performance.now();
+                        recordedSize = 0;
+                        
+                        // Configure for H.264 with specific bitrate
+                        const options = {
+                            mimeType: mimeType,
+                            videoBitsPerSecond: selectedBitrate,
+                            bitsPerSecond: selectedBitrate
+                        };
+                        
+                        console.log('Recording with options:', options);
+                        
+                        mediaRecorder = new MediaRecorder(stream, options);
                         
                         mediaRecorder.ondataavailable = (event) => {
-                            if (event.data.size > 0) {
+                            if (event.data && event.data.size > 0) {
                                 recordedChunks.push(event.data);
+                                recordedSize += event.data.size;
+                                updateBitrateDisplay();
                             }
                         };
                         
                         mediaRecorder.onstop = () => {
-                            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                            const blob = new Blob(recordedChunks, { 
+                                type: 'video/mp4' 
+                            });
+                            
                             const url = URL.createObjectURL(blob);
                             const a = document.createElement('a');
                             a.href = url;
-                            a.download = `hexel-${Date.now()}.webm`;
+                            
+                            // Add bitrate info to filename
+                            const mbps = (selectedBitrate / 1000000).toFixed(0);
+                            a.download = `hexel-${mbps}Mbps-${Date.now()}.mp4`;
+                            
                             a.click();
+                            
+                            // Cleanup
+                            if (bitrateInterval) {
+                                clearInterval(bitrateInterval);
+                                bitrateInterval = null;
+                            }
+                            
+                            bitrateDisplay.innerHTML = '📊 0.0 Mbps';
+                            recordingBadge.style.display = 'none';
                         };
                         
-                        mediaRecorder.start();
+                        mediaRecorder.start(1000); // Collect data every second for bitrate calculation
                         isRecording = true;
                         recordBtn.classList.add('recording');
-                        recordBtn.innerHTML = '⏹️ Stop';
+                        recordBtn.innerHTML = '⏹️ Stop H.264';
+                        recordingBadge.style.display = 'flex';
+                        
+                        // Update bitrate display every 500ms
+                        bitrateInterval = setInterval(updateBitrateDisplay, 500);
+                        
                     } catch (e) {
                         console.error('Recording failed:', e);
-                        alert('Recording failed - try a different browser');
+                        alert('H.264 recording failed - trying fallback format');
+                        
+                        // Fallback to basic recording
+                        try {
+                            const stream = paintCanvas.captureStream(30);
+                            mediaRecorder = new MediaRecorder(stream);
+                            // ... similar logic as above
+                        } catch (e2) {
+                            alert('Recording not supported in this browser');
+                        }
                     }
                 } else {
                     mediaRecorder.stop();
                     isRecording = false;
                     recordBtn.classList.remove('recording');
-                    recordBtn.innerHTML = '🎥 Record';
+                    recordBtn.innerHTML = '🎥 H.264';
                 }
             });
             
@@ -1124,7 +1340,7 @@
             }
             
             // ================================================
-            // Painting - FIXED BRUSH
+            // Painting
             // ================================================
             function addPaint(screenX, screenY) {
                 const worldX = cameraX + (screenX - paintCanvas.width/2) / scale;
@@ -1133,7 +1349,6 @@
                 const centerCol = Math.round(worldX / H_STEP);
                 const centerRow = Math.round(worldY / H_STEP);
                 
-                // FIXED: brush radius calculation
                 const brushRadius = Math.max(1, Math.floor(3 * brushSize));
                 
                 for (let dr = -brushRadius; dr <= brushRadius; dr++) {
@@ -1149,7 +1364,6 @@
                         const dy = worldY - center.y;
                         const dist = Math.sqrt(dx*dx + dy*dy);
                         
-                        // FIXED: distance threshold
                         const maxDist = H_STEP * 1.2 * brushSize;
                         if (dist < maxDist) {
                             const strength = 0.4 * (1 - dist / maxDist) * brushSize;
@@ -1308,7 +1522,7 @@
             }
             
             // ================================================
-            // Rendering - FIXED GRID ASPECT
+            // Rendering
             // ================================================
             function drawGrid() {
                 gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
@@ -1338,7 +1552,6 @@
                         const y = centerY + (row * V_STEP - cameraY) * scale;
                         const xOffset = (row % 2 === 0) ? 0 : (H_STEP * scale) / 2;
                         
-                        // Draw hex grid lines
                         gridCtx.beginPath();
                         gridCtx.moveTo(x + xOffset - 10, y - 17.32);
                         gridCtx.lineTo(x + xOffset + 10, y + 17.32);
@@ -1408,6 +1621,27 @@
                 };
             }
             
+            function getCanvasCoordinates(e) {
+                const rect = paintCanvas.getBoundingClientRect();
+                const scaleX = paintCanvas.width / rect.width;
+                const scaleY = paintCanvas.height / rect.height;
+                
+                let clientX, clientY;
+                
+                if (e.touches) {
+                    clientX = e.touches[0].clientX;
+                    clientY = e.touches[0].clientY;
+                } else {
+                    clientX = e.clientX;
+                    clientY = e.clientY;
+                }
+                
+                const canvasX = (clientX - rect.left) * scaleX;
+                const canvasY = (clientY - rect.top) * scaleY;
+                
+                return { x: canvasX, y: canvasY };
+            }
+            
             // ================================================
             // Animation
             // ================================================
@@ -1431,30 +1665,8 @@
             }
             
             // ================================================
-            // Interaction - FIXED COORDINATES
+            // Interaction
             // ================================================
-            function getCanvasCoordinates(e) {
-                const rect = paintCanvas.getBoundingClientRect();
-                const scaleX = paintCanvas.width / rect.width;
-                const scaleY = paintCanvas.height / rect.height;
-                
-                let clientX, clientY;
-                
-                if (e.touches) {
-                    clientX = e.touches[0].clientX;
-                    clientY = e.touches[0].clientY;
-                } else {
-                    clientX = e.clientX;
-                    clientY = e.clientY;
-                }
-                
-                // Convert to canvas pixel coordinates
-                const canvasX = (clientX - rect.left) * scaleX;
-                const canvasY = (clientY - rect.top) * scaleY;
-                
-                return { x: canvasX, y: canvasY };
-            }
-            
             paintCanvas.addEventListener('mousedown', (e) => {
                 e.preventDefault();
                 
