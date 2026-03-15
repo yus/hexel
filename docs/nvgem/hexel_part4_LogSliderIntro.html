@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>FLUID PAINT · HEX CELLS · LOG SLIDERS · PERFORMANCE LIMIT</title>
+    <title>FLUID PAINT · LOG SLIDERS · CREATIVE MIX</title>
     <style>
         * {
             margin: 0;
@@ -25,31 +25,21 @@
             height: 100vh;
         }
         
-        #gridCanvas {
-            z-index: 1;
-            background: #0a0a0a;
-            pointer-events: none;
-        }
-        
-        #paintCanvas {
-            z-index: 2;
-            background: transparent;
-            cursor: crosshair;
-            touch-action: none;
-        }
+        #gridCanvas { z-index: 1; background: #0a0a0a; pointer-events: none; }
+        #paintCanvas { z-index: 2; background: transparent; cursor: crosshair; touch-action: none; }
         
         #panel {
             position: fixed;
             top: 20px;
             left: 20px;
-            background: rgba(25,20,30,0.9);
+            background: rgba(25,20,30,0.95);
             backdrop-filter: blur(8px);
             border: 1px solid #b8a5dd40;
             padding: 16px 20px;
             color: #d8c5ff;
             font-family: monospace;
             font-size: 12px;
-            min-width: 380px;
+            min-width: 400px;
             z-index: 100;
             pointer-events: none;
             box-shadow: 0 4px 20px rgba(0,0,0,0.5);
@@ -100,6 +90,7 @@
             align-items: center;
             gap: 12px;
             margin: 8px 0;
+            pointer-events: auto;
         }
         
         .slider-label {
@@ -114,18 +105,20 @@
             background: #333;
             outline: none;
             -webkit-appearance: none;
+            cursor: pointer;
         }
         
         .slider-row input::-webkit-slider-thumb {
             -webkit-appearance: none;
-            width: 12px;
-            height: 12px;
+            width: 14px;
+            height: 14px;
             background: #d8b5ff;
             cursor: pointer;
+            border: none;
         }
         
         .slider-value {
-            width: 60px;
+            width: 70px;
             text-align: right;
             font-family: monospace;
             color: #ffd966;
@@ -133,12 +126,13 @@
         }
         
         .slider-scale {
-            font-size: 9px;
+            font-size: 8px;
             color: #888;
             display: flex;
             justify-content: space-between;
             margin-top: 2px;
             padding-left: 92px;
+            pointer-events: none;
         }
         
         .tool-panel {
@@ -146,30 +140,38 @@
             bottom: 24px;
             left: 50%;
             transform: translateX(-50%);
-            background: rgba(25,20,30,0.9);
+            background: rgba(25,20,30,0.95);
             backdrop-filter: blur(8px);
             border: 1px solid #b8a5dd40;
             padding: 12px 24px;
             display: flex;
-            gap: 20px;
+            gap: 16px;
             align-items: center;
             z-index: 100;
             pointer-events: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
         }
         
         .tool-btn {
             background: transparent;
             border: 1px solid #b8a5dd40;
             color: #d8b5ff;
-            padding: 6px 14px;
-            font-size: 13px;
+            padding: 6px 12px;
+            font-size: 12px;
             cursor: pointer;
-            min-width: 60px;
+            min-width: 50px;
         }
         
         .tool-btn.active {
             background: #b8a5dd;
             color: #0a0a0a;
+            border-color: #d8b5ff;
+        }
+        
+        .tool-btn.mix-active {
+            background: #d8b5ff;
+            color: #0a0a0a;
+            border-color: #ffd966;
         }
         
         .color-palette {
@@ -202,6 +204,20 @@
             pointer-events: none;
         }
         
+        .mix-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: rgba(216, 181, 255, 0.2);
+            border: 1px solid #d8b5ff;
+            color: #d8b5ff;
+            padding: 8px 16px;
+            font-size: 12px;
+            z-index: 101;
+            pointer-events: none;
+            backdrop-filter: blur(4px);
+        }
+        
         * { border-radius: 0 !important; }
     </style>
 </head>
@@ -211,7 +227,7 @@
     
     <div id="panel">
         <div class="panel-title">
-            <span>⚡ HEX CELLS · LOG SLIDERS · ∞/20K LIMIT</span>
+            <span>⚡ HEX CELLS · LOG SLIDERS · CREATIVE MIX</span>
             <span id="fps">60</span>
         </div>
         
@@ -225,40 +241,40 @@
                 <span class="stat-value" id="active-percent">0%</span>
             </div>
             <div class="stat-item">
-                <span class="stat-label">Limit</span>
-                <span class="stat-value" id="cell-limit">20K</span>
+                <span class="stat-label">Mix Mode</span>
+                <span class="stat-value" id="mix-mode">OFF</span>
             </div>
         </div>
         
         <div class="slider-container">
             <div class="slider-row">
                 <span class="slider-label">ABSORBENCY</span>
-                <input type="range" id="diffusion-slider" min="0" max="100" value="20">
+                <input type="range" id="diffusion-slider" min="0" max="100" value="18">
                 <span class="slider-value" id="diffusion-display">0.008</span>
             </div>
             <div class="slider-scale">
-                <span>slow paper</span>
-                <span>fast blotter</span>
+                <span>paper (0.0001)</span>
+                <span>blotter (0.1)</span>
             </div>
             
             <div class="slider-row">
                 <span class="slider-label">FLOW</span>
-                <input type="range" id="flow-slider" min="0" max="100" value="15">
+                <input type="range" id="flow-slider" min="0" max="100" value="12">
                 <span class="slider-value" id="flow-display">0.15</span>
             </div>
             <div class="slider-scale">
-                <span>still</span>
-                <span>river</span>
+                <span>still (0.01)</span>
+                <span>river (2.0)</span>
             </div>
             
             <div class="slider-row">
                 <span class="slider-label">TURBULENCE</span>
-                <input type="range" id="turbulence-slider" min="0" max="100" value="25">
+                <input type="range" id="turbulence-slider" min="0" max="100" value="20">
                 <span class="slider-value" id="turbulence-display">0.30</span>
             </div>
             <div class="slider-scale">
-                <span>calm</span>
-                <span>storm</span>
+                <span>calm (0.0)</span>
+                <span>storm (2.0)</span>
             </div>
         </div>
     </div>
@@ -266,28 +282,93 @@
     <div class="tool-panel">
         <button class="tool-btn active" id="btn-paint">● Paint</button>
         <button class="tool-btn" id="btn-erase">⌫ Erase</button>
+        <button class="tool-btn" id="btn-mix">🔄 Mix</button>
         <button class="tool-btn" id="btn-clear">Clear</button>
         
         <div class="color-palette">
             <div class="color-swatch" style="background: #c4a5dd;" data-color="0.77,0.65,0.87"></div>
+            <div class="color-swatch active" style="background: #dda5c4;" data-color="0.87,0.65,0.77"></div>
             <div class="color-swatch" style="background: #a5ddc4;" data-color="0.65,0.87,0.77"></div>
             <div class="color-swatch" style="background: #ddc4a5;" data-color="0.87,0.77,0.65"></div>
-            <div class="color-swatch active" style="background: #dda5c4;" data-color="0.87,0.65,0.77"></div>
         </div>
+        
+        <span style="color:#888; font-size:10px;">drag to mix →</span>
     </div>
     
     <div class="coord-display" id="coords">0.00 , 0.00</div>
+    <div class="mix-indicator" id="mix-indicator" style="display:none;">🌀 MIX MODE: drag between colors</div>
 
     <script>
         (function() {
+            // ================================================
+            // LOG SLIDER CLASS
+            // ================================================
+            class LogSlider {
+                constructor(elementId, displayId, minVal, maxVal, expFactor = 2.5, defaultVal = null) {
+                    this.slider = document.getElementById(elementId);
+                    this.display = document.getElementById(displayId);
+                    this.minVal = minVal;
+                    this.maxVal = maxVal;
+                    this.expFactor = expFactor;
+                    this.value = defaultVal || minVal;
+                    this.callbacks = [];
+                    
+                    // Set initial position if default provided
+                    if (defaultVal !== null) {
+                        this.setValue(defaultVal);
+                    }
+                    
+                    // Bind event
+                    this.slider.addEventListener('input', (e) => {
+                        this.updateFromSlider(parseInt(e.target.value));
+                    });
+                }
+                
+                // Convert slider position (0-100) to actual value
+                sliderToValue(sliderPos) {
+                    const t = sliderPos / 100;
+                    const curved = Math.pow(t, this.expFactor);
+                    return this.minVal + (this.maxVal - this.minVal) * curved;
+                }
+                
+                // Convert actual value to slider position (0-100)
+                valueToSlider(val) {
+                    const t = (val - this.minVal) / (this.maxVal - this.minVal);
+                    const curved = Math.pow(t, 1 / this.expFactor);
+                    return curved * 100;
+                }
+                
+                // Update from slider input
+                updateFromSlider(sliderPos) {
+                    this.value = this.sliderToValue(sliderPos);
+                    this.display.innerHTML = this.value.toFixed(4);
+                    this.callbacks.forEach(cb => cb(this.value));
+                }
+                
+                // Set value programmatically
+                setValue(val) {
+                    this.value = Math.max(this.minVal, Math.min(this.maxVal, val));
+                    this.slider.value = this.valueToSlider(this.value);
+                    this.display.innerHTML = this.value.toFixed(4);
+                }
+                
+                // Add change callback
+                onChange(callback) {
+                    this.callbacks.push(callback);
+                    callback(this.value); // Initial call
+                }
+            }
+            
+            // ================================================
             // Canvas setup
+            // ================================================
             const gridCanvas = document.getElementById('gridCanvas');
             const paintCanvas = document.getElementById('paintCanvas');
             
             const gridCtx = gridCanvas.getContext('2d');
             const paintCtx = paintCanvas.getContext('2d');
             
-            // Grid parameters - true hex grid
+            // Grid parameters
             const BASE_SIZE = 24;
             const H_STEP = BASE_SIZE * 2;
             const V_STEP = BASE_SIZE * Math.sqrt(3);
@@ -298,130 +379,126 @@
             // Interaction
             let isPainting = false;
             let isPanning = false;
+            let isMixing = false;
             let currentTool = 'paint';
             let lastX, lastY;
             
-            // Paint cells - now using sparse representation for performance
-            const MAX_CELLS = 20000; // Performance limit
-            let paintCells = new Map(); // Map of "x,y" string to cell data
-            let activeCellCount = 0;
+            // Paint cells
+            const MAX_CELLS = 20000;
+            let paintCells = new Map();
             
-            // Parameters with logarithmic mapping
-            let diffusionRate = 0.008;  // linear value
+            // Parameters with log sliders
+            let diffusionRate = 0.008;
             let flowStrength = 0.15;
             let turbulenceStrength = 0.3;
             let time = 0;
             
-            // Colors
-            let currentColor = [0.87, 0.65, 0.77]; // pinkish
+            // Colors and mixing
+            let currentColor = [0.87, 0.65, 0.77];
+            let mixColor = [0.77, 0.65, 0.87];
+            let mixProgress = 0;
             
             // ================================================
-            // LOGARITHMIC SLIDER MAPPING
+            // Initialize Log Sliders
             // ================================================
-            // Maps 0-100 slider to exponential range
-            // Slow part (0-30) gets more resolution, fast part (70-100) is compressed
+            const diffSlider = new LogSlider('diffusion-slider', 'diffusion-display', 0.0001, 0.1, 2.5, 0.008);
+            const flowSlider = new LogSlider('flow-slider', 'flow-display', 0.01, 2.0, 2.0, 0.15);
+            const turbSlider = new LogSlider('turbulence-slider', 'turbulence-display', 0.0, 2.0, 2.2, 0.3);
             
-            function sliderToValue(sliderPos, minVal, maxVal, expFactor = 3) {
-                // Normalize 0-1 with curve: more resolution at low end
-                const t = sliderPos / 100;
-                // Exponential mapping: t^expFactor gives more low-end resolution
-                const curved = Math.pow(t, expFactor);
-                return minVal + (maxVal - minVal) * curved;
-            }
-            
-            function valueToSlider(value, minVal, maxVal, expFactor = 3) {
-                const t = (value - minVal) / (maxVal - minVal);
-                // Inverse of exponential
-                const curved = Math.pow(t, 1/expFactor);
-                return curved * 100;
-            }
-            
-            // Slider ranges with wide coverage but fine low-end control
-            const DIFFUSION_MIN = 0.0001;  // almost none
-            const DIFFUSION_MAX = 0.1;      // very fast
-            
-            const FLOW_MIN = 0.01;           // barely moves
-            const FLOW_MAX = 2.0;            // rapid flow
-            
-            const TURB_MIN = 0.0;             // none
-            const TURB_MAX = 2.0;              // wild
+            // Update parameters when sliders change
+            diffSlider.onChange(val => diffusionRate = val);
+            flowSlider.onChange(val => flowStrength = val);
+            turbSlider.onChange(val => turbulenceStrength = val);
             
             // ================================================
-            // HEX GRID CELL MANAGEMENT
+            // Hex grid functions
             // ================================================
-            
-            // Get hex cell key from world position
             function getHexCellKey(worldX, worldY) {
-                // Find nearest hex center
                 const col = Math.round(worldX / H_STEP);
                 const row = Math.round(worldY / V_STEP);
                 return `${col},${row}`;
             }
             
-            // Get world position of hex center from key
             function getHexCenter(key) {
                 const [col, row] = key.split(',').map(Number);
                 let x = col * H_STEP;
                 let y = row * V_STEP;
-                if (row % 2 !== 0) {
-                    x += H_STEP / 2;
-                }
+                if (row % 2 !== 0) x += H_STEP / 2;
                 return { x, y };
             }
             
-            // Check if a point is inside a hex cell (for mouse picking)
-            function isPointInHex(worldX, worldY, hexX, hexY) {
-                const dx = Math.abs(worldX - hexX);
-                const dy = Math.abs(worldY - hexY);
+            // ================================================
+            // Creative Mix Tool
+            // ================================================
+            function startMix(screenX, screenY) {
+                isMixing = true;
+                document.getElementById('mix-indicator').style.display = 'block';
                 
-                // Hexagon boundary approximation (better than square!)
-                const hexWidth = H_STEP / 2;
-                const hexHeight = V_STEP / 2;
+                // Get color under mouse (for source color)
+                const world = screenToWorld(screenX, screenY);
+                const key = getHexCellKey(world.x, world.y);
+                const cell = paintCells.get(key);
                 
-                // Simple rhombus test for equilateral hex
-                return (dx / hexWidth + dy / hexHeight) <= 1.5;
+                if (cell) {
+                    mixColor = [cell.r, cell.g, cell.b];
+                } else {
+                    mixColor = [0.5, 0.5, 0.5]; // neutral gray
+                }
+            }
+            
+            function updateMix(screenX, screenY) {
+                if (!isMixing) return;
+                
+                // Calculate mix progress based on horizontal drag
+                const dx = screenX - lastX;
+                mixProgress = Math.max(0, Math.min(1, mixProgress + dx * 0.005));
+                
+                // Blend between current color and mix color
+                currentColor = [
+                    currentColor[0] * (1 - mixProgress) + mixColor[0] * mixProgress,
+                    currentColor[1] * (1 - mixProgress) + mixColor[1] * mixProgress,
+                    currentColor[2] * (1 - mixProgress) + mixColor[2] * mixProgress
+                ];
+                
+                // Update UI
+                document.getElementById('mix-mode').innerHTML = (mixProgress * 100).toFixed(0) + '%';
+            }
+            
+            function endMix() {
+                isMixing = false;
+                mixProgress = 0;
+                document.getElementById('mix-indicator').style.display = 'none';
+                document.getElementById('mix-mode').innerHTML = 'OFF';
             }
             
             // ================================================
-            // PAINTING (add to hex cells)
+            // Painting
             // ================================================
             function addPaint(screenX, screenY) {
-                // Convert screen to world
                 const worldX = cameraX + (screenX - paintCanvas.width/2) / scale;
                 const worldY = cameraY + (screenY - paintCanvas.height/2) / scale;
                 
-                // Find nearest hex cells (brush radius in hex units)
                 const centerCol = Math.round(worldX / H_STEP);
-                const centerRow = Math.round(worldY / V_STEP);
+                const centerRow = Math.round(worldY / H_STEP);
                 
-                // Check cells in a hexagonal pattern
                 for (let dr = -2; dr <= 2; dr++) {
                     for (let dc = -2; dc <= 2; dc++) {
-                        const row = centerRow + dr;
-                        const col = centerCol + dc;
-                        
-                        // Skip if too far (hex distance)
                         if (Math.abs(dr) + Math.abs(dc) > 3) continue;
                         
+                        const row = centerRow + dr;
+                        const col = centerCol + dc;
                         const key = `${col},${row}`;
                         const center = getHexCenter(key);
                         
-                        // Distance in world units
                         const dx = worldX - center.x;
                         const dy = worldY - center.y;
                         const dist = Math.sqrt(dx*dx + dy*dy);
                         
-                        // Soft falloff based on hex distance
-                        const maxDist = H_STEP * 1.2;
-                        if (dist < maxDist) {
-                            const strength = 0.3 * (1 - dist / maxDist) * (0.9 + 0.1 * Math.sin(dist));
+                        if (dist < H_STEP * 1.2) {
+                            const strength = 0.3 * (1 - dist / (H_STEP * 1.2));
                             
-                            // Check performance limit
-                            if (!paintCells.has(key) && paintCells.size >= MAX_CELLS) {
-                                continue; // Skip if at limit
-                            }
+                            if (!paintCells.has(key) && paintCells.size >= MAX_CELLS) continue;
                             
-                            // Get or create cell
                             let cell = paintCells.get(key);
                             if (!cell) {
                                 cell = { r: 0, g: 0, b: 0, age: 0 };
@@ -432,12 +509,11 @@
                                 cell.r = Math.min(1, cell.r + currentColor[0] * strength);
                                 cell.g = Math.min(1, cell.g + currentColor[1] * strength);
                                 cell.b = Math.min(1, cell.b + currentColor[2] * strength);
-                            } else {
+                            } else if (currentTool === 'erase') {
                                 cell.r = Math.max(0, cell.r - strength * 0.3);
                                 cell.g = Math.max(0, cell.g - strength * 0.3);
                                 cell.b = Math.max(0, cell.b - strength * 0.3);
                                 
-                                // Remove if empty
                                 if (cell.r + cell.g + cell.b < 0.01) {
                                     paintCells.delete(key);
                                 }
@@ -450,31 +526,19 @@
             }
             
             // ================================================
-            // FLUID SIMULATION ON HEX GRID
+            // Fluid simulation
             // ================================================
-            
-            // Get velocity for a hex cell (slow organic flow following grid)
             function getHexVelocity(col, row, t) {
-                const inOddRow = (row % 2 !== 0);
-                
-                // Base flow follows grid directions
                 const baseSpeed = flowStrength * 0.3;
-                
-                // Use cell position for coherent flow
                 const phaseX = col * 0.5 + t * 0.05;
                 const phaseY = row * 0.3 + t * 0.03;
                 
-                let vx = 0, vy = 0;
+                let vx = Math.sin(phaseY * 2) * baseSpeed;
+                let vy = Math.cos(phaseX * 2) * baseSpeed;
                 
-                // Flow along grid lines
-                vx += Math.sin(phaseY * 2) * baseSpeed;
-                vy += Math.cos(phaseX * 2) * baseSpeed;
-                
-                // Diagonal flows
                 vx += Math.cos(phaseX * 1.5 + phaseY) * baseSpeed * 0.5;
                 vy += Math.sin(phaseY * 1.5 - phaseX) * baseSpeed * 0.5;
                 
-                // Turbulence
                 const turb = turbulenceStrength * 0.1;
                 vx += Math.sin(phaseX * 5) * Math.cos(phaseY * 4) * turb;
                 vy += Math.cos(phaseY * 5) * Math.sin(phaseX * 4) * turb;
@@ -482,34 +546,26 @@
                 return { vx, vy };
             }
             
-            // Advect paint between hex cells
             function advectPaint(dt) {
                 const newCells = new Map();
                 
                 for (const [key, cell] of paintCells) {
                     const [col, row] = key.split(',').map(Number);
-                    
-                    // Get velocity at this cell
                     const { vx, vy } = getHexVelocity(col, row, time);
                     
-                    // Trace backwards in cell-space
                     const prevCol = col - vx * dt * 10;
                     const prevRow = row - vy * dt * 10;
                     
-                    // Find nearest hex cells for distribution
                     const baseCol = Math.floor(prevCol);
                     const baseRow = Math.floor(prevRow);
                     
-                    // Distribute to neighboring cells (bilinear in hex space)
                     for (let dr = 0; dr <= 1; dr++) {
                         for (let dc = 0; dc <= 1; dc++) {
                             const targetCol = baseCol + dc;
                             const targetRow = baseRow + dr;
                             
-                            // Skip if out of reasonable bounds
                             if (Math.abs(targetCol) > 1000 || Math.abs(targetRow) > 1000) continue;
                             
-                            // Calculate weight based on distance
                             const wx = 1 - Math.abs(prevCol - targetCol);
                             const wy = 1 - Math.abs(prevRow - targetRow);
                             const weight = Math.max(0, wx * wy);
@@ -530,7 +586,7 @@
                     }
                 }
                 
-                // Apply diffusion between neighboring cells
+                // Apply diffusion
                 if (diffusionRate > 0) {
                     const diffused = new Map();
                     
@@ -538,8 +594,9 @@
                         const [col, row] = key.split(',').map(Number);
                         
                         let r = cell.r, g = cell.g, b = cell.b;
+                        let neighborCount = 0;
                         
-                        // Neighbors in hex grid
+                        // Six hex neighbors
                         const neighbors = [
                             [col+1, row], [col-1, row],
                             [col, row+1], [col, row-1],
@@ -547,7 +604,6 @@
                             [col + (row%2===0?1:-1), row-1]
                         ];
                         
-                        let neighborCount = 0;
                         for (const [ncol, nrow] of neighbors) {
                             const nkey = `${ncol},${nrow}`;
                             const ncell = newCells.get(nkey);
@@ -559,7 +615,6 @@
                             }
                         }
                         
-                        // Normalize
                         const denom = 1 + neighborCount * diffusionRate;
                         diffused.set(key, {
                             r: r / denom,
@@ -574,9 +629,8 @@
                     paintCells = newCells;
                 }
                 
-                // Enforce performance limit
+                // Enforce limit
                 if (paintCells.size > MAX_CELLS) {
-                    // Keep only the most saturated cells
                     const sorted = Array.from(paintCells.entries())
                         .sort((a, b) => {
                             const sumA = a[1].r + a[1].g + a[1].b;
@@ -589,7 +643,7 @@
             }
             
             // ================================================
-            // RENDERING - HEX SHAPES!
+            // Rendering
             // ================================================
             function drawGrid() {
                 gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
@@ -607,7 +661,6 @@
                 const minRow = Math.floor(worldTop / V_STEP) - 2;
                 const maxRow = Math.ceil(worldBottom / V_STEP) + 2;
                 
-                // Draw hex grid
                 gridCtx.strokeStyle = '#b8a5dd';
                 gridCtx.lineWidth = 0.5;
                 gridCtx.globalAlpha = 0.15;
@@ -618,28 +671,16 @@
                         const y = centerY + (row * V_STEP - cameraY) * scale;
                         const xOffset = (row % 2 === 0) ? 0 : (H_STEP * scale) / 2;
                         
-                        // Draw hex outline (optional - commented for cleaner look)
-                        // Instead draw the three line pairs that make hexagons
-                        
-                        // Top-left to bottom-right diagonals
+                        // Draw hex grid lines
                         gridCtx.beginPath();
                         gridCtx.moveTo(x + xOffset - 8, y - 13.86);
                         gridCtx.lineTo(x + xOffset + 8, y + 13.86);
                         gridCtx.stroke();
                         
-                        // Top-right to bottom-left diagonals
                         gridCtx.beginPath();
                         gridCtx.moveTo(x + xOffset - 8, y + 13.86);
                         gridCtx.lineTo(x + xOffset + 8, y - 13.86);
                         gridCtx.stroke();
-                        
-                        // Horizontal lines (every 2 rows)
-                        if (row % 2 === 0) {
-                            gridCtx.beginPath();
-                            gridCtx.moveTo(x + xOffset - 16, y);
-                            gridCtx.lineTo(x + xOffset + 16, y);
-                            gridCtx.stroke();
-                        }
                     }
                 }
             }
@@ -650,48 +691,38 @@
                 const centerX = paintCanvas.width / 2;
                 const centerY = paintCanvas.height / 2;
                 
-                // Draw each hex cell as a proper hexagon
                 for (const [key, cell] of paintCells) {
                     const [col, row] = key.split(',').map(Number);
                     
-                    // Calculate screen position
                     let worldX = col * H_STEP;
                     let worldY = row * V_STEP;
-                    if (row % 2 !== 0) {
-                        worldX += H_STEP / 2;
-                    }
+                    if (row % 2 !== 0) worldX += H_STEP / 2;
                     
                     const screenX = centerX + (worldX - cameraX) * scale;
                     const screenY = centerY + (worldY - cameraY) * scale;
                     
-                    // Skip if far outside view
                     if (screenX < -100 || screenX > paintCanvas.width + 100 ||
-                        screenY < -100 || screenY > paintCanvas.height + 100) {
-                        continue;
-                    }
+                        screenY < -100 || screenY > paintCanvas.height + 100) continue;
                     
                     const density = (cell.r + cell.g + cell.b) / 3;
                     if (density < 0.01) continue;
                     
-                    // Draw hexagon!
-                    const size = H_STEP * scale * 0.4; // Hexagon radius in screen pixels
+                    // Draw hexagon
+                    const size = H_STEP * scale * 0.4;
                     
                     paintCtx.beginPath();
                     for (let i = 0; i < 6; i++) {
-                        const angle = i * Math.PI / 3; // 60° increments
+                        const angle = i * Math.PI / 3;
                         const hx = screenX + size * Math.cos(angle);
                         const hy = screenY + size * Math.sin(angle);
-                        
                         if (i === 0) paintCtx.moveTo(hx, hy);
                         else paintCtx.lineTo(hx, hy);
                     }
                     paintCtx.closePath();
                     
-                    // Fill with color
                     paintCtx.fillStyle = `rgba(${Math.floor(cell.r*255)}, ${Math.floor(cell.g*255)}, ${Math.floor(cell.b*255)}, ${density * 0.8})`;
                     paintCtx.fill();
                     
-                    // Soft edge
                     paintCtx.strokeStyle = `rgba(255,255,255,${density * 0.2})`;
                     paintCtx.lineWidth = 0.5;
                     paintCtx.stroke();
@@ -699,18 +730,27 @@
             }
             
             // ================================================
-            // ANIMATION LOOP
+            // Utilities
+            // ================================================
+            function screenToWorld(screenX, screenY) {
+                return {
+                    x: cameraX + (screenX - paintCanvas.width/2) / scale,
+                    y: cameraY + (screenY - paintCanvas.height/2) / scale
+                };
+            }
+            
+            // ================================================
+            // Animation
             // ================================================
             function update() {
                 time += 0.02;
                 
-                // Apply fluid dynamics
                 advectPaint(0.1);
                 
                 // Update UI
-                const percent = ((paintCells.size / MAX_CELLS) * 100).toFixed(1);
                 document.getElementById('cell-count').innerHTML = paintCells.size;
-                document.getElementById('active-percent').innerHTML = percent + '%';
+                document.getElementById('active-percent').innerHTML = 
+                    ((paintCells.size / MAX_CELLS) * 100).toFixed(1) + '%';
                 
                 // FPS counter
                 frameCount++;
@@ -721,7 +761,6 @@
                     lastFPSUpdate = now;
                 }
                 
-                // Render
                 drawGrid();
                 drawPaint();
                 
@@ -729,7 +768,7 @@
             }
             
             // ================================================
-            // INTERACTION (same as before)
+            // Interaction
             // ================================================
             paintCanvas.addEventListener('mousedown', (e) => {
                 e.preventDefault();
@@ -741,6 +780,8 @@
                 if (e.button === 2) {
                     isPanning = true;
                     paintCanvas.style.cursor = 'grabbing';
+                } else if (currentTool === 'mix') {
+                    startMix(x, y);
                 } else {
                     isPainting = true;
                     addPaint(x, y);
@@ -757,10 +798,7 @@
                 const x = e.clientX - rect.left;
                 const y = e.clientY - rect.top;
                 
-                const world = {
-                    x: cameraX + (x - paintCanvas.width/2) / scale,
-                    y: cameraY + (y - paintCanvas.height/2) / scale
-                };
+                const world = screenToWorld(x, y);
                 document.getElementById('coords').innerHTML = `${world.x.toFixed(2)} , ${world.y.toFixed(2)}`;
                 
                 if (isPanning) {
@@ -776,6 +814,8 @@
                         const iy = lastY * (1 - t) + y * t;
                         addPaint(ix, iy);
                     }
+                } else if (isMixing) {
+                    updateMix(x, y);
                 }
                 
                 lastX = x;
@@ -785,12 +825,14 @@
             paintCanvas.addEventListener('mouseup', () => {
                 isPainting = false;
                 isPanning = false;
+                if (isMixing) endMix();
                 paintCanvas.style.cursor = 'crosshair';
             });
             
             paintCanvas.addEventListener('mouseleave', () => {
                 isPainting = false;
                 isPanning = false;
+                if (isMixing) endMix();
                 paintCanvas.style.cursor = 'crosshair';
             });
             
@@ -803,81 +845,43 @@
                 const mouseX = e.clientX - rect.left;
                 const mouseY = e.clientY - rect.top;
                 
-                const worldBefore = {
-                    x: cameraX + (mouseX - paintCanvas.width/2) / scale,
-                    y: cameraY + (mouseY - paintCanvas.height/2) / scale
-                };
+                const worldBefore = screenToWorld(mouseX, mouseY);
                 
                 const zoomFactor = e.deltaY > 0 ? 0.95 : 1.05;
                 scale *= zoomFactor;
                 scale = Math.max(0.2, Math.min(5, scale));
                 
-                const worldAfter = {
-                    x: cameraX + (mouseX - paintCanvas.width/2) / scale,
-                    y: cameraY + (mouseY - paintCanvas.height/2) / scale
-                };
+                const worldAfter = screenToWorld(mouseX, mouseY);
                 
                 cameraX += worldBefore.x - worldAfter.x;
                 cameraY += worldBefore.y - worldAfter.y;
             }, { passive: false });
             
             // ================================================
-            // UI CONTROLS - LOGARITHMIC SLIDERS
+            // UI Controls
             // ================================================
-            
-            // Diffusion slider
-            const diffSlider = document.getElementById('diffusion-slider');
-            const diffDisplay = document.getElementById('diffusion-display');
-            
-            diffSlider.addEventListener('input', () => {
-                const sliderVal = parseInt(diffSlider.value);
-                diffusionRate = sliderToValue(sliderVal, DIFFUSION_MIN, DIFFUSION_MAX, 2.5);
-                diffDisplay.innerHTML = diffusionRate.toFixed(4);
-            });
-            
-            // Flow slider
-            const flowSlider = document.getElementById('flow-slider');
-            const flowDisplay = document.getElementById('flow-display');
-            
-            flowSlider.addEventListener('input', () => {
-                const sliderVal = parseInt(flowSlider.value);
-                flowStrength = sliderToValue(sliderVal, FLOW_MIN, FLOW_MAX, 2);
-                flowDisplay.innerHTML = flowStrength.toFixed(3);
-            });
-            
-            // Turbulence slider
-            const turbSlider = document.getElementById('turbulence-slider');
-            const turbDisplay = document.getElementById('turbulence-display');
-            
-            turbSlider.addEventListener('input', () => {
-                const sliderVal = parseInt(turbSlider.value);
-                turbulenceStrength = sliderToValue(sliderVal, TURB_MIN, TURB_MAX, 2.2);
-                turbDisplay.innerHTML = turbulenceStrength.toFixed(3);
-            });
-            
-            // Set initial slider positions
-            diffSlider.value = valueToSlider(diffusionRate, DIFFUSION_MIN, DIFFUSION_MAX, 2.5);
-            flowSlider.value = valueToSlider(flowStrength, FLOW_MIN, FLOW_MAX, 2);
-            turbSlider.value = valueToSlider(turbulenceStrength, TURB_MIN, TURB_MAX, 2.2);
-            
-            // Tool buttons
             document.getElementById('btn-paint').addEventListener('click', () => {
                 currentTool = 'paint';
-                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active', 'mix-active'));
                 document.getElementById('btn-paint').classList.add('active');
             });
             
             document.getElementById('btn-erase').addEventListener('click', () => {
                 currentTool = 'erase';
-                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active'));
+                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active', 'mix-active'));
                 document.getElementById('btn-erase').classList.add('active');
+            });
+            
+            document.getElementById('btn-mix').addEventListener('click', () => {
+                currentTool = 'mix';
+                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active', 'mix-active'));
+                document.getElementById('btn-mix').classList.add('mix-active');
             });
             
             document.getElementById('btn-clear').addEventListener('click', () => {
                 paintCells.clear();
             });
             
-            // Color swatches
             document.querySelectorAll('.color-swatch').forEach(swatch => {
                 swatch.addEventListener('click', () => {
                     document.querySelectorAll('.color-swatch').forEach(s => s.classList.remove('active'));
@@ -887,11 +891,12 @@
                 });
             });
             
-            // FPS counter
+            // ================================================
+            // Initialize
+            // ================================================
             let frameCount = 0;
             let lastFPSUpdate = performance.now();
             
-            // Resize handler
             function resize() {
                 gridCanvas.width = window.innerWidth;
                 gridCanvas.height = window.innerHeight;
@@ -904,7 +909,6 @@
             window.addEventListener('resize', resize);
             resize();
             
-            // Start animation
             update();
         })();
     </script>
