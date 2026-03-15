@@ -275,7 +275,9 @@
         canvas.height = window.innerHeight;
         gl.viewport(0, 0, canvas.width, canvas.height);
 
-        // Vertex shader with transform uniforms
+        // --- Vertex Shader ---
+        // The grid is now defined in a fixed coordinate space. Pan/Zoom transforms are applied via uniforms.
+        // This makes the grid independent of window size. The aspect ratio is handled separately to preserve shape.
         const vsSource = `
             attribute vec2 aPos;
             attribute vec3 aBary;
@@ -283,14 +285,15 @@
             
             uniform vec2 uTranslate;
             uniform float uScale;
-            uniform float uAspect;
+            uniform float uAspect; // Used to correct for window aspect ratio, keeping the grid square.
             
             varying vec3 vBary;
             varying float vId;
             
             void main() {
+                // Apply pan and zoom in the grid's world space
                 vec2 pos = (aPos + uTranslate) * uScale;
-                // Apply aspect correction
+                // Correct for aspect ratio so the grid doesn't stretch with the window
                 pos.x *= uAspect;
                 gl_Position = vec4(pos.x, pos.y, 0.0, 1.0);
                 vBary = aBary;
@@ -298,7 +301,8 @@
             }
         `;
 
-        // Fragment shader - using texture for colors (Node.js 24 compatible)
+        // --- Fragment Shader ---
+        // Uses a texture to store triangle colors. This is the Node.js 24 compatible way.
         const fsSource = `
             precision highp float;
             
@@ -311,14 +315,15 @@
             uniform int uGridStyle;
             
             void main() {
-                // Get color from texture
+                // Get color from the texture
                 float id = vId;
-                float tx = mod(id, uTexSize) / uTexSize;
-                float ty = floor(id / uTexSize) / uTexSize;
+                // Calculate texture coordinates. Add 0.5/texSize to sample the center of the texel.
+                float tx = (id + 0.5) / uTexSize;
+                float ty = floor(id / uTexSize) / uTexSize + (0.5 / uTexSize);
                 vec4 texColor = texture2D(uColorTex, vec2(tx, ty));
                 vec3 color = texColor.rgb;
                 
-                // Distance to nearest edge
+                // Distance to nearest edge (for grid lines)
                 float minDist = min(min(vBary.x, vBary.y), vBary.z);
                 
                 float gridIntensity = 0.0;
@@ -341,12 +346,11 @@
             }
         `;
 
-        // Compile shaders with error checking
+        // Compile shaders
         function compileShader(source, type) {
             const shader = gl.createShader(type);
             gl.shaderSource(shader, source);
             gl.compileShader(shader);
-            
             if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
                 console.error('Shader compile error:', gl.getShaderInfoLog(shader));
             }
@@ -360,27 +364,21 @@
         gl.attachShader(program, vs);
         gl.attachShader(program, fs);
         gl.linkProgram(program);
-        
-        if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
-            console.error('Program link error:', gl.getProgramInfoLog(program));
-        }
-        
         gl.useProgram(program);
 
-        // Generate equilateral grid (60° angles)
+        // --- Generate Equilateral Grid (60° angles) ---
         const side = 0.35;
         const height = side * Math.sqrt(3) / 2;
-        const gridSize = 15;
+        const gridSize = 15; // Number of cells in each direction from center
         
         const positions = [];
         const barycentrics = [];
         const ids = [];
-        const triangles = [];
+        const triangles = []; // Store triangle data for hit detection
         
         let triId = 0;
 
         function addTriangle(x1, y1, x2, y2, x3, y3) {
-            // Store for hit detection
             triangles.push({
                 id: triId,
                 x1, y1, x2, y2, x3, y3,
@@ -433,7 +431,7 @@
 
         console.log('Generated triangles:', triId);
 
-        // Create vertex buffer
+        // --- Create and fill Vertex Buffer ---
         const vertexData = [];
         for (let i = 0; i < positions.length; i += 2) {
             const vi = i / 2;
@@ -448,23 +446,22 @@
         gl.bindBuffer(gl.ARRAY_BUFFER, buffer);
         gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexData), gl.STATIC_DRAW);
 
-        // Get attribute locations
-        const aPos = gl.getAttribLocation(program, 'aPos');
-        const aBary = gl.getAttribLocation(program, 'aBary');
-        const aId = gl.getAttribLocation(program, 'aId');
-
-        const stride = 6 * 4;
+        // --- Set up Vertex Attributes ---
+        const stride = 6 * 4; // 6 floats per vertex * 4 bytes per float
         
+        const aPos = gl.getAttribLocation(program, 'aPos');
         gl.enableVertexAttribArray(aPos);
         gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, stride, 0);
         
+        const aBary = gl.getAttribLocation(program, 'aBary');
         gl.enableVertexAttribArray(aBary);
         gl.vertexAttribPointer(aBary, 3, gl.FLOAT, false, stride, 2*4);
         
+        const aId = gl.getAttribLocation(program, 'aId');
         gl.enableVertexAttribArray(aId);
         gl.vertexAttribPointer(aId, 1, gl.FLOAT, false, stride, 5*4);
 
-        // Get uniform locations
+        // --- Get Uniform Locations ---
         const uTranslate = gl.getUniformLocation(program, 'uTranslate');
         const uScale = gl.getUniformLocation(program, 'uScale');
         const uAspect = gl.getUniformLocation(program, 'uAspect');
@@ -473,41 +470,52 @@
         const uLineWidth = gl.getUniformLocation(program, 'uLineWidth');
         const uGridStyle = gl.getUniformLocation(program, 'uGridStyle');
 
-        // Set initial uniforms
+        // --- Set Initial Uniforms ---
         gl.uniform2f(uTranslate, 0, 0);
         gl.uniform1f(uScale, 0.8);
         gl.uniform1f(uAspect, 1.0); // Will be updated on resize
         gl.uniform1i(uGridStyle, 0);
         gl.uniform1f(uLineWidth, 0.03);
 
-        // Create texture for triangle colors
-        const texSize = Math.ceil(Math.sqrt(triId));
+        // --- Create Texture for Triangle Colors ---
+        // Texture size must be a power of two to avoid the NPOT warning and ensure it's complete.
+        // Find the smallest power of two that can hold all our triangles.
+        const texSize = Math.pow(2, Math.ceil(Math.log2(Math.ceil(Math.sqrt(triId)))));
+        console.log('Texture size:', texSize);
+        
+        // Create a texture where each texel (pixel) holds the color of one triangle.
         const texData = new Uint8Array(texSize * texSize * 4);
         
         // Initialize with dark gray
         for (let i = 0; i < triId; i++) {
             const idx = i * 4;
-            texData[idx] = 50;
-            texData[idx+1] = 60;
-            texData[idx+2] = 70;
-            texData[idx+3] = 255;
+            texData[idx] = 50;   // R
+            texData[idx+1] = 60; // G
+            texData[idx+2] = 70; // B
+            texData[idx+3] = 255; // A
         }
 
         const colorTex = gl.createTexture();
         gl.bindTexture(gl.TEXTURE_2D, colorTex);
-        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texSize, texSize, 0, gl.RGBA, gl.UNSIGNED_BYTE, texData);
+        
+        // *** FIX THE WEBGL WARNING ***
+        // For POT textures, we can use REPEAT, but we'll use CLAMP_TO_EDGE to be safe.
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_S, gl.CLAMP_TO_EDGE);
+        gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MIN_FILTER, gl.NEAREST);
         gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_MAG_FILTER, gl.NEAREST);
         
-        gl.uniform1i(uColorTex, 0);
+        gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texSize, texSize, 0, gl.RGBA, gl.UNSIGNED_BYTE, texData);
+        
+        gl.uniform1i(uColorTex, 0); // Use texture unit 0
         gl.uniform1f(uTexSize, texSize);
 
-        // Transform state
+        // --- Transform State ---
         let translateX = 0, translateY = 0;
         let scale = 0.8;
         let aspect = 1.0;
 
-        // Mouse interaction state
+        // --- Mouse Interaction State ---
         let isDragging = false;
         let lastMouseX = 0, lastMouseY = 0;
         let currentTool = 'pan';
@@ -516,26 +524,32 @@
         let blurRadius = 1;
         let blurStrength = 0.3;
 
-        // Update aspect ratio on resize
+        // --- Update Aspect Ratio on Resize ---
         function updateAspect() {
-            aspect = canvas.width / canvas.height;
+            // The grid's world space is square. We use the aspect ratio to squish the X coordinate
+            // in clip space so the grid always appears square on the screen, regardless of window shape.
+            aspect = canvas.height / canvas.width; // Note: This is the inverse of before.
             gl.uniform1f(uAspect, aspect);
         }
         updateAspect();
 
-        // Screen to world conversion
+        // --- Screen to World Coordinate Conversion ---
+        // This is the inverse of the vertex shader transformation.
         function screenToWorld(x, y) {
             const rect = canvas.getBoundingClientRect();
-            const nx = (x / rect.width) * 2 - 1;
-            const ny = 1 - (y / rect.height) * 2;
             
-            return {
-                x: (nx / aspect - translateX) / scale,
-                y: (ny - translateY) / scale
-            };
+            // Convert screen pixel to Normalized Device Coordinates (NDC): [-1, 1]
+            const ndcX = (x / rect.width) * 2 - 1;
+            const ndcY = 1 - (y / rect.height) * 2;
+            
+            // Undo the aspect correction and pan/zoom to get world coordinates.
+            const worldX = (ndcX / aspect - translateX) / scale;
+            const worldY = (ndcY - translateY) / scale;
+            
+            return { x: worldX, y: worldY };
         }
 
-        // Point in triangle test
+        // --- Point in Triangle Test (Barycentric) ---
         function pointInTriangle(px, py, x1, y1, x2, y2, x3, y3) {
             const v0x = x3 - x1;
             const v0y = y3 - y1;
@@ -557,9 +571,10 @@
             return (u >= 0) && (v >= 0) && (u + v < 1);
         }
 
-        // Find triangle at world coordinates
+        // --- Find Triangle ID at World Coordinates ---
         function findTriangle(x, y) {
             for (const tri of triangles) {
+                // Quick bounds check for optimization
                 if (x < tri.minX || x > tri.maxX || y < tri.minY || y > tri.maxY) continue;
                 if (pointInTriangle(x, y, tri.x1, tri.y1, tri.x2, tri.y2, tri.x3, tri.y3)) {
                     return tri.id;
@@ -568,7 +583,7 @@
             return -1;
         }
 
-        // Get neighboring triangles
+        // --- Get Neighboring Triangles (for brush size / blur radius) ---
         function getNeighbors(centerId, radius) {
             if (centerId < 0) return [centerId];
             
@@ -594,15 +609,19 @@
             return neighbors;
         }
 
-        // Update texture with new colors
+        // --- Update Texture with New Colors ---
         function updateColorTexture() {
             gl.bindTexture(gl.TEXTURE_2D, colorTex);
+            // Re-upload the entire texture data. For better performance, you could update only the changed texels.
             gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA, texSize, texSize, 0, gl.RGBA, gl.UNSIGNED_BYTE, texData);
         }
 
-        // Paint action
+        // --- Paint Action ---
         function paint(id) {
-            if (id < 0) return;
+            if (id < 0) {
+                document.getElementById('status-bar').innerHTML = `⬡ No triangle clicked`;
+                return;
+            }
             
             const neighbors = getNeighbors(id, brushSize);
             
@@ -617,14 +636,17 @@
             document.getElementById('status-bar').innerHTML = `⬡ Painted ${neighbors.length} triangles`;
         }
 
-        // Blur action
+        // --- Blur Action ---
         function blur(id) {
-            if (id < 0) return;
+            if (id < 0) {
+                document.getElementById('status-bar').innerHTML = `⬡ No triangle clicked`;
+                return;
+            }
             
             const neighbors = getNeighbors(id, blurRadius);
             if (neighbors.length === 0) return;
             
-            // Calculate average
+            // Calculate average color of the neighborhood
             let r = 0, g = 0, b = 0;
             for (const nid of neighbors) {
                 const idx = nid * 4;
@@ -649,14 +671,15 @@
             document.getElementById('status-bar').innerHTML = `⬡ Blurred ${neighbors.length} triangles`;
         }
 
-        // Mouse event handlers
+        // --- Mouse Event Handlers ---
         canvas.addEventListener('mousedown', (e) => {
-            if (currentTool === 'pan' || e.button === 1) {
+            if (currentTool === 'pan' || e.button === 1) { // Left click with pan tool, or middle mouse button
                 isDragging = true;
                 lastMouseX = e.clientX;
                 lastMouseY = e.clientY;
                 canvas.style.cursor = 'grabbing';
             } else {
+                // For brush and blur, we act on mouse down (for immediate feedback) and also on move (for dragging the tool)
                 const world = screenToWorld(e.clientX, e.clientY);
                 const id = findTriangle(world.x, world.y);
                 
@@ -669,12 +692,15 @@
         });
 
         canvas.addEventListener('mousemove', (e) => {
+            // Update coordinate display
             const world = screenToWorld(e.clientX, e.clientY);
             document.getElementById('coordinates').innerHTML = `${world.x.toFixed(2)}, ${world.y.toFixed(2)}`;
             
+            // Handle panning
             if (isDragging) {
+                // Mouse movement in screen space needs to be converted to world space movement
                 const dx = (e.clientX - lastMouseX) * 0.005 / scale;
-                const dy = (e.clientY - lastMouseY) * -0.005 / scale;
+                const dy = (e.clientY - lastMouseY) * -0.005 / scale; // Y is inverted in NDC
                 
                 translateX += dx;
                 translateY += dy;
@@ -683,6 +709,18 @@
                 
                 lastMouseX = e.clientX;
                 lastMouseY = e.clientY;
+            }
+            
+            // Handle brush/blur dragging (painting while moving with button down)
+            if (e.buttons === 1 && (currentTool === 'brush' || currentTool === 'blur')) {
+                const world = screenToWorld(e.clientX, e.clientY);
+                const id = findTriangle(world.x, world.y);
+                
+                if (currentTool === 'brush') {
+                    paint(id);
+                } else if (currentTool === 'blur') {
+                    blur(id);
+                }
             }
         });
 
@@ -706,26 +744,30 @@
             document.getElementById('status-bar').innerHTML = `⬡ Zoom: ${Math.round(scale * 100)}%`;
         });
 
-        // UI Controls
+        // --- UI Controls ---
         document.getElementById('tool-pan').addEventListener('click', () => {
             document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById('tool-pan').classList.add('active');
             currentTool = 'pan';
+            document.getElementById('status-bar').innerHTML = '⬡ Pan mode: Drag to move, Wheel to zoom';
         });
 
         document.getElementById('tool-brush').addEventListener('click', () => {
             document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById('tool-brush').classList.add('active');
             currentTool = 'brush';
+            document.getElementById('status-bar').innerHTML = '⬡ Brush mode: Click and drag to paint';
         });
 
         document.getElementById('tool-blur').addEventListener('click', () => {
             document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
             document.getElementById('tool-blur').classList.add('active');
             currentTool = 'blur';
+            document.getElementById('status-bar').innerHTML = '⬡ Blur mode: Click and drag to blur';
         });
 
         document.getElementById('tool-reset').addEventListener('click', () => {
+            // Reset all triangles to dark gray
             for (let i = 0; i < triId; i++) {
                 const idx = i * 4;
                 texData[idx] = 50;
@@ -736,7 +778,7 @@
             document.getElementById('status-bar').innerHTML = '⬡ Reset all triangles';
         });
 
-        // Preferences toggle
+        // Preferences pane toggle
         let prefsVisible = true;
         document.getElementById('toggle-prefs').addEventListener('click', () => {
             prefsVisible = !prefsVisible;
@@ -785,19 +827,19 @@
             document.getElementById('blur-strength-val').innerHTML = blurStrength.toFixed(2);
         });
 
-        // Animation loop
+        // --- Animation Loop ---
         function animate() {
             gl.drawArrays(gl.TRIANGLES, 0, positions.length / 2);
             requestAnimationFrame(animate);
         }
         animate();
 
-        // Handle resize
+        // --- Handle Window Resize ---
         window.addEventListener('resize', () => {
             canvas.width = window.innerWidth;
             canvas.height = window.innerHeight;
             gl.viewport(0, 0, canvas.width, canvas.height);
-            updateAspect();
+            updateAspect(); // Recalculate the aspect correction uniform
         });
     </script>
 </body>
