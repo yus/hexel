@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>HEXEL · TIMELINE · DRIP · TEXTURE READY</title>
+    <title>HEXEL · TIMELINE · DRIP · FIXED</title>
     <style>
         * {
             margin: 0;
@@ -188,12 +188,6 @@
             padding: 0 4px;
             font-size: 9px;
             color: #888;
-        }
-        
-        .timeline-marker {
-            width: 2px;
-            height: 8px;
-            background: #ffb86b40;
         }
         
         .time-display {
@@ -409,16 +403,16 @@
                     <span class="stat-value" id="cell-count">0</span>
                 </div>
                 <div class="stat-item">
+                    <span class="stat-label">Brush</span>
+                    <span class="stat-value" id="brush-size-display">1.0</span>
+                </div>
+                <div class="stat-item">
                     <span class="stat-label">Drip</span>
                     <span class="stat-value" id="drip-display">0.5</span>
                 </div>
                 <div class="stat-item">
                     <span class="stat-label">Absorb</span>
                     <span class="stat-value" id="absorb-display">0.008</span>
-                </div>
-                <div class="stat-item">
-                    <span class="stat-label">Flow</span>
-                    <span class="stat-value" id="flow-display">0.15</span>
                 </div>
             </div>
             
@@ -504,7 +498,7 @@
             <div class="color-swatch" style="background: #ddc4a5;" data-color="0.87,0.77,0.65"></div>
         </div>
         
-        <span style="color:#888; font-size:10px;">🎨 texture: output mode</span>
+        <span style="color:#888; font-size:10px;">🎨 texture: export PNG</span>
     </div>
     
     <div class="coord-display" id="coords">0.00 , 0.00</div>
@@ -596,46 +590,50 @@
             
             // Parameters
             let brushSize = 1.0;
-            let dripRate = 0.5;        // How reliably paint drips
+            let dripRate = 0.5;
             let absorbRate = 0.008;
             let flowStrength = 0.15;
-            let gridSnap = 0.3;
-            let morphRate = 0.2;
             let showGrid = true;
             let time = 0;
             
             // Timeline
             let isPlaying = true;
             let isDripping = true;
-            let timeScale = 1.0;
-            let timeSteps = [];
-            let maxTimeSteps = 200;
             let totalTime = 0;
+            let timeSteps = [];
+            const maxTimeSteps = 200;
             
             // Colors
             let currentColor = [0.87, 0.65, 0.77];
             
-            // Texture output
-            let textureMode = false;
-            
             // ================================================
-            // Initialize Log Sliders
+            // Initialize Log Sliders - FIXED
             // ================================================
             const sizeSlider = new LogSlider('size-slider', 'size-value', 0.3, 2.0, 2.0, brushSize);
             const dripSlider = new LogSlider('drip-slider', 'drip-value', 0.1, 2.0, 2.0, dripRate);
             const absorbSlider = new LogSlider('absorb-slider', 'absorb-value', 0.0001, 0.1, 2.5, absorbRate);
             const flowSlider = new LogSlider('flow-slider', 'flow-value', 0.01, 2.0, 2.0, flowStrength);
             
-            dripSlider.onChange(val => dripRate = val);
-            sizeSlider.onChange(val => brushSize = val);
-            absorbSlider.onChange(val => absorbRate = val);
-            flowSlider.onChange(val => flowStrength = val);
+            // Update displays - FIXED: removed optional chaining, elements exist now
+            sizeSlider.onChange(val => {
+                brushSize = val;
+                document.getElementById('brush-size-display').innerHTML = val.toFixed(3);
+            });
             
-            // Update displays
-            sizeSlider.onChange(val => document.getElementById('brush-size-display')?.innerHTML = val.toFixed(3));
-            dripSlider.onChange(val => document.getElementById('drip-display').innerHTML = val.toFixed(3));
-            absorbSlider.onChange(val => document.getElementById('absorb-display').innerHTML = val.toFixed(3));
-            flowSlider.onChange(val => document.getElementById('flow-display').innerHTML = val.toFixed(3));
+            dripSlider.onChange(val => {
+                dripRate = val;
+                document.getElementById('drip-display').innerHTML = val.toFixed(3);
+            });
+            
+            absorbSlider.onChange(val => {
+                absorbRate = val;
+                document.getElementById('absorb-display').innerHTML = val.toFixed(3);
+            });
+            
+            flowSlider.onChange(val => {
+                flowStrength = val;
+                document.getElementById('flow-display').innerHTML = val.toFixed(3);
+            });
             
             // ================================================
             // Collapsible Panel
@@ -647,9 +645,15 @@
             panelHeader.addEventListener('click', () => {
                 isCollapsed = !isCollapsed;
                 panelHeader.classList.toggle('collapsed');
-                panelContent.style.maxHeight = isCollapsed ? '0' : '500px';
-                panelContent.style.padding = isCollapsed ? '0 20px' : '16px 20px';
-                panelContent.style.opacity = isCollapsed ? '0' : '1';
+                if (isCollapsed) {
+                    panelContent.style.maxHeight = '0';
+                    panelContent.style.padding = '0 20px';
+                    panelContent.style.opacity = '0';
+                } else {
+                    panelContent.style.maxHeight = '500px';
+                    panelContent.style.padding = '16px 20px';
+                    panelContent.style.opacity = '1';
+                }
             });
             
             // ================================================
@@ -743,16 +747,14 @@
             }
             
             // ================================================
-            // Texture Output Mode
+            // Texture Output
             // ================================================
             function outputTexture() {
-                // Create a canvas with just the paint (no grid)
                 const outputCanvas = document.createElement('canvas');
                 outputCanvas.width = paintCanvas.width;
                 outputCanvas.height = paintCanvas.height;
                 const outputCtx = outputCanvas.getContext('2d');
                 
-                // Draw paint at full resolution
                 const centerX = outputCanvas.width / 2;
                 const centerY = outputCanvas.height / 2;
                 
@@ -786,7 +788,6 @@
                     outputCtx.fill();
                 }
                 
-                // Create download link
                 const link = document.createElement('a');
                 link.download = `hexel-${Date.now()}.png`;
                 link.href = outputCanvas.toDataURL();
@@ -902,7 +903,7 @@
             }
             
             // ================================================
-            // Fluid simulation with drip reliability
+            // Fluid simulation
             // ================================================
             function getCellVelocity(col, row, t) {
                 const baseSpeed = flowStrength * 0.3;
@@ -921,10 +922,8 @@
             function updateCells(dt) {
                 if (!isPlaying || !isDripping) return;
                 
-                // Drip reliability - only update based on drip rate
                 if (Math.random() > dripRate * 0.5) return;
                 
-                // Performance throttling
                 const cellCount = paintCells.size;
                 if (cellCount > 10000) {
                     frameSkip = (frameSkip + 1) % 2;
@@ -937,12 +936,10 @@
                 const newCells = new Map();
                 const cellArray = Array.from(paintCells.entries());
                 
-                // Advection with drip influence
                 for (const [key, cell] of cellArray) {
                     const [col, row] = key.split(',').map(Number);
                     const { vx, vy } = getCellVelocity(col, row, totalTime);
                     
-                    // Drip makes movement more reliable downward
                     const gravity = 0.1 * dripRate;
                     const newCol = col + vx * dt * 5;
                     const newRow = row + (vy + gravity) * dt * 5;
@@ -951,30 +948,17 @@
                     const targetRow = Math.round(newRow);
                     const targetKey = getHexKey(targetCol, targetRow);
                     
-                    if (Math.random() < gridSnap * dt * 10) {
-                        let existing = newCells.get(targetKey);
-                        if (existing) {
-                            existing.r = (existing.r + cell.r) / 2;
-                            existing.g = (existing.g + cell.g) / 2;
-                            existing.b = (existing.b + cell.b) / 2;
-                            existing.size = (existing.size + (cell.size || 1.0)) / 2;
-                        } else {
-                            newCells.set(targetKey, { ...cell });
-                        }
+                    let existing = newCells.get(targetKey);
+                    if (existing) {
+                        existing.r = (existing.r + cell.r) / 2;
+                        existing.g = (existing.g + cell.g) / 2;
+                        existing.b = (existing.b + cell.b) / 2;
+                        existing.size = (existing.size + (cell.size || 1.0)) / 2;
                     } else {
-                        let existing = newCells.get(key);
-                        if (existing) {
-                            existing.r = (existing.r + cell.r) / 2;
-                            existing.g = (existing.g + cell.g) / 2;
-                            existing.b = (existing.b + cell.b) / 2;
-                            existing.size = (existing.size + (cell.size || 1.0)) / 2;
-                        } else {
-                            newCells.set(key, { ...cell });
-                        }
+                        newCells.set(targetKey, { ...cell });
                     }
                 }
                 
-                // Diffusion
                 if (absorbRate > 0.001 && cellCount < 14000) {
                     const diffused = new Map();
                     
@@ -997,11 +981,9 @@
                                 const nkey = `${ncol},${nrow}`;
                                 const ncell = newCells.get(nkey);
                                 if (ncell) {
-                                    if (absorbRate > 0.001) {
-                                        r += ncell.r * absorbRate;
-                                        g += ncell.g * absorbRate;
-                                        b += ncell.b * absorbRate;
-                                    }
+                                    r += ncell.r * absorbRate;
+                                    g += ncell.g * absorbRate;
+                                    b += ncell.b * absorbRate;
                                     neighborCount++;
                                 }
                             }
@@ -1022,7 +1004,6 @@
                     paintCells = newCells;
                 }
                 
-                // Enforce limit
                 if (paintCells.size > MAX_CELLS) {
                     const sorted = Array.from(paintCells.entries())
                         .sort((a, b) => {
@@ -1034,12 +1015,10 @@
                     paintCells = new Map(sorted);
                 }
                 
-                // Save to timeline
                 if (Math.random() < 0.05) {
                     saveToTimeline();
                 }
                 
-                // Update perf note
                 if (cellCount > 12000) {
                     document.getElementById('perf-note').innerHTML = '⚠️ heavy load';
                 } else {
@@ -1156,10 +1135,8 @@
             function update() {
                 updateCells(0.1);
                 
-                // Update UI
                 document.getElementById('cell-count').innerHTML = paintCells.size;
                 
-                // FPS counter
                 frameCount++;
                 const now = performance.now();
                 if (now - lastFPSUpdate >= 1000) {
@@ -1323,12 +1300,10 @@
             window.addEventListener('resize', resize);
             resize();
             
-            // Save initial state
             saveToTimeline();
             
             update();
             
-            // Add some initial paint
             setTimeout(() => {
                 for (let i = 0; i < 10; i++) {
                     const x = paintCanvas.width * (0.2 + 0.6 * Math.random());
