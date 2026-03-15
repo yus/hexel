@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>HEXEL · MORPH · MP4 · VIEWPORT</title>
+    <title>HEXEL · FIXED GRID · BRUSH · WEBM</title>
     <style>
         * {
             margin: 0;
@@ -17,12 +17,24 @@
             font-family: 'Inter', sans-serif;
         }
         
-        #gridCanvas, #paintCanvas {
+        /* Canvas container for proper scaling */
+        #canvas-container {
             position: fixed;
             top: 0;
             left: 0;
             width: 100vw;
             height: 100vh;
+            overflow: hidden;
+        }
+        
+        #gridCanvas, #paintCanvas {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            object-fit: contain; /* Preserve aspect ratio */
+            image-rendering: crisp-edges; /* Keep grid sharp */
         }
         
         #gridCanvas { 
@@ -31,28 +43,23 @@
             pointer-events: none;
             transition: opacity 0.2s;
         }
-        #paintCanvas { z-index: 2; background: transparent; cursor: crosshair; touch-action: none; }
+        #paintCanvas { 
+            z-index: 2; 
+            background: transparent; 
+            cursor: crosshair; 
+            touch-action: none;
+        }
         
-        /* Viewport overlay for recording */
         #viewport-overlay {
             position: fixed;
-            top: 0;
-            left: 0;
-            width: 100vw;
-            height: 100vh;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
             border: 2px solid #ffb86b;
             pointer-events: none;
             z-index: 3;
             display: none;
-        }
-        
-        .viewport-corner {
-            position: fixed;
-            width: 20px;
-            height: 20px;
-            border: 2px solid #ffb86b;
-            z-index: 4;
-            pointer-events: none;
+            box-shadow: 0 0 0 9999px rgba(0,0,0,0.5);
         }
         
         #panel {
@@ -388,11 +395,6 @@
             color: #0a0a0a;
         }
         
-        .tool-btn.record-active {
-            background: #ff5555;
-            color: white;
-        }
-        
         .color-palette {
             display: flex;
             gap: 6px;
@@ -439,15 +441,17 @@
     </style>
 </head>
 <body>
-    <canvas id="gridCanvas"></canvas>
-    <canvas id="paintCanvas"></canvas>
+    <div id="canvas-container">
+        <canvas id="gridCanvas"></canvas>
+        <canvas id="paintCanvas"></canvas>
+    </div>
     <div id="viewport-overlay"></div>
     
     <div id="panel">
         <div class="panel-header" id="panel-header">
             <div class="panel-title">
                 <span class="collapse-icon">▼</span>
-                <span>⚡ HEXEL · MORPH · MP4 · VIEWPORT</span>
+                <span>⚡ HEXEL · FIXED GRID · BRUSH · WEBM</span>
             </div>
             <span id="fps">60</span>
         </div>
@@ -467,8 +471,8 @@
                     <span class="stat-value" id="morph-display">0.3</span>
                 </div>
                 <div class="stat-item">
-                    <span class="stat-label">Flow</span>
-                    <span class="stat-value" id="flow-display">0.15</span>
+                    <span class="stat-label">Drip</span>
+                    <span class="stat-value" id="drip-display">0.5</span>
                 </div>
             </div>
             
@@ -549,8 +553,8 @@
                     <input type="number" id="viewport-width" class="viewport-input" value="1920" min="100" max="3840">
                     <span style="color:#888;">x</span>
                     <input type="number" id="viewport-height" class="viewport-input" value="1080" min="100" max="2160">
-                    <button class="toggle-btn" id="set-viewport">Set</button>
-                    <button class="toggle-btn" id="reset-viewport">Reset</button>
+                    <button class="toggle-btn" id="set-viewport">Crop</button>
+                    <button class="toggle-btn" id="reset-viewport">Full</button>
                 </div>
                 
                 <div class="toggle-row">
@@ -576,7 +580,7 @@
             <div class="color-swatch" style="background: #ddc4a5;" data-color="0.87,0.77,0.65"></div>
         </div>
         
-        <span style="color:#888; font-size:10px;">🌀 morph: blend + deform</span>
+        <span style="color:#888; font-size:10px;">🌀 morph: blend colors</span>
     </div>
     
     <div class="coord-display" id="coords">0.00 , 0.00</div>
@@ -648,13 +652,14 @@
             // ================================================
             // Canvas setup
             // ================================================
+            const container = document.getElementById('canvas-container');
             const gridCanvas = document.getElementById('gridCanvas');
             const paintCanvas = document.getElementById('paintCanvas');
             
             const gridCtx = gridCanvas.getContext('2d');
             const paintCtx = paintCanvas.getContext('2d');
             
-            // Grid parameters
+            // Grid parameters - preserve aspect ratio
             const BASE_SIZE = 24;
             const H_STEP = BASE_SIZE * 2;
             const V_STEP = BASE_SIZE * Math.sqrt(3);
@@ -662,9 +667,10 @@
             // Camera
             let cameraX = 0, cameraY = 0, scale = 1.0;
             
-            // Original viewport size (for reset)
-            const originalWidth = window.innerWidth;
-            const originalHeight = window.innerHeight;
+            // Viewport state
+            let viewportActive = false;
+            let viewportWidth = 1920;
+            let viewportHeight = 1080;
             
             // Interaction
             let isPainting = false;
@@ -728,7 +734,6 @@
             const flowSlider = new LogSlider('flow-slider', 'flow-value', 0.01, 2.0, 2.0, flowStrength);
             flowSlider.onChange(val => {
                 flowStrength = val;
-                document.getElementById('flow-display').innerHTML = val.toFixed(3);
             });
             
             const absorbSlider = new LogSlider('absorb-slider', 'absorb-value', 0.0001, 0.1, 2.5, absorbRate);
@@ -772,69 +777,99 @@
             });
             
             // ================================================
-            // Viewport Controls
+            // Viewport Controls - FIXED
             // ================================================
             const viewportOverlay = document.getElementById('viewport-overlay');
             
             document.getElementById('set-viewport').addEventListener('click', () => {
-                const width = parseInt(document.getElementById('viewport-width').value);
-                const height = parseInt(document.getElementById('viewport-height').value);
+                viewportWidth = parseInt(document.getElementById('viewport-width').value);
+                viewportHeight = parseInt(document.getElementById('viewport-height').value);
+                viewportActive = true;
                 
-                // Resize canvas
-                gridCanvas.style.width = width + 'px';
-                gridCanvas.style.height = height + 'px';
-                paintCanvas.style.width = width + 'px';
-                paintCanvas.style.height = height + 'px';
+                // Calculate scaling to fit viewport while preserving aspect ratio
+                const containerWidth = container.clientWidth;
+                const containerHeight = container.clientHeight;
                 
-                // Show overlay
+                const scaleX = containerWidth / viewportWidth;
+                const scaleY = containerHeight / viewportHeight;
+                const viewportScale = Math.min(scaleX, scaleY);
+                
+                const scaledWidth = viewportWidth * viewportScale;
+                const scaledHeight = viewportHeight * viewportScale;
+                
+                // Position overlay
                 viewportOverlay.style.display = 'block';
-                viewportOverlay.style.width = width + 'px';
-                viewportOverlay.style.height = height + 'px';
+                viewportOverlay.style.width = scaledWidth + 'px';
+                viewportOverlay.style.height = scaledHeight + 'px';
+                
+                // Adjust canvas rendering for recording
+                gridCanvas.width = viewportWidth;
+                gridCanvas.height = viewportHeight;
+                paintCanvas.width = viewportWidth;
+                paintCanvas.height = viewportHeight;
+                
+                // Adjust camera to maintain view
+                cameraX = 0;
+                cameraY = 0;
+                scale = 1.0;
             });
             
             document.getElementById('reset-viewport').addEventListener('click', () => {
-                gridCanvas.style.width = '100vw';
-                gridCanvas.style.height = '100vh';
-                paintCanvas.style.width = '100vw';
-                paintCanvas.style.height = '100vh';
+                viewportActive = false;
                 viewportOverlay.style.display = 'none';
+                
+                // Reset to full window
+                gridCanvas.width = container.clientWidth;
+                gridCanvas.height = container.clientHeight;
+                paintCanvas.width = container.clientWidth;
+                paintCanvas.height = container.clientHeight;
+                
+                cameraX = 0;
+                cameraY = 0;
+                scale = 1.0;
             });
             
             // ================================================
-            // MP4 Recording
+            // MP4 Recording - FIXED
             // ================================================
             const recordBtn = document.getElementById('record-mp4');
-            const canvasStream = paintCanvas.captureStream(30);
             
             recordBtn.addEventListener('click', async () => {
                 if (!isRecording) {
-                    // Start recording
-                    recordedChunks = [];
-                    mediaRecorder = new MediaRecorder(canvasStream, {
-                        mimeType: 'video/webm;codecs=vp9'
-                    });
-                    
-                    mediaRecorder.ondataavailable = (event) => {
-                        if (event.data.size > 0) {
-                            recordedChunks.push(event.data);
-                        }
-                    };
-                    
-                    mediaRecorder.onstop = () => {
-                        const blob = new Blob(recordedChunks, { type: 'video/webm' });
-                        const url = URL.createObjectURL(blob);
-                        const a = document.createElement('a');
-                        a.href = url;
-                        a.download = `hexel-${Date.now()}.webm`;
-                        a.click();
-                    };
-                    
-                    mediaRecorder.start();
-                    isRecording = true;
-                    recordBtn.classList.add('recording');
-                    recordBtn.innerHTML = '⏹️ Stop';
+                    try {
+                        // Use appropriate canvas for recording
+                        const recordCanvas = viewportActive ? paintCanvas : paintCanvas;
+                        const stream = recordCanvas.captureStream(30);
+                        
+                        recordedChunks = [];
+                        mediaRecorder = new MediaRecorder(stream, {
+                            mimeType: 'video/webm;codecs=vp9'
+                        });
+                        
+                        mediaRecorder.ondataavailable = (event) => {
+                            if (event.data.size > 0) {
+                                recordedChunks.push(event.data);
+                            }
+                        };
+                        
+                        mediaRecorder.onstop = () => {
+                            const blob = new Blob(recordedChunks, { type: 'video/webm' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = `hexel-${Date.now()}.webm`;
+                            a.click();
+                        };
+                        
+                        mediaRecorder.start();
+                        isRecording = true;
+                        recordBtn.classList.add('recording');
+                        recordBtn.innerHTML = '⏹️ Stop';
+                    } catch (e) {
+                        console.error('Recording failed:', e);
+                        alert('Recording failed - try a different browser');
+                    }
                 } else {
-                    // Stop recording
                     mediaRecorder.stop();
                     isRecording = false;
                     recordBtn.classList.remove('recording');
@@ -916,7 +951,7 @@
             }
             
             // ================================================
-            // MORPH TOOL - Back and better!
+            // MORPH TOOL
             // ================================================
             function applyMorph(screenX, screenY) {
                 const worldX = cameraX + (screenX - paintCanvas.width/2) / scale;
@@ -943,7 +978,6 @@
                             const dist = Math.sqrt(dx*dx + dy*dy);
                             
                             if (dist < H_STEP * 2.0) {
-                                // Collect neighbors for morphing
                                 const neighbors = [
                                     [col+1, row], [col-1, row],
                                     [col, row+1], [col, row-1],
@@ -952,7 +986,6 @@
                                 ];
                                 
                                 let r = 0, g = 0, b = 0, count = 0;
-                                let avgX = 0, avgY = 0;
                                 
                                 for (const [ncol, nrow] of neighbors) {
                                     const nkey = `${ncol},${nrow}`;
@@ -962,31 +995,14 @@
                                         g += ncell.g;
                                         b += ncell.b;
                                         count++;
-                                        
-                                        const ncenter = getHexCenter(ncol, nrow);
-                                        avgX += ncenter.x;
-                                        avgY += ncenter.y;
                                     }
                                 }
                                 
                                 if (count > 0) {
-                                    // Blend colors based on morph rate
                                     const blend = morphRate * 0.2;
                                     cell.r = cell.r * (1 - blend) + (r/count) * blend;
                                     cell.g = cell.g * (1 - blend) + (g/count) * blend;
                                     cell.b = cell.b * (1 - blend) + (b/count) * blend;
-                                    
-                                    // Morph position (deform)
-                                    avgX /= count;
-                                    avgY /= count;
-                                    
-                                    // Move toward average position of neighbors
-                                    const center = getHexCenter(col, row);
-                                    const targetX = center.x + (avgX - center.x) * morphRate * 0.1;
-                                    const targetY = center.y + (avgY - center.y) * morphRate * 0.1;
-                                    
-                                    // Store deformation in cell (we'll use size as proxy for now)
-                                    // In a full implementation, you'd have offsetX/offsetY
                                 }
                             }
                         }
@@ -1002,6 +1018,12 @@
                 outputCanvas.width = paintCanvas.width;
                 outputCanvas.height = paintCanvas.height;
                 const outputCtx = outputCanvas.getContext('2d');
+                
+                // Fill with background if grid is off
+                if (!showGrid) {
+                    outputCtx.fillStyle = '#0a0a0a';
+                    outputCtx.fillRect(0, 0, outputCanvas.width, outputCanvas.height);
+                }
                 
                 const centerX = outputCanvas.width / 2;
                 const centerY = outputCanvas.height / 2;
@@ -1102,7 +1124,7 @@
             }
             
             // ================================================
-            // Painting
+            // Painting - FIXED BRUSH
             // ================================================
             function addPaint(screenX, screenY) {
                 const worldX = cameraX + (screenX - paintCanvas.width/2) / scale;
@@ -1111,7 +1133,8 @@
                 const centerCol = Math.round(worldX / H_STEP);
                 const centerRow = Math.round(worldY / H_STEP);
                 
-                const brushRadius = Math.max(1, Math.floor(2 * brushSize));
+                // FIXED: brush radius calculation
+                const brushRadius = Math.max(1, Math.floor(3 * brushSize));
                 
                 for (let dr = -brushRadius; dr <= brushRadius; dr++) {
                     for (let dc = -brushRadius; dc <= brushRadius; dc++) {
@@ -1126,8 +1149,10 @@
                         const dy = worldY - center.y;
                         const dist = Math.sqrt(dx*dx + dy*dy);
                         
-                        if (dist < H_STEP * 1.2 * brushSize) {
-                            const strength = 0.3 * (1 - dist / (H_STEP * 1.2 * brushSize));
+                        // FIXED: distance threshold
+                        const maxDist = H_STEP * 1.2 * brushSize;
+                        if (dist < maxDist) {
+                            const strength = 0.4 * (1 - dist / maxDist) * brushSize;
                             
                             if (!paintCells.has(key) && paintCells.size >= MAX_CELLS) continue;
                             
@@ -1151,7 +1176,7 @@
             }
             
             // ================================================
-            // Fluid simulation with MORPH
+            // Fluid simulation
             // ================================================
             function getCellVelocity(col, row, t) {
                 const baseSpeed = flowStrength * 0.3;
@@ -1198,7 +1223,6 @@
                     
                     let existing = newCells.get(targetKey);
                     if (existing) {
-                        // Morph blend when cells merge
                         const blend = morphRate * 0.1;
                         existing.r = existing.r * (1 - blend) + cell.r * blend;
                         existing.g = existing.g * (1 - blend) + cell.g * blend;
@@ -1231,12 +1255,10 @@
                                 const nkey = `${ncol},${nrow}`;
                                 const ncell = newCells.get(nkey);
                                 if (ncell) {
-                                    // Absorb diffusion
                                     r += ncell.r * absorbRate;
                                     g += ncell.g * absorbRate;
                                     b += ncell.b * absorbRate;
                                     
-                                    // Morph influence from neighbors
                                     if (morphRate > 0.01 && Math.random() < morphRate * 0.05) {
                                         r = (r + ncell.r) / 2;
                                         g = (g + ncell.g) / 2;
@@ -1286,15 +1308,12 @@
             }
             
             // ================================================
-            // Rendering
+            // Rendering - FIXED GRID ASPECT
             // ================================================
             function drawGrid() {
-                if (!showGrid) {
-                    gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
-                    return;
-                }
-                
                 gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+                
+                if (!showGrid) return;
                 
                 const centerX = gridCanvas.width / 2;
                 const centerY = gridCanvas.height / 2;
@@ -1310,8 +1329,8 @@
                 const maxRow = Math.ceil(worldBottom / V_STEP) + 2;
                 
                 gridCtx.strokeStyle = '#b8a5dd';
-                gridCtx.lineWidth = 0.5;
-                gridCtx.globalAlpha = 0.15;
+                gridCtx.lineWidth = Math.max(0.5, 1.5 / scale);
+                gridCtx.globalAlpha = 0.2;
                 
                 for (let row = minRow; row <= maxRow; row++) {
                     for (let col = minCol; col <= maxCol; col++) {
@@ -1319,14 +1338,15 @@
                         const y = centerY + (row * V_STEP - cameraY) * scale;
                         const xOffset = (row % 2 === 0) ? 0 : (H_STEP * scale) / 2;
                         
+                        // Draw hex grid lines
                         gridCtx.beginPath();
-                        gridCtx.moveTo(x + xOffset - 8, y - 13.86);
-                        gridCtx.lineTo(x + xOffset + 8, y + 13.86);
+                        gridCtx.moveTo(x + xOffset - 10, y - 17.32);
+                        gridCtx.lineTo(x + xOffset + 10, y + 17.32);
                         gridCtx.stroke();
                         
                         gridCtx.beginPath();
-                        gridCtx.moveTo(x + xOffset - 8, y + 13.86);
-                        gridCtx.lineTo(x + xOffset + 8, y - 13.86);
+                        gridCtx.moveTo(x + xOffset - 10, y + 17.32);
+                        gridCtx.lineTo(x + xOffset + 10, y - 17.32);
                         gridCtx.stroke();
                     }
                 }
@@ -1411,14 +1431,34 @@
             }
             
             // ================================================
-            // Interaction
+            // Interaction - FIXED COORDINATES
             // ================================================
+            function getCanvasCoordinates(e) {
+                const rect = paintCanvas.getBoundingClientRect();
+                const scaleX = paintCanvas.width / rect.width;
+                const scaleY = paintCanvas.height / rect.height;
+                
+                let clientX, clientY;
+                
+                if (e.touches) {
+                    clientX = e.touches[0].clientX;
+                    clientY = e.touches[0].clientY;
+                } else {
+                    clientX = e.clientX;
+                    clientY = e.clientY;
+                }
+                
+                // Convert to canvas pixel coordinates
+                const canvasX = (clientX - rect.left) * scaleX;
+                const canvasY = (clientY - rect.top) * scaleY;
+                
+                return { x: canvasX, y: canvasY };
+            }
+            
             paintCanvas.addEventListener('mousedown', (e) => {
                 e.preventDefault();
                 
-                const rect = paintCanvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
+                const { x, y } = getCanvasCoordinates(e);
                 
                 if (e.button === 2) {
                     isPanning = true;
@@ -1443,9 +1483,7 @@
             paintCanvas.addEventListener('mousemove', (e) => {
                 e.preventDefault();
                 
-                const rect = paintCanvas.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
+                const { x, y } = getCanvasCoordinates(e);
                 
                 const world = screenToWorld(x, y);
                 document.getElementById('coords').innerHTML = `${world.x.toFixed(2)} , ${world.y.toFixed(2)}`;
@@ -1492,20 +1530,77 @@
             
             paintCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
             
+            paintCanvas.addEventListener('touchstart', (e) => {
+                e.preventDefault();
+                const { x, y } = getCanvasCoordinates(e);
+                
+                if (e.touches.length === 2) {
+                    isPanning = true;
+                } else if (currentTool === 'morph') {
+                    isMorphing = true;
+                    applyMorph(x, y);
+                } else if (currentTool === 'smooth') {
+                    isSmoothing = true;
+                    applySmooth(x, y);
+                } else {
+                    isPainting = true;
+                    addPaint(x, y);
+                }
+                
+                lastX = x;
+                lastY = y;
+            });
+            
+            paintCanvas.addEventListener('touchmove', (e) => {
+                e.preventDefault();
+                const { x, y } = getCanvasCoordinates(e);
+                
+                const world = screenToWorld(x, y);
+                document.getElementById('coords').innerHTML = `${world.x.toFixed(2)} , ${world.y.toFixed(2)}`;
+                
+                if (isPanning && e.touches.length === 2) {
+                    cameraX -= (x - lastX) / scale;
+                    cameraY -= (y - lastY) / scale;
+                } else if (isPainting) {
+                    const dist = Math.hypot(x - lastX, y - lastY);
+                    const steps = Math.max(1, Math.floor(dist / 5));
+                    
+                    for (let i = 0; i <= steps; i++) {
+                        const t = i / steps;
+                        const ix = lastX * (1 - t) + x * t;
+                        const iy = lastY * (1 - t) + y * t;
+                        addPaint(ix, iy);
+                    }
+                } else if (isMorphing) {
+                    applyMorph(x, y);
+                } else if (isSmoothing) {
+                    applySmooth(x, y);
+                }
+                
+                lastX = x;
+                lastY = y;
+            });
+            
+            paintCanvas.addEventListener('touchend', (e) => {
+                e.preventDefault();
+                isPainting = false;
+                isPanning = false;
+                isMorphing = false;
+                isSmoothing = false;
+                saveToTimeline();
+            });
+            
             paintCanvas.addEventListener('wheel', (e) => {
                 e.preventDefault();
                 
-                const rect = paintCanvas.getBoundingClientRect();
-                const mouseX = e.clientX - rect.left;
-                const mouseY = e.clientY - rect.top;
-                
-                const worldBefore = screenToWorld(mouseX, mouseY);
+                const { x, y } = getCanvasCoordinates(e);
+                const worldBefore = screenToWorld(x, y);
                 
                 const zoomFactor = e.deltaY > 0 ? 0.95 : 1.05;
                 scale *= zoomFactor;
                 scale = Math.max(0.2, Math.min(5, scale));
                 
-                const worldAfter = screenToWorld(mouseX, mouseY);
+                const worldAfter = screenToWorld(x, y);
                 
                 cameraX += worldBefore.x - worldAfter.x;
                 cameraY += worldBefore.y - worldAfter.y;
@@ -1533,8 +1628,6 @@
             });
             
             document.getElementById('btn-texture').addEventListener('click', () => {
-                currentTool = 'texture';
-                // Don't change active class, just output
                 outputTexture();
             });
             
@@ -1561,12 +1654,11 @@
             let lastFPSUpdate = performance.now();
             
             function resize() {
-                // Don't auto-resize if viewport is set
-                if (viewportOverlay.style.display === 'none') {
-                    gridCanvas.width = window.innerWidth;
-                    gridCanvas.height = window.innerHeight;
-                    paintCanvas.width = window.innerWidth;
-                    paintCanvas.height = window.innerHeight;
+                if (!viewportActive) {
+                    gridCanvas.width = container.clientWidth;
+                    gridCanvas.height = container.clientHeight;
+                    paintCanvas.width = container.clientWidth;
+                    paintCanvas.height = container.clientHeight;
                 }
                 drawGrid();
                 drawPaint();
@@ -1580,9 +1672,9 @@
             update();
             
             setTimeout(() => {
-                for (let i = 0; i < 10; i++) {
-                    const x = paintCanvas.width * (0.2 + 0.6 * Math.random());
-                    const y = paintCanvas.height * (0.2 + 0.6 * Math.random());
+                for (let i = 0; i < 5; i++) {
+                    const x = paintCanvas.width * (0.3 + 0.4 * Math.random());
+                    const y = paintCanvas.height * (0.3 + 0.4 * Math.random());
                     addPaint(x, y);
                 }
                 saveToTimeline();
