@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
-    <title>HEXELATION · DUAL LAYER · GRID + PAINT</title>
+    <title>HEXELATION · CUMULATIVE PAINT · HIGH PERFORMANCE</title>
     <style>
         * {
             margin: 0;
@@ -26,7 +26,7 @@
             height: 100vh;
             background: #0a0a0a;
             z-index: 1;
-            pointer-events: none; /* Grid doesn't block interaction */
+            pointer-events: none;
         }
         
         #paintCanvas {
@@ -38,6 +38,7 @@
             z-index: 2;
             cursor: crosshair;
             background: transparent;
+            touch-action: none;
         }
         
         #panel {
@@ -53,6 +54,7 @@
             font-size: 13px;
             min-width: 340px;
             z-index: 100;
+            pointer-events: none;
         }
         
         .panel-title {
@@ -134,6 +136,7 @@
             gap: 24px;
             align-items: center;
             z-index: 100;
+            pointer-events: auto;
         }
         
         .tool-btn {
@@ -143,6 +146,7 @@
             padding: 8px 16px;
             font-size: 13px;
             cursor: pointer;
+            pointer-events: auto;
         }
         
         .tool-btn:hover {
@@ -157,6 +161,7 @@
         .color-picker {
             display: flex;
             gap: 8px;
+            pointer-events: auto;
         }
         
         .color-swatch {
@@ -164,6 +169,7 @@
             height: 30px;
             border: 2px solid transparent;
             cursor: pointer;
+            pointer-events: auto;
         }
         
         .color-swatch.active {
@@ -174,6 +180,7 @@
             display: flex;
             align-items: center;
             gap: 12px;
+            pointer-events: auto;
         }
         
         .brush-control input {
@@ -182,6 +189,7 @@
             border: 1px solid #c4b5fd40;
             color: white;
             padding: 6px;
+            pointer-events: auto;
         }
         
         .coord-display {
@@ -195,6 +203,7 @@
             font-family: monospace;
             font-size: 13px;
             z-index: 100;
+            pointer-events: none;
         }
         
         * {
@@ -208,7 +217,7 @@
     
     <div id="panel">
         <div class="panel-title">
-            <span>⚡ HEXELATION · DUAL LAYER</span>
+            <span>⚡ HEXELATION · CUMULATIVE PAINT</span>
             <span id="fps">60</span>
         </div>
         
@@ -226,8 +235,8 @@
                 <span class="stat-value" id="cell-size">48px</span>
             </div>
             <div class="stat-item">
-                <span class="stat-label">Points</span>
-                <span class="stat-value" id="point-count">0</span>
+                <span class="stat-label">Strokes</span>
+                <span class="stat-value" id="stroke-count">0</span>
             </div>
             <div class="stat-item">
                 <span class="stat-label">Hexel</span>
@@ -305,7 +314,7 @@
 
     <script>
         (function() {
-            // Two canvases!
+            // Canvas setup
             const gridCanvas = document.getElementById('gridCanvas');
             const paintCanvas = document.getElementById('paintCanvas');
             
@@ -319,7 +328,7 @@
             const H_STEP = BASE_SIZE * 2;
             const V_STEP = BASE_SIZE * Math.sqrt(3);
             
-            // Camera (shared between both canvases)
+            // Camera
             let cameraWorldX = 0;
             let cameraWorldY = 0;
             let scale = 1.0;
@@ -335,7 +344,8 @@
             let currentColor = '#c4b5fd';
             let brushSize = 12;
             let snapStrength = 0.7;
-            let paintPoints = [];
+            let strokes = []; // Store strokes as arrays of points
+            let currentStroke = null;
             
             const BG_COLOR = '#0a0a0a';
             
@@ -376,28 +386,10 @@
                 };
             }
             
-            function getFrequencyFactor() {
-                const cellSize = H_STEP * scale;
-                const baseFreq = Math.max(0.5, Math.min(2.0, 30 / cellSize));
-                const brushFactor = Math.max(0.5, Math.min(1.5, 16 / brushSize));
-                return baseFreq * brushFactor;
-            }
-            
-            function getSquiggleOffset(point, seed, frequency) {
-                const hash = (Math.sin(point.x * 0.1 + seed) * Math.cos(point.y * 0.1 + seed)) * 0.5;
-                const angle = hash * Math.PI * 2 * frequency;
-                const radius = (Math.sin(point.x * 0.2 + seed) * Math.cos(point.y * 0.2 + seed)) * 0.3;
-                
-                return {
-                    x: Math.cos(angle) * radius * brushSize * 0.1,
-                    y: Math.sin(angle) * radius * brushSize * 0.1
-                };
-            }
-            
             // ================================================
-            // PAINTING
+            // PAINTING - CUMULATIVE APPROACH
             // ================================================
-            function paintAt(screenX, screenY) {
+            function startStroke(screenX, screenY) {
                 const world = screenToWorld(screenX, screenY);
                 
                 let colorToUse;
@@ -407,58 +399,89 @@
                     colorToUse = currentColor;
                 }
                 
-                const frequency = getFrequencyFactor();
-                const numPoints = Math.max(1, Math.floor(frequency * 3));
-                
-                for (let i = 0; i < numPoints; i++) {
-                    const offset = getSquiggleOffset(world, i * 100, frequency);
-                    
-                    let point = {
-                        x: world.x + offset.x,
-                        y: world.y + offset.y,
-                        color: colorToUse,
+                currentStroke = {
+                    points: [{
+                        x: world.x,
+                        y: world.y,
                         size: brushSize / scale,
-                        timestamp: Date.now() + i
-                    };
-                    
-                    point = applyGridInfluence(point, snapStrength);
-                    paintPoints.push(point);
-                }
+                        color: colorToUse
+                    }],
+                    color: colorToUse,
+                    size: brushSize / scale
+                };
                 
-                if (lastPoint) {
-                    const dist = Math.hypot(world.x - lastPoint.x, world.y - lastPoint.y);
-                    const steps = Math.floor(dist / (brushSize / scale) * frequency * 2);
+                // Draw immediately
+                drawPoint(world.x, world.y, colorToUse, brushSize / scale);
+            }
+            
+            function continueStroke(screenX, screenY) {
+                if (!currentStroke) return;
+                
+                const world = screenToWorld(screenX, screenY);
+                const lastWorld = currentStroke.points[currentStroke.points.length - 1];
+                
+                // Calculate distance and interpolate
+                const dist = Math.hypot(world.x - lastWorld.x, world.y - lastWorld.y);
+                const steps = Math.max(1, Math.floor(dist / (brushSize / scale) * 2));
+                
+                for (let i = 1; i <= steps; i++) {
+                    const t = i / steps;
+                    const interpX = lastWorld.x * (1 - t) + world.x * t;
+                    const interpY = lastWorld.y * (1 - t) + world.y * t;
                     
-                    for (let s = 1; s < steps; s++) {
-                        const t = s / steps;
-                        const interpX = lastPoint.x * (1 - t) + world.x * t;
-                        const interpY = lastPoint.y * (1 - t) + world.y * t;
-                        
-                        for (let i = 0; i < numPoints; i++) {
-                            const offset = getSquiggleOffset({x: interpX, y: interpY}, i * 100 + s, frequency);
-                            
-                            let point = {
-                                x: interpX + offset.x,
-                                y: interpY + offset.y,
-                                color: colorToUse,
-                                size: brushSize / scale,
-                                timestamp: Date.now() + s * 1000 + i
-                            };
-                            
-                            point = applyGridInfluence(point, snapStrength);
-                            paintPoints.push(point);
-                        }
+                    // Apply grid influence
+                    let point = { x: interpX, y: interpY };
+                    point = applyGridInfluence(point, snapStrength);
+                    
+                    currentStroke.points.push({
+                        x: point.x,
+                        y: point.y,
+                        size: currentStroke.size,
+                        color: currentStroke.color
+                    });
+                    
+                    // Draw directly to canvas
+                    drawPoint(point.x, point.y, currentStroke.color, currentStroke.size);
+                }
+            }
+            
+            function endStroke() {
+                if (currentStroke && currentStroke.points.length > 0) {
+                    strokes.push(currentStroke);
+                    document.getElementById('stroke-count').innerHTML = strokes.length;
+                }
+                currentStroke = null;
+            }
+            
+            // Direct drawing to paint canvas (no redraw of everything)
+            function drawPoint(worldX, worldY, color, size) {
+                const screen = worldToScreen(worldX, worldY);
+                const screenRadius = Math.max(2, size * scale);
+                
+                paintCtx.beginPath();
+                paintCtx.arc(screen.x, screen.y, screenRadius, 0, Math.PI * 2);
+                paintCtx.fillStyle = color;
+                paintCtx.globalAlpha = 0.9;
+                paintCtx.fill();
+                
+                // Subtle highlight
+                paintCtx.beginPath();
+                paintCtx.arc(screen.x - 1, screen.y - 1, screenRadius * 0.3, 0, Math.PI * 2);
+                paintCtx.fillStyle = 'rgba(255,255,255,0.3)';
+                paintCtx.fill();
+            }
+            
+            // Redraw all strokes (used after zoom/pan)
+            function redrawAllStrokes() {
+                // Clear paint canvas
+                paintCtx.clearRect(0, 0, paintCanvas.width, paintCanvas.height);
+                
+                // Redraw all strokes
+                for (const stroke of strokes) {
+                    for (const point of stroke.points) {
+                        drawPoint(point.x, point.y, point.color, point.size);
                     }
                 }
-                
-                lastPoint = { x: world.x, y: world.y };
-                
-                if (paintPoints.length > 2000) {
-                    paintPoints = paintPoints.slice(-1500);
-                }
-                
-                document.getElementById('point-count').innerHTML = paintPoints.length;
-                drawPaint(); // Only redraw paint layer
             }
             
             // ================================================
@@ -524,7 +547,7 @@
             }
             
             // ================================================
-            // GRID RENDERING (background layer)
+            // GRID RENDERING
             // ================================================
             function drawGrid() {
                 gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
@@ -544,6 +567,13 @@
                 const maxCol = Math.ceil(worldRight / H_STEP) + 4;
                 const minRow = Math.floor(worldTop / V_STEP) - 4;
                 const maxRow = Math.ceil(worldBottom / V_STEP) + 4;
+                
+                // Update UI
+                document.getElementById('camera-pos').innerHTML = 
+                    `${cameraWorldX.toFixed(1)},${cameraWorldY.toFixed(1)}`;
+                document.getElementById('zoom-level').innerHTML = scale.toFixed(2) + 'x';
+                document.getElementById('cell-size').innerHTML = Math.round(cellSize) + 'px';
+                document.getElementById('current-color').innerHTML = currentColor;
                 
                 // Update LOD indicators
                 const indicators = {
@@ -682,55 +712,7 @@
             }
             
             // ================================================
-            // PAINT RENDERING (top layer)
-            // ================================================
-            function drawPaint() {
-                paintCtx.clearRect(0, 0, paintCanvas.width, paintCanvas.height);
-                
-                if (paintPoints.length === 0) return;
-                
-                const centerX = paintCanvas.width / 2;
-                const centerY = paintCanvas.height / 2;
-                
-                // Sort by timestamp for proper blending
-                const sortedPoints = [...paintPoints].sort((a, b) => a.timestamp - b.timestamp);
-                
-                for (const point of sortedPoints) {
-                    const screenX = centerX + (point.x - cameraWorldX) * scale;
-                    const screenY = centerY + (point.y - cameraWorldY) * scale;
-                    
-                    if (screenX < -100 || screenX > paintCanvas.width + 100 ||
-                        screenY < -100 || screenY > paintCanvas.height + 100) {
-                        continue;
-                    }
-                    
-                    const screenRadius = Math.max(2, point.size * scale);
-                    
-                    // Main blob
-                    paintCtx.beginPath();
-                    paintCtx.arc(screenX, screenY, screenRadius, 0, Math.PI * 2);
-                    paintCtx.fillStyle = point.color;
-                    paintCtx.globalAlpha = 0.9;
-                    paintCtx.fill();
-                    
-                    // Subtle highlight
-                    paintCtx.beginPath();
-                    paintCtx.arc(screenX - 1, screenY - 1, screenRadius * 0.3, 0, Math.PI * 2);
-                    paintCtx.fillStyle = 'rgba(255,255,255,0.3)';
-                    paintCtx.fill();
-                }
-                
-                paintCtx.globalAlpha = 1.0;
-            }
-            
-            // Update both canvases
-            function redrawAll() {
-                drawGrid();
-                drawPaint();
-            }
-            
-            // ================================================
-            // INTERACTION (on paint canvas only)
+            // INTERACTION
             // ================================================
             function handleStart(e) {
                 e.preventDefault();
@@ -747,13 +729,14 @@
                 
                 lastX = clientX;
                 lastY = clientY;
-                lastPoint = null;
                 
                 if (currentTool === 'pan') {
                     isDragging = true;
+                    paintCanvas.style.cursor = 'grabbing';
                 } else {
                     isPainting = true;
-                    paintAt(clientX, clientY);
+                    paintCanvas.style.cursor = 'crosshair';
+                    startStroke(clientX, clientY);
                 }
             }
             
@@ -782,9 +765,10 @@
                 if (isDragging) {
                     cameraWorldX -= (clientX - lastX) / scale;
                     cameraWorldY -= (clientY - lastY) / scale;
-                    redrawAll(); // Update both layers
+                    drawGrid();
+                    redrawAllStrokes(); // Need full redraw after camera move
                 } else if (isPainting) {
-                    paintAt(clientX, clientY);
+                    continueStroke(clientX, clientY);
                 }
                 
                 lastX = clientX;
@@ -793,9 +777,14 @@
             
             function handleEnd(e) {
                 e.preventDefault();
+                
+                if (isPainting) {
+                    endStroke();
+                }
+                
                 isDragging = false;
                 isPainting = false;
-                lastPoint = null;
+                paintCanvas.style.cursor = 'crosshair';
             }
             
             // Mouse wheel zoom
@@ -817,7 +806,8 @@
                 cameraWorldX += worldBefore.x - worldAfter.x;
                 cameraWorldY += worldBefore.y - worldAfter.y;
                 
-                redrawAll();
+                drawGrid();
+                redrawAllStrokes(); // Need full redraw after zoom
             }, { passive: false });
             
             // Event listeners on paint canvas only
@@ -838,6 +828,7 @@
                 currentTool = 'pan';
                 document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
                 document.getElementById('tool-pan').classList.add('active');
+                paintCanvas.style.cursor = 'grab';
             });
             
             document.getElementById('tool-paint').addEventListener('click', () => {
@@ -848,12 +839,14 @@
                 }
                 document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
                 document.getElementById('tool-paint').classList.add('active');
+                paintCanvas.style.cursor = 'crosshair';
             });
             
             document.getElementById('tool-erase').addEventListener('click', () => {
                 currentTool = 'erase';
                 document.querySelectorAll('.tool-btn').forEach(btn => btn.classList.remove('active'));
                 document.getElementById('tool-erase').classList.add('active');
+                paintCanvas.style.cursor = 'crosshair';
             });
             
             document.querySelectorAll('.color-swatch').forEach(swatch => {
@@ -887,9 +880,9 @@
             });
             
             document.getElementById('clear-btn').addEventListener('click', () => {
-                paintPoints = [];
-                document.getElementById('point-count').innerHTML = '0';
-                drawPaint(); // Only clear paint layer
+                strokes = [];
+                paintCtx.clearRect(0, 0, paintCanvas.width, paintCanvas.height);
+                document.getElementById('stroke-count').innerHTML = '0';
             });
             
             window.addEventListener('keydown', (e) => {
@@ -904,7 +897,8 @@
                     cameraWorldX = 0;
                     cameraWorldY = 0;
                     scale = 1.0;
-                    redrawAll();
+                    drawGrid();
+                    redrawAllStrokes();
                 }
             });
             
@@ -914,7 +908,8 @@
                 gridCanvas.height = window.innerHeight;
                 paintCanvas.width = window.innerWidth;
                 paintCanvas.height = window.innerHeight;
-                redrawAll();
+                drawGrid();
+                redrawAllStrokes();
             }
             
             window.addEventListener('resize', resizeCanvases);
