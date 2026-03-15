@@ -1,0 +1,384 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebGL · barycentric equilateral grid</title>
+    <style>
+        body { margin: 0; overflow: hidden; background-color: #111; font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; }
+        canvas { display: block; }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            color: #eee;
+            background: rgba(20, 20, 30, 0.8);
+            padding: 10px 18px;
+            border-radius: 30px;
+            backdrop-filter: blur(4px);
+            border: 1px solid #445566;
+            pointer-events: none;
+            font-size: 14px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.4);
+            z-index: 10;
+        }
+        #info span {
+            color: #ffaa66;
+            font-weight: 600;
+        }
+    </style>
+</head>
+<body>
+    <div id="info">
+        ⟁ equilateral grid · <span>barycentric</span> coordinates (60° angles) · pure WebGL 1.0
+    </div>
+
+    <!-- WebGL boilerplate: vertex and fragment shaders -->
+    <script id="vs" type="x-shader/x-vertex">
+        attribute vec2 aPos;           // vertex position in grid space
+        attribute vec3 aBary;           // barycentric weights (r,g,b) for fragment
+
+        uniform mat3 uProjection;       // orthographic projection (grid → clip space)
+        uniform vec2 uTranslate;         // optional pan (accumulated in grid space)
+        uniform float uScale;             // uniform scale (grid space → world)
+
+        varying vec3 vBary;              // pass to fragment shader
+
+        void main() {
+            // apply translation and scale in grid space, then project to clip coordinates
+            vec2 pos = uScale * (aPos + uTranslate);
+            vec3 clip = uProjection * vec3(pos, 1.0);
+            gl_Position = vec4(clip.xy, 0.0, 1.0);
+            vBary = aBary;                // barycentric weights for fragment
+        }
+    </script>
+
+    <script id="fs" type="x-shader/x-fragment">
+        precision mediump float;
+
+        varying vec3 vBary;
+
+        uniform float uBrightness;        // line intensity
+        uniform vec2 uResolution;         // viewport resolution (px)
+
+        // draw grid lines using barycentric distance fields
+        // line half-width in barycentric units (relative to triangle size)
+        const float LINE_WIDTH = 0.045;    // sharp but lightweight
+
+        void main() {
+            // vBary components sum to 1.0 inside triangle. Outside, one component becomes negative.
+            // we only render the core grid lines, but we discard fragments outside triangles
+            if (vBary.x < -0.01 || vBary.y < -0.01 || vBary.z < -0.01) discard;
+
+            // for line anti-aliasing, compute minimum distance to edges (where a barycentric coordinate = 0)
+            // inside triangle: each bary ∈ [0,1]. distance to edge = barycentric coordinate itself.
+            float d0 = vBary.x;            // distance to edge opposite vertex 0 (where vBary.x = 0)
+            float d1 = vBary.y;
+            float d2 = vBary.z;
+
+            // distance to the nearest edge (in barycentric metric)
+            float minDist = min(min(d0, d1), d2);
+
+            // convert to screen‑space approximate thickness: since barycentric coordinates vary ~1 over triangle size,
+            // we use a constant line width in barycentric space. for AA, we smoothstep over 2 pixels equivalent.
+            // to keep it simple & lightweight, we use smoothstep with fixed barycentric width.
+            float lineAlpha = 1.0 - smoothstep(0.0, LINE_WIDTH, minDist);
+
+            // complement: draw thin lines, slight glow
+            float brightness = uBrightness * (0.7 + 0.5 * lineAlpha);
+            vec3 color = vec3(1.0, 0.85, 0.6);   // warm grid
+
+            // if we are extremely close to vertex (all bary > 0.95), optionally bright dot, but not necessary
+            gl_FragColor = vec4(color * brightness, 1.0);
+        }
+    </script>
+
+    <script>
+        (function() {
+            const canvas = document.createElement('canvas');
+            document.body.appendChild(canvas);
+
+            // --- WebGL context setup ---
+            const gl = canvas.getContext('webgl') || canvas.getContext('experimental-webgl');
+            if (!gl) {
+                alert('WebGL not supported. Please use a modern browser.');
+                return;
+            }
+
+            // --- resize handler: keep fullscreen with device pixel ratio ---
+            function resizeCanvas() {
+                const w = window.innerWidth;
+                const h = window.innerHeight;
+                canvas.width = w * devicePixelRatio;
+                canvas.height = h * devicePixelRatio;
+                canvas.style.width = w + 'px';
+                canvas.style.height = h + 'px';
+                gl.viewport(0, 0, canvas.width, canvas.height);
+                // update resolution uniform for potential anti-aliasing (not heavily used, but passed)
+                if (program) {
+                    gl.uniform2f(resUniformLoc, canvas.width, canvas.height);
+                }
+            }
+            window.addEventListener('resize', resizeCanvas);
+
+            // --- shader compilation ---
+            function compileShader(src, type) {
+                const shader = gl.createShader(type);
+                gl.shaderSource(shader, src);
+                gl.compileShader(shader);
+                if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+                    console.error(gl.getShaderInfoLog(shader));
+                    throw new Error('shader compile error');
+                }
+                return shader;
+            }
+
+            const vsSource = document.getElementById('vs').text;
+            const fsSource = document.getElementById('fs').text;
+
+            const vs = compileShader(vsSource, gl.VERTEX_SHADER);
+            const fs = compileShader(fsSource, gl.FRAGMENT_SHADER);
+
+            const program = gl.createProgram();
+            gl.attachShader(program, vs);
+            gl.attachShader(program, fs);
+            gl.linkProgram(program);
+            if (!gl.getProgramParameter(program, gl.LINK_STATUS)) {
+                console.error(gl.getProgramInfoLog(program));
+                throw new Error('link error');
+            }
+            gl.useProgram(program);
+
+            // --- attribute & uniform locations ---
+            const aPosLoc = gl.getAttribLocation(program, 'aPos');
+            const aBaryLoc = gl.getAttribLocation(program, 'aBary');
+            const projUniformLoc = gl.getUniformLocation(program, 'uProjection');
+            const transUniformLoc = gl.getUniformLocation(program, 'uTranslate');
+            const scaleUniformLoc = gl.getUniformLocation(program, 'uScale');
+            const brightnessUniformLoc = gl.getUniformLocation(program, 'uBrightness');
+            const resUniformLoc = gl.getUniformLocation(program, 'uResolution');
+
+            // --- geometry generation: equilateral triangle with 60° angles, barycentric attributes ---
+            // We'll create a grid of many individual triangles (two per rhombus) to keep barycentric coordinates trivial.
+            // But we can also reuse vertices with adjacency? simpler: build a set of triangles with per-vertex barycentrics.
+            // For a full grid of equilateral triangles (pointing up and down), we create vertices for each small triangle.
+            // Grid parameters: triangle side length ~ 0.2 in grid space (makes dense grid)
+            const triSide = 0.22;          // side length of each small triangle
+            const height = triSide * Math.sqrt(3) / 2;   // ≈0.1905
+
+            // grid extent: from -3 to +3 in both directions, enough for wide canvas
+            const minX = -3.0, maxX = 3.0;
+            const minY = -2.0, maxY = 2.0;  // keep aspect ratio flexible
+
+            // arrays to fill
+            const positions = [];
+            const barycentrics = [];
+
+            // helper: add a triangle with given vertices (v0,v1,v2) and corresponding barycentric values (b0,b1,b2)
+            function addTri(v0, v1, v2, b0, b1, b2) {
+                // vertex 0
+                positions.push(v0[0], v0[1]);
+                barycentrics.push(b0[0], b0[1], b0[2]);
+                // vertex 1
+                positions.push(v1[0], v1[1]);
+                barycentrics.push(b1[0], b1[1], b1[2]);
+                // vertex 2
+                positions.push(v2[0], v2[1]);
+                barycentrics.push(b2[0], b2[1], b2[2]);
+            }
+
+            // generate a grid of equilateral triangles (two orientations)
+            // step in x: triSide, step in y: height
+            for (let y = minY; y < maxY; y += height) {
+                for (let x = minX; x < maxX; x += triSide) {
+                    // determine parity: shift every other row by half side to nest triangles
+                    const rowParity = (Math.round((y - minY) / height) % 2) * 0.5;
+                    const x0 = x + rowParity * triSide;
+                    const x1 = x0 + triSide;
+                    const x2 = x0 + triSide * 0.5;
+                    const y0 = y;
+                    const y1 = y;
+                    const y2 = y + height;
+
+                    // define vertices for two triangles forming a rhombus
+                    // triangle A (pointing up)
+                    addTri(
+                        [x0, y0], [x1, y1], [x2, y2],
+                        [1,0,0], [0,1,0], [0,0,1]   // barycentric: identity for each vertex
+                    );
+                    // triangle B (pointing down) – shares base [x1,y1] [x0,y0] but top vertex at [x2 - triSide/2? wait, ensure equilateral]
+                    // the downward triangle uses bottom vertices: (x0, y0) and (x1, y1) and apex at (x2, y2 - height) but careful: we want a seamless grid.
+                    // Actually simpler: generate both orientations explicitly from grid positions.
+                    // Alternate approach: triangle pointing down uses (x0, y0+height) as top? Let's do direct:
+                    const x3 = x0 - triSide * 0.5;   // left neighbor apex (down)
+                    const x4 = x1 + triSide * 0.5;   // right neighbor apex (down)
+                    // downward triangle: vertices: (x0,y0), (x2,y2), (x3, y2) — but x3 may be outside current cell? We'll iterate with offset.
+                }
+            }
+
+            // To avoid complexity and guarantee correct barycentric, we'll generate a full grid by iterating rows
+            // and placing both up and down triangles using three vertices per triangle with barycentric (1,0,0) etc.
+            // We'll rebuild arrays more systematically:
+
+            // Clear and regenerate
+            positions.length = 0;
+            barycentrics.length = 0;
+
+            const side = triSide;
+            const h = height;
+            const cols = 30;  // number of triangles horizontally (approx)
+            const rows = 30;
+
+            for (let row = 0; row < rows; row++) {
+                for (let col = 0; col < cols; col++) {
+                    // base position
+                    const xBase = (col - cols/2) * side;
+                    const yBase = (row - rows/2) * h;
+
+                    // shift every other row
+                    const offsetX = (row % 2) * side * 0.5;
+
+                    // vertices for upward triangle
+                    const Ax = xBase + offsetX;
+                    const Ay = yBase;
+                    const Bx = Ax + side;
+                    const By = yBase;
+                    const Cx = Ax + side * 0.5;
+                    const Cy = yBase + h;
+
+                    // upward triangle (v0, v1, v2) -> barycentric (1,0,0) (0,1,0) (0,0,1)
+                    addTri(
+                        [Ax, Ay], [Bx, By], [Cx, Cy],
+                        [1,0,0], [0,1,0], [0,0,1]
+                    );
+
+                    // downward triangle: vertices (Bx, By) , (Ax, Ay) , (Cx - side, Cy)? Actually correct downward:
+                    // The downward triangle shares base with upward? Not exactly; we need triangle filling gaps.
+                    // Use vertices: (Bx, By) , (Cx, Cy) , (Cx - side, Cy)  ? But that may not be equilateral.
+                    // Let's define proper downward equilateral with tip down:
+                    const Dx = Ax + side * 0.5;
+                    const Dy = yBase - h;   // tip below base
+                    // downward triangle: (Ax, Ay), (Bx, By), (Dx, Dy)  — but that overlaps? Let's ensure no overlap:
+                    // The canonical grid of equilateral triangles uses two per rhombus: up (A,B,C) and down (B,A,D) with D below.
+                    addTri(
+                        [Bx, By], [Ax, Ay], [Dx, Dy],
+                        [1,0,0], [0,1,0], [0,0,1]   // but careful: we want unique barycentric per vertex; order can be any but consistent
+                    );
+                    // Wait – barycentric (1,0,0) at vertex0 etc. For the second triangle, vertex0 = B, vertex1 = A, vertex2 = D.
+                    // That's fine, but D is new point. This builds continuous grid.
+                }
+            }
+
+            // However the above naive loop may generate many overlapping triangles; better to generate from rhombus grid.
+            // Given time, I'll build a concise, correct grid using two triangles per rhombus with proper barycentric:
+            // Clear again — we'll implement a clean, minimal grid that covers view.
+
+            positions.length = 0;
+            barycentrics.length = 0;
+
+            // Grid dimensions: number of rhombi in each direction
+            const gridW = 18;
+            const gridH = 16;
+            const scaleFactor = 0.31;  // makes triangle side ~0.31
+
+            for (let i = 0; i < gridW; i++) {
+                for (let j = 0; j < gridH; j++) {
+                    // center grid around origin
+                    const x0 = (i - gridW/2) * side;
+                    const y0 = (j - gridH/2) * h;
+
+                    // shift odd columns? No, typical equilateral grid shifts every other row horizontally by side/2
+                    const xShift = (j % 2) * side * 0.5;
+                    const Ax = x0 + xShift;
+                    const Ay = y0;
+                    const Bx = Ax + side;
+                    const By = y0;
+                    const Cx = Ax + side * 0.5;
+                    const Cy = y0 + h;
+                    const Dx = Ax + side * 0.5;
+                    const Dy = y0 - h;    // tip of downward triangle
+
+                    // upward triangle (A, B, C)
+                    addTri([Ax, Ay], [Bx, By], [Cx, Cy], [1,0,0], [0,1,0], [0,0,1]);
+
+                    // downward triangle (B, A, D)   (fills the gap below the base AB)
+                    addTri([Bx, By], [Ax, Ay], [Dx, Dy], [1,0,0], [0,1,0], [0,0,1]);
+                }
+            }
+
+            // Now we have a reasonable grid. Create buffer and upload.
+            const vertexBuffer = gl.createBuffer();
+            gl.bindBuffer(gl.ARRAY_BUFFER, vertexBuffer);
+            // interleave positions and barycentrics? We'll use separate attribs, but we can pack in one buffer.
+            // Build single array: [pos.x, pos.y, bary.x, bary.y, bary.z, ...]
+            const vertexData = [];
+            for (let i = 0; i < positions.length; i += 2) {
+                vertexData.push(positions[i], positions[i+1]);      // pos
+                vertexData.push(barycentrics[i*1.5], barycentrics[i*1.5+1], barycentrics[i*1.5+2]); // each vertex has 3 bary values
+            }
+            gl.bufferData(gl.ARRAY_BUFFER, new Float32Array(vertexData), gl.STATIC_DRAW);
+
+            // stride: 2 floats (pos) + 3 floats (bary) = 5 floats = 20 bytes
+            const stride = 5 * 4; // 5 floats * 4 bytes
+
+            // position attribute
+            gl.enableVertexAttribArray(aPosLoc);
+            gl.vertexAttribPointer(aPosLoc, 2, gl.FLOAT, false, stride, 0);
+
+            // barycentric attribute
+            gl.enableVertexAttribArray(aBaryLoc);
+            gl.vertexAttribPointer(aBaryLoc, 3, gl.FLOAT, false, stride, 2 * 4); // offset after 2 floats
+
+            const vertexCount = positions.length / 2;   // each vertex has 2 coordinates
+
+            // --- set up projection (orthographic) ---
+            // We want grid units visible: roughly [-4,4] in X, [-3,3] in Y depending on aspect
+            function setProjection() {
+                const aspect = canvas.width / canvas.height;
+                const left = -4.0 * aspect;
+                const right = 4.0 * aspect;
+                const bottom = -3.0;
+                const top = 3.0;
+                // orthographic matrix: [2/(r-l), 0, 0, 0, 2/(t-b), 0, -(r+l)/(r-l), -(t+b)/(t-b), 1]
+                // but we use 3x3 for vec3 multiplication: [a, 0, c, 0, b, d, 0, 0, 1] with c = -(r+l)/(r-l), d = -(t+b)/(t-b)
+                const a = 2.0 / (right - left);
+                const b = 2.0 / (top - bottom);
+                const c = -(right + left) / (right - left);
+                const d = -(top + bottom) / (top - bottom);
+                const projMat = new Float32Array([
+                    a, 0, c,
+                    0, b, d,
+                    0, 0, 1
+                ]);
+                gl.uniformMatrix3fv(projUniformLoc, false, projMat);
+            }
+
+            // initial uniforms
+            gl.uniform2f(transUniformLoc, 0.0, 0.0);  // no pan
+            gl.uniform1f(scaleUniformLoc, 1.0);       // scale
+            gl.uniform1f(brightnessUniformLoc, 0.9);   // line brightness
+
+            // --- enable blending for smooth lines (antialiasing) ---
+            gl.enable(gl.BLEND);
+            gl.blendFunc(gl.SRC_ALPHA, gl.ONE_MINUS_SRC_ALPHA);
+
+            // --- draw loop ---
+            function render() {
+                resizeCanvas();  // update viewport & resolution uniform
+                setProjection();
+
+                gl.clearColor(0.08, 0.1, 0.12, 1.0);
+                gl.clear(gl.COLOR_BUFFER_BIT);
+
+                gl.drawArrays(gl.TRIANGLES, 0, vertexCount);
+
+                requestAnimationFrame(render);
+            }
+
+            render();
+
+            // small interaction: allow pan with mouse? not needed for lightweight grid; keep static.
+        })();
+    </script>
+</body>
+</html>
