@@ -1,0 +1,1107 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
+    <title>HEXEL · SYMBOL BRUSH · EXPANDED PALETTE</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            user-select: none;
+        }
+        body {
+            background: #0a0a0a;
+            overflow: hidden;
+            font-family: 'Inter', sans-serif;
+        }
+        
+        #canvas-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            overflow: hidden;
+            background: #0a0a0a;
+        }
+        
+        #gridCanvas, #paintCanvas {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+        
+        #gridCanvas { 
+            z-index: 1; 
+            background: transparent; 
+            pointer-events: none;
+        }
+        #paintCanvas { 
+            z-index: 2; 
+            background: transparent; 
+            cursor: crosshair; 
+            touch-action: none;
+        }
+        
+        /* Panel */
+        #panel {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: rgba(25,20,30,0.95);
+            backdrop-filter: blur(8px);
+            border: 1px solid #b8a5dd40;
+            color: #d8c5ff;
+            font-family: monospace;
+            font-size: 12px;
+            min-width: 480px;
+            max-width: 700px;
+            z-index: 100;
+            pointer-events: none;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        
+        .panel-header {
+            padding: 12px 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            border-bottom: 1px solid #b8a5dd30;
+            pointer-events: auto;
+            cursor: pointer;
+        }
+        
+        .panel-title {
+            color: #d8b5ff;
+            font-size: 14px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .collapse-icon {
+            color: #b8a5dd;
+            font-size: 16px;
+            transition: transform 0.3s;
+        }
+        
+        .panel-content {
+            padding: 16px 20px;
+            transition: all 0.3s ease;
+            overflow: hidden;
+        }
+        
+        .panel-header.collapsed + .panel-content {
+            max-height: 0;
+            padding: 0 20px;
+            opacity: 0;
+        }
+        
+        .stat-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 8px;
+            margin-bottom: 16px;
+        }
+        
+        .stat-item {
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .stat-label {
+            color: #aaa;
+            font-size: 8px;
+            text-transform: uppercase;
+        }
+        
+        .stat-value {
+            color: #ffd966;
+            font-size: 14px;
+            font-family: monospace;
+        }
+        
+        /* Symbol Selector */
+        .symbol-selector {
+            margin: 12px 0;
+            pointer-events: auto;
+        }
+        
+        .symbol-title {
+            color: #b8a5dd;
+            font-size: 11px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+        
+        .symbol-grid {
+            display: flex;
+            gap: 8px;
+            flex-wrap: wrap;
+        }
+        
+        .symbol-option {
+            width: 48px;
+            height: 48px;
+            background: rgba(0,0,0,0.3);
+            border: 2px solid #b8a5dd40;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            cursor: pointer;
+            transition: all 0.1s;
+        }
+        
+        .symbol-option:hover {
+            border-color: #ffb86b;
+            transform: scale(1.05);
+        }
+        
+        .symbol-option.active {
+            border-color: #ffb86b;
+            background: #ffb86b20;
+            box-shadow: 0 0 10px #ffb86b;
+        }
+        
+        /* Color Palette - Expanded! */
+        .color-section {
+            margin: 12px 0;
+            pointer-events: auto;
+        }
+        
+        .color-title {
+            color: #b8a5dd;
+            font-size: 11px;
+            margin-bottom: 8px;
+            text-transform: uppercase;
+        }
+        
+        .color-grid {
+            display: flex;
+            gap: 6px;
+            flex-wrap: wrap;
+        }
+        
+        .color-swatch {
+            width: 28px;
+            height: 28px;
+            border: 2px solid transparent;
+            cursor: pointer;
+            transition: all 0.1s;
+        }
+        
+        .color-swatch:hover {
+            transform: scale(1.1);
+            border-color: white;
+        }
+        
+        .color-swatch.active {
+            border-color: white;
+            box-shadow: 0 0 8px white;
+        }
+        
+        .color-swatch.custom {
+            background: linear-gradient(135deg, #ff6b6b, #4ecdc4, #ffe66d);
+            position: relative;
+            font-size: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-shadow: 0 0 2px black;
+        }
+        
+        /* Custom color picker */
+        .custom-color-picker {
+            margin-top: 8px;
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+        
+        .custom-color-input {
+            width: 60px;
+            height: 28px;
+            border: 1px solid #b8a5dd40;
+            background: rgba(0,0,0,0.3);
+            cursor: pointer;
+        }
+        
+        .custom-color-value {
+            color: #ffd966;
+            font-family: monospace;
+            font-size: 11px;
+        }
+        
+        .slider-container {
+            margin: 12px 0;
+        }
+        
+        .slider-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 8px 0;
+            pointer-events: auto;
+        }
+        
+        .slider-label {
+            width: 85px;
+            color: #b8a5dd;
+            font-size: 11px;
+        }
+        
+        .slider-row input {
+            flex: 1;
+            height: 4px;
+            background: #333;
+            outline: none;
+            -webkit-appearance: none;
+            cursor: pointer;
+        }
+        
+        .slider-row input::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            width: 14px;
+            height: 14px;
+            background: #d8b5ff;
+            cursor: pointer;
+            border: none;
+        }
+        
+        .slider-value {
+            width: 60px;
+            text-align: right;
+            font-family: monospace;
+            color: #ffd966;
+            font-size: 11px;
+        }
+        
+        .toggle-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 12px 0 8px 0;
+            pointer-events: auto;
+        }
+        
+        .toggle-label {
+            width: 85px;
+            color: #b8a5dd;
+            font-size: 11px;
+        }
+        
+        .toggle-btn {
+            background: transparent;
+            border: 1px solid #b8a5dd40;
+            color: #d8b5ff;
+            padding: 4px 12px;
+            font-size: 11px;
+            cursor: pointer;
+            min-width: 60px;
+        }
+        
+        .toggle-btn.active {
+            background: #b8a5dd;
+            color: #0a0a0a;
+        }
+        
+        .tool-panel {
+            position: fixed;
+            bottom: 24px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(25,20,30,0.95);
+            backdrop-filter: blur(8px);
+            border: 1px solid #b8a5dd40;
+            padding: 12px 24px;
+            display: flex;
+            gap: 16px;
+            align-items: center;
+            z-index: 100;
+            pointer-events: auto;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.5);
+        }
+        
+        .tool-btn {
+            background: transparent;
+            border: 1px solid #b8a5dd40;
+            color: #d8b5ff;
+            padding: 6px 12px;
+            font-size: 12px;
+            cursor: pointer;
+            min-width: 60px;
+        }
+        
+        .tool-btn.active {
+            background: #b8a5dd;
+            color: #0a0a0a;
+        }
+        
+        .tool-btn.symbol-active {
+            background: #ffb86b;
+            color: #0a0a0a;
+        }
+        
+        .coord-display {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: rgba(0,0,0,0.5);
+            border: 1px solid #b8a5dd40;
+            color: #d8b5ff;
+            padding: 8px 16px;
+            font-family: monospace;
+            font-size: 12px;
+            z-index: 100;
+            pointer-events: none;
+        }
+        
+        * { border-radius: 0 !important; }
+    </style>
+</head>
+<body>
+    <div id="canvas-container">
+        <canvas id="gridCanvas"></canvas>
+        <canvas id="paintCanvas"></canvas>
+    </div>
+    
+    <div id="panel">
+        <div class="panel-header" id="panel-header">
+            <div class="panel-title">
+                <span class="collapse-icon">▼</span>
+                <span>⚡ HEXEL · SYMBOL BRUSH · EXPANDED</span>
+            </div>
+            <span id="fps">60</span>
+        </div>
+        
+        <div class="panel-content">
+            <div class="stat-grid">
+                <div class="stat-item">
+                    <span class="stat-label">Hexels</span>
+                    <span class="stat-value" id="cell-count">0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Symbol</span>
+                    <span class="stat-value" id="symbol-display">●</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Brush Size</span>
+                    <span class="stat-value" id="brush-size-display">1.0</span>
+                </div>
+                <div class="stat-item">
+                    <span class="stat-label">Morph</span>
+                    <span class="stat-value" id="morph-display">0.3</span>
+                </div>
+            </div>
+            
+            <!-- SYMBOL SELECTOR - NEW! -->
+            <div class="symbol-selector">
+                <div class="symbol-title">🎨 SYMBOL BRUSH</div>
+                <div class="symbol-grid" id="symbol-grid">
+                    <div class="symbol-option active" data-symbol="●">●</div>
+                    <div class="symbol-option" data-symbol="★">★</div>
+                    <div class="symbol-option" data-symbol="◆">◆</div>
+                    <div class="symbol-option" data-symbol="■">■</div>
+                    <div class="symbol-option" data-symbol="▲">▲</div>
+                    <div class="symbol-option" data-symbol="♥">♥</div>
+                    <div class="symbol-option" data-symbol="✿">✿</div>
+                    <div class="symbol-option" data-symbol="⚡">⚡</div>
+                    <div class="symbol-option" data-symbol="☀">☀</div>
+                    <div class="symbol-option" data-symbol="☾">☾</div>
+                    <div class="symbol-option" data-symbol="♠">♠</div>
+                    <div class="symbol-option" data-symbol="♣">♣</div>
+                </div>
+            </div>
+            
+            <!-- EXPANDED COLOR PALETTE -->
+            <div class="color-section">
+                <div class="color-title">🎨 COLOR PALETTE</div>
+                <div class="color-grid" id="color-grid">
+                    <!-- Purple family -->
+                    <div class="color-swatch" style="background: #c4a5dd;" data-color="0.77,0.65,0.87"></div>
+                    <div class="color-swatch active" style="background: #dda5c4;" data-color="0.87,0.65,0.77"></div>
+                    <div class="color-swatch" style="background: #a5ddc4;" data-color="0.65,0.87,0.77"></div>
+                    <div class="color-swatch" style="background: #ddc4a5;" data-color="0.87,0.77,0.65"></div>
+                    <!-- Reds -->
+                    <div class="color-swatch" style="background: #ff6b6b;" data-color="1.0,0.42,0.42"></div>
+                    <div class="color-swatch" style="background: #ff8c8c;" data-color="1.0,0.55,0.55"></div>
+                    <div class="color-swatch" style="background: #ff5252;" data-color="1.0,0.32,0.32"></div>
+                    <!-- Oranges -->
+                    <div class="color-swatch" style="background: #ffb86b;" data-color="1.0,0.72,0.42"></div>
+                    <div class="color-swatch" style="background: #ffa54d;" data-color="1.0,0.65,0.30"></div>
+                    <!-- Yellows -->
+                    <div class="color-swatch" style="background: #ffe66d;" data-color="1.0,0.90,0.43"></div>
+                    <div class="color-swatch" style="background: #ffdd44;" data-color="1.0,0.87,0.27"></div>
+                    <!-- Greens -->
+                    <div class="color-swatch" style="background: #4ecdc4;" data-color="0.31,0.80,0.77"></div>
+                    <div class="color-swatch" style="background: #6dd5b0;" data-color="0.43,0.84,0.69"></div>
+                    <div class="color-swatch" style="background: #3a9b8f;" data-color="0.23,0.61,0.56"></div>
+                    <!-- Blues -->
+                    <div class="color-swatch" style="background: #6b9eff;" data-color="0.42,0.62,1.0"></div>
+                    <div class="color-swatch" style="background: #4a7bcc;" data-color="0.29,0.48,0.80"></div>
+                    <div class="color-swatch" style="background: #8bb5ff;" data-color="0.55,0.71,1.0"></div>
+                    <!-- Cyans -->
+                    <div class="color-swatch" style="background: #5dd9c1;" data-color="0.36,0.85,0.76"></div>
+                    <!-- Pinks -->
+                    <div class="color-swatch" style="background: #ff99cc;" data-color="1.0,0.60,0.80"></div>
+                    <div class="color-swatch" style="background: #ffb3d9;" data-color="1.0,0.70,0.85"></div>
+                    <!-- Custom swatch -->
+                    <div class="color-swatch custom" id="custom-swatch" style="background: linear-gradient(135deg, #ff6b6b, #4ecdc4, #ffe66d);">🎨</div>
+                </div>
+                
+                <!-- Custom color picker -->
+                <div class="custom-color-picker" id="custom-color-picker" style="display: none;">
+                    <input type="color" id="custom-color-input" value="#c4b5fd">
+                    <span class="custom-color-value" id="custom-color-value">#c4b5fd</span>
+                </div>
+            </div>
+            
+            <div class="slider-container">
+                <div class="slider-row">
+                    <span class="slider-label">BRUSH SIZE</span>
+                    <input type="range" id="size-slider" min="0" max="100" value="50">
+                    <span class="slider-value" id="size-value">1.0</span>
+                </div>
+                <div class="slider-scale" style="padding-left:97px">
+                    <span>dot (0.3)</span>
+                    <span>blob (2.0)</span>
+                </div>
+                
+                <div class="slider-row">
+                    <span class="slider-label">MORPH RATE</span>
+                    <input type="range" id="morph-slider" min="0" max="100" value="30">
+                    <span class="slider-value" id="morph-value">0.3</span>
+                </div>
+                <div class="slider-scale" style="padding-left:97px">
+                    <span>sharp</span>
+                    <span>blend</span>
+                </div>
+                
+                <div class="toggle-row">
+                    <span class="toggle-label">GRID VIEW</span>
+                    <button class="toggle-btn active" id="grid-on">ON</button>
+                    <button class="toggle-btn" id="grid-off">OFF</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="tool-panel">
+        <button class="tool-btn active" id="btn-paint">🎨 Paint</button>
+        <button class="tool-btn" id="btn-symbol">✨ Symbol</button>
+        <button class="tool-btn" id="btn-clear">Clear</button>
+        
+        <div style="color:#888; font-size:10px;">✨ click symbols to change brush</div>
+    </div>
+    
+    <div class="coord-display" id="coords">0.00 , 0.00</div>
+
+    <script>
+        (function() {
+            // ================================================
+            // Canvas setup
+            // ================================================
+            const container = document.getElementById('canvas-container');
+            const gridCanvas = document.getElementById('gridCanvas');
+            const paintCanvas = document.getElementById('paintCanvas');
+            
+            const gridCtx = gridCanvas.getContext('2d');
+            const paintCtx = paintCanvas.getContext('2d');
+            
+            const BASE_SIZE = 24;
+            const H_STEP = BASE_SIZE * 2;
+            const V_STEP = BASE_SIZE * Math.sqrt(3);
+            
+            let cameraX = 0, cameraY = 0, scale = 1.0;
+            
+            // Interaction
+            let isPainting = false;
+            let isPanning = false;
+            let currentTool = 'paint';
+            let lastX, lastY;
+            
+            // Paint cells
+            let paintCells = new Map();
+            const MAX_CELLS = 15000;
+            
+            // NEW: Symbol brush settings
+            let currentSymbol = '●';
+            let symbols = ['●', '★', '◆', '■', '▲', '♥', '✿', '⚡', '☀', '☾', '♠', '♣'];
+            
+            // Parameters
+            let brushSize = 1.0;
+            let morphRate = 0.3;
+            let showGrid = true;
+            let time = 0;
+            
+            // Colors - expanded palette
+            let currentColor = [0.87, 0.65, 0.77]; // default pink-purple
+            
+            // Expanded color palette
+            const colorPalette = {
+                // Purples
+                '#c4a5dd': [0.77, 0.65, 0.87],
+                '#dda5c4': [0.87, 0.65, 0.77],
+                '#a5ddc4': [0.65, 0.87, 0.77],
+                '#ddc4a5': [0.87, 0.77, 0.65],
+                // Reds
+                '#ff6b6b': [1.0, 0.42, 0.42],
+                '#ff8c8c': [1.0, 0.55, 0.55],
+                '#ff5252': [1.0, 0.32, 0.32],
+                // Oranges
+                '#ffb86b': [1.0, 0.72, 0.42],
+                '#ffa54d': [1.0, 0.65, 0.30],
+                // Yellows
+                '#ffe66d': [1.0, 0.90, 0.43],
+                '#ffdd44': [1.0, 0.87, 0.27],
+                // Greens
+                '#4ecdc4': [0.31, 0.80, 0.77],
+                '#6dd5b0': [0.43, 0.84, 0.69],
+                '#3a9b8f': [0.23, 0.61, 0.56],
+                // Blues
+                '#6b9eff': [0.42, 0.62, 1.0],
+                '#4a7bcc': [0.29, 0.48, 0.80],
+                '#8bb5ff': [0.55, 0.71, 1.0],
+                // Cyan
+                '#5dd9c1': [0.36, 0.85, 0.76],
+                // Pinks
+                '#ff99cc': [1.0, 0.60, 0.80],
+                '#ffb3d9': [1.0, 0.70, 0.85]
+            };
+            
+            // ================================================
+            // Log Slider
+            // ================================================
+            class LogSlider {
+                constructor(elementId, displayId, minVal, maxVal, expFactor = 2.5, defaultVal = null) {
+                    this.slider = document.getElementById(elementId);
+                    this.display = document.getElementById(displayId);
+                    this.minVal = minVal;
+                    this.maxVal = maxVal;
+                    this.expFactor = expFactor;
+                    this.value = defaultVal || minVal;
+                    this.callbacks = [];
+                    
+                    if (defaultVal !== null) this.setValue(defaultVal);
+                    
+                    this.slider.addEventListener('input', (e) => {
+                        this.updateFromSlider(parseInt(e.target.value));
+                    });
+                }
+                
+                sliderToValue(sliderPos) {
+                    const t = sliderPos / 100;
+                    const curved = Math.pow(t, this.expFactor);
+                    return this.minVal + (this.maxVal - this.minVal) * curved;
+                }
+                
+                valueToSlider(val) {
+                    const t = (val - this.minVal) / (this.maxVal - this.minVal);
+                    const curved = Math.pow(t, 1 / this.expFactor);
+                    return curved * 100;
+                }
+                
+                updateFromSlider(sliderPos) {
+                    this.value = this.sliderToValue(sliderPos);
+                    if (this.display) this.display.innerHTML = this.value.toFixed(3);
+                    this.callbacks.forEach(cb => cb(this.value));
+                }
+                
+                setValue(val) {
+                    this.value = Math.max(this.minVal, Math.min(this.maxVal, val));
+                    this.slider.value = this.valueToSlider(this.value);
+                    if (this.display) this.display.innerHTML = this.value.toFixed(3);
+                }
+                
+                onChange(callback) {
+                    this.callbacks.push(callback);
+                    callback(this.value);
+                }
+            }
+            
+            // Initialize sliders
+            const sizeSlider = new LogSlider('size-slider', 'size-value', 0.3, 2.0, 2.0, brushSize);
+            const morphSlider = new LogSlider('morph-slider', 'morph-value', 0.0, 1.0, 2.0, morphRate);
+            
+            sizeSlider.onChange(val => {
+                brushSize = val;
+                document.getElementById('brush-size-display').innerHTML = val.toFixed(3);
+            });
+            morphSlider.onChange(val => {
+                morphRate = val;
+                document.getElementById('morph-display').innerHTML = val.toFixed(3);
+            });
+            
+            // ================================================
+            // Symbol Selector
+            // ================================================
+            function initSymbolSelector() {
+                const symbols = document.querySelectorAll('.symbol-option');
+                symbols.forEach(opt => {
+                    opt.addEventListener('click', () => {
+                        symbols.forEach(s => s.classList.remove('active'));
+                        opt.classList.add('active');
+                        currentSymbol = opt.dataset.symbol;
+                        document.getElementById('symbol-display').innerHTML = currentSymbol;
+                    });
+                });
+            }
+            
+            // ================================================
+            // Expanded Color Palette
+            // ================================================
+            function initColorPalette() {
+                const swatches = document.querySelectorAll('.color-swatch:not(.custom)');
+                swatches.forEach(swatch => {
+                    swatch.addEventListener('click', () => {
+                        swatches.forEach(s => s.classList.remove('active'));
+                        document.querySelectorAll('.color-swatch.custom').forEach(s => s.classList.remove('active'));
+                        swatch.classList.add('active');
+                        const colorStr = swatch.dataset.color;
+                        currentColor = colorStr.split(',').map(Number);
+                        document.getElementById('current-color').innerHTML = `rgb(${Math.floor(currentColor[0]*255)},${Math.floor(currentColor[1]*255)},${Math.floor(currentColor[2]*255)})`;
+                    });
+                });
+                
+                // Custom color picker
+                const customSwatch = document.getElementById('custom-swatch');
+                const customPicker = document.getElementById('custom-color-picker');
+                const customInput = document.getElementById('custom-color-input');
+                const customValue = document.getElementById('custom-color-value');
+                
+                customSwatch.addEventListener('click', () => {
+                    swatches.forEach(s => s.classList.remove('active'));
+                    customSwatch.classList.add('active');
+                    customPicker.style.display = 'flex';
+                });
+                
+                customInput.addEventListener('input', () => {
+                    const hex = customInput.value;
+                    customValue.innerHTML = hex;
+                    // Convert hex to RGB
+                    const r = parseInt(hex.slice(1,3), 16) / 255;
+                    const g = parseInt(hex.slice(3,5), 16) / 255;
+                    const b = parseInt(hex.slice(5,7), 16) / 255;
+                    currentColor = [r, g, b];
+                });
+            }
+            
+            // ================================================
+            // Hex grid utilities
+            // ================================================
+            function getHexKey(col, row) {
+                return `${col},${row}`;
+            }
+            
+            function getHexCenter(col, row) {
+                let x = col * H_STEP;
+                let y = row * V_STEP;
+                if (row % 2 !== 0) x += H_STEP / 2;
+                return { x, y };
+            }
+            
+            // ================================================
+            // Painting with SYMBOLS!
+            // ================================================
+            function addPaint(screenX, screenY) {
+                const worldX = cameraX + (screenX - paintCanvas.width/2) / scale;
+                const worldY = cameraY + (screenY - paintCanvas.height/2) / scale;
+                
+                const centerCol = Math.round(worldX / H_STEP);
+                const centerRow = Math.round(worldY / H_STEP);
+                
+                const brushRadius = Math.max(1, Math.floor(3 * brushSize));
+                
+                for (let dr = -brushRadius; dr <= brushRadius; dr++) {
+                    for (let dc = -brushRadius; dc <= brushRadius; dc++) {
+                        if (Math.abs(dr) + Math.abs(dc) > brushRadius * 1.5) continue;
+                        
+                        const row = centerRow + dr;
+                        const col = centerCol + dc;
+                        const key = getHexKey(col, row);
+                        const center = getHexCenter(col, row);
+                        
+                        const dx = worldX - center.x;
+                        const dy = worldY - center.y;
+                        const dist = Math.sqrt(dx*dx + dy*dy);
+                        
+                        const maxDist = H_STEP * 1.2 * brushSize;
+                        if (dist < maxDist) {
+                            const strength = 0.4 * (1 - dist / maxDist) * brushSize;
+                            
+                            if (!paintCells.has(key) && paintCells.size >= MAX_CELLS) continue;
+                            
+                            let cell = paintCells.get(key);
+                            if (!cell) {
+                                cell = { 
+                                    r: 0, g: 0, b: 0, 
+                                    age: 0, 
+                                    size: brushSize,
+                                    symbol: currentSymbol  // Store the symbol!
+                                };
+                                paintCells.set(key, cell);
+                            }
+                            
+                            if (currentTool === 'paint' || currentTool === 'symbol') {
+                                cell.r = Math.min(1, cell.r + currentColor[0] * strength);
+                                cell.g = Math.min(1, cell.g + currentColor[1] * strength);
+                                cell.b = Math.min(1, cell.b + currentColor[2] * strength);
+                                cell.size = (cell.size + brushSize) / 2;
+                                cell.symbol = currentSymbol;  // Update symbol
+                            }
+                            
+                            cell.age = 0;
+                        }
+                    }
+                }
+            }
+            
+            // ================================================
+            // Rendering with SYMBOLS!
+            // ================================================
+            function drawGrid() {
+                if (!showGrid) {
+                    gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+                    return;
+                }
+                
+                gridCtx.clearRect(0, 0, gridCanvas.width, gridCanvas.height);
+                
+                const centerX = gridCanvas.width / 2;
+                const centerY = gridCanvas.height / 2;
+                
+                const worldLeft = cameraX - (gridCanvas.width / 2) / scale;
+                const worldRight = cameraX + (gridCanvas.width / 2) / scale;
+                const worldTop = cameraY - (gridCanvas.height / 2) / scale;
+                const worldBottom = cameraY + (gridCanvas.height / 2) / scale;
+                
+                const minCol = Math.floor(worldLeft / H_STEP) - 2;
+                const maxCol = Math.ceil(worldRight / H_STEP) + 2;
+                const minRow = Math.floor(worldTop / V_STEP) - 2;
+                const maxRow = Math.ceil(worldBottom / V_STEP) + 2;
+                
+                gridCtx.strokeStyle = '#b8a5dd';
+                gridCtx.lineWidth = Math.max(0.5, 1.5 / scale);
+                gridCtx.globalAlpha = 0.2;
+                
+                for (let row = minRow; row <= maxRow; row++) {
+                    for (let col = minCol; col <= maxCol; col++) {
+                        const x = centerX + (col * H_STEP - cameraX) * scale;
+                        const y = centerY + (row * V_STEP - cameraY) * scale;
+                        const xOffset = (row % 2 === 0) ? 0 : (H_STEP * scale) / 2;
+                        
+                        gridCtx.beginPath();
+                        gridCtx.moveTo(x + xOffset - 10, y - 17.32);
+                        gridCtx.lineTo(x + xOffset + 10, y + 17.32);
+                        gridCtx.stroke();
+                        
+                        gridCtx.beginPath();
+                        gridCtx.moveTo(x + xOffset - 10, y + 17.32);
+                        gridCtx.lineTo(x + xOffset + 10, y - 17.32);
+                        gridCtx.stroke();
+                    }
+                }
+            }
+            
+            function drawPaint() {
+                paintCtx.clearRect(0, 0, paintCanvas.width, paintCanvas.height);
+                
+                const centerX = paintCanvas.width / 2;
+                const centerY = paintCanvas.height / 2;
+                const cellCount = paintCells.size;
+                
+                for (const [key, cell] of paintCells) {
+                    const [col, row] = key.split(',').map(Number);
+                    const center = getHexCenter(col, row);
+                    
+                    const screenX = centerX + (center.x - cameraX) * scale;
+                    const screenY = centerY + (center.y - cameraY) * scale;
+                    
+                    if (screenX < -100 || screenX > paintCanvas.width + 100 ||
+                        screenY < -100 || screenY > paintCanvas.height + 100) continue;
+                    
+                    const density = (cell.r + cell.g + cell.b) / 3;
+                    if (density < 0.01) continue;
+                    
+                    const cellSize = cell.size || 1.0;
+                    const size = H_STEP * scale * 0.4 * cellSize;
+                    
+                    // Draw colored background
+                    paintCtx.beginPath();
+                    for (let i = 0; i < 6; i++) {
+                        const angle = i * Math.PI / 3;
+                        const hx = screenX + size * Math.cos(angle);
+                        const hy = screenY + size * Math.sin(angle);
+                        if (i === 0) paintCtx.moveTo(hx, hy);
+                        else paintCtx.lineTo(hx, hy);
+                    }
+                    paintCtx.closePath();
+                    
+                    paintCtx.fillStyle = `rgba(${Math.floor(cell.r*255)}, ${Math.floor(cell.g*255)}, ${Math.floor(cell.b*255)}, ${density * 0.7})`;
+                    paintCtx.fill();
+                    
+                    // Draw SYMBOL on top!
+                    const symbol = cell.symbol || '●';
+                    const fontSize = size * 1.2;
+                    paintCtx.font = `${fontSize}px "Segoe UI Emoji", "Apple Color Emoji", "Noto Color Emoji", sans-serif`;
+                    paintCtx.textAlign = 'center';
+                    paintCtx.textBaseline = 'middle';
+                    paintCtx.fillStyle = `rgba(255,255,255,${density * 0.9})`;
+                    paintCtx.fillText(symbol, screenX, screenY);
+                }
+            }
+            
+            // ================================================
+            // Utilities
+            // ================================================
+            function screenToWorld(screenX, screenY) {
+                return {
+                    x: cameraX + (screenX - paintCanvas.width/2) / scale,
+                    y: cameraY + (screenY - paintCanvas.height/2) / scale
+                };
+            }
+            
+            function getCanvasCoordinates(e) {
+                const rect = paintCanvas.getBoundingClientRect();
+                const scaleX = paintCanvas.width / rect.width;
+                const scaleY = paintCanvas.height / rect.height;
+                
+                let clientX, clientY;
+                if (e.touches) {
+                    clientX = e.touches[0].clientX;
+                    clientY = e.touches[0].clientY;
+                } else {
+                    clientX = e.clientX;
+                    clientY = e.clientY;
+                }
+                
+                return {
+                    x: (clientX - rect.left) * scaleX,
+                    y: (clientY - rect.top) * scaleY
+                };
+            }
+            
+            // ================================================
+            // Animation
+            // ================================================
+            function updateCells(dt) {
+                // Simple diffusion for morph effect
+                if (morphRate > 0 && paintCells.size > 0) {
+                    const newCells = new Map();
+                    
+                    for (const [key, cell] of paintCells) {
+                        const [col, row] = key.split(',').map(Number);
+                        let r = cell.r, g = cell.g, b = cell.b;
+                        let neighborCount = 0;
+                        
+                        const neighbors = [
+                            [col+1, row], [col-1, row],
+                            [col, row+1], [col, row-1],
+                            [col + (row%2===0?1:-1), row+1],
+                            [col + (row%2===0?1:-1), row-1]
+                        ];
+                        
+                        for (const [ncol, nrow] of neighbors) {
+                            const nkey = `${ncol},${nrow}`;
+                            const ncell = paintCells.get(nkey);
+                            if (ncell) {
+                                r += ncell.r * morphRate * 0.1;
+                                g += ncell.g * morphRate * 0.1;
+                                b += ncell.b * morphRate * 0.1;
+                                neighborCount++;
+                            }
+                        }
+                        
+                        const denom = 1 + neighborCount * morphRate * 0.1;
+                        newCells.set(key, {
+                            ...cell,
+                            r: r / denom,
+                            g: g / denom,
+                            b: b / denom
+                        });
+                    }
+                    
+                    paintCells = newCells;
+                }
+                
+                // Limit cells
+                if (paintCells.size > MAX_CELLS) {
+                    const sorted = Array.from(paintCells.entries())
+                        .sort((a, b) => {
+                            const sumA = a[1].r + a[1].g + a[1].b;
+                            const sumB = b[1].r + b[1].g + b[1].b;
+                            return sumB - sumA;
+                        })
+                        .slice(0, MAX_CELLS);
+                    paintCells = new Map(sorted);
+                }
+            }
+            
+            function update() {
+                updateCells(0.1);
+                document.getElementById('cell-count').innerHTML = paintCells.size;
+                
+                frameCount++;
+                const now = performance.now();
+                if (now - lastFPSUpdate >= 1000) {
+                    document.getElementById('fps').innerHTML = frameCount;
+                    frameCount = 0;
+                    lastFPSUpdate = now;
+                }
+                
+                drawGrid();
+                drawPaint();
+                requestAnimationFrame(update);
+            }
+            
+            // ================================================
+            // Interaction
+            // ================================================
+            function handleStart(e) {
+                e.preventDefault();
+                const { x, y } = getCanvasCoordinates(e);
+                
+                if (e.button === 2) {
+                    isPanning = true;
+                    paintCanvas.style.cursor = 'grabbing';
+                } else {
+                    isPainting = true;
+                    addPaint(x, y);
+                }
+                
+                lastX = x;
+                lastY = y;
+            }
+            
+            function handleMove(e) {
+                e.preventDefault();
+                const { x, y } = getCanvasCoordinates(e);
+                
+                const world = screenToWorld(x, y);
+                document.getElementById('coords').innerHTML = `${world.x.toFixed(2)} , ${world.y.toFixed(2)}`;
+                
+                if (isPanning) {
+                    cameraX -= (x - lastX) / scale;
+                    cameraY -= (y - lastY) / scale;
+                } else if (isPainting) {
+                    const dist = Math.hypot(x - lastX, y - lastY);
+                    const steps = Math.max(1, Math.floor(dist / 5));
+                    for (let i = 0; i <= steps; i++) {
+                        const t = i / steps;
+                        const ix = lastX * (1 - t) + x * t;
+                        const iy = lastY * (1 - t) + y * t;
+                        addPaint(ix, iy);
+                    }
+                }
+                
+                lastX = x;
+                lastY = y;
+            }
+            
+            function handleEnd(e) {
+                e.preventDefault();
+                isPainting = false;
+                isPanning = false;
+                paintCanvas.style.cursor = 'crosshair';
+            }
+            
+            paintCanvas.addEventListener('mousedown', handleStart);
+            paintCanvas.addEventListener('mousemove', handleMove);
+            paintCanvas.addEventListener('mouseup', handleEnd);
+            paintCanvas.addEventListener('mouseleave', handleEnd);
+            paintCanvas.addEventListener('contextmenu', (e) => e.preventDefault());
+            
+            paintCanvas.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const { x, y } = getCanvasCoordinates(e);
+                const worldBefore = screenToWorld(x, y);
+                const zoomFactor = e.deltaY > 0 ? 0.95 : 1.05;
+                scale *= zoomFactor;
+                scale = Math.max(0.2, Math.min(5, scale));
+                const worldAfter = screenToWorld(x, y);
+                cameraX += worldBefore.x - worldAfter.x;
+                cameraY += worldBefore.y - worldAfter.y;
+            }, { passive: false });
+            
+            // ================================================
+            // UI Controls
+            // ================================================
+            document.getElementById('btn-paint').addEventListener('click', () => {
+                currentTool = 'paint';
+                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active', 'symbol-active'));
+                document.getElementById('btn-paint').classList.add('active');
+            });
+            
+            document.getElementById('btn-symbol').addEventListener('click', () => {
+                currentTool = 'symbol';
+                document.querySelectorAll('.tool-btn').forEach(b => b.classList.remove('active', 'symbol-active'));
+                document.getElementById('btn-symbol').classList.add('symbol-active');
+            });
+            
+            document.getElementById('btn-clear').addEventListener('click', () => {
+                paintCells.clear();
+            });
+            
+            document.getElementById('grid-on').addEventListener('click', () => {
+                showGrid = true;
+                document.getElementById('grid-on').classList.add('active');
+                document.getElementById('grid-off').classList.remove('active');
+                gridCanvas.style.opacity = '1';
+            });
+            
+            document.getElementById('grid-off').addEventListener('click', () => {
+                showGrid = false;
+                document.getElementById('grid-off').classList.add('active');
+                document.getElementById('grid-on').classList.remove('active');
+                gridCanvas.style.opacity = '0';
+            });
+            
+            // Collapsible panel
+            const panelHeader = document.getElementById('panel-header');
+            const panelContent = document.querySelector('.panel-content');
+            let isCollapsed = false;
+            panelHeader.addEventListener('click', () => {
+                isCollapsed = !isCollapsed;
+                panelHeader.classList.toggle('collapsed');
+                if (isCollapsed) {
+                    panelContent.style.maxHeight = '0';
+                    panelContent.style.padding = '0 20px';
+                    panelContent.style.opacity = '0';
+                } else {
+                    panelContent.style.maxHeight = '800px';
+                    panelContent.style.padding = '16px 20px';
+                    panelContent.style.opacity = '1';
+                }
+            });
+            
+            // Initialize all
+            initSymbolSelector();
+            initColorPalette();
+            
+            let frameCount = 0;
+            let lastFPSUpdate = performance.now();
+            
+            function resize() {
+                gridCanvas.width = container.clientWidth;
+                gridCanvas.height = container.clientHeight;
+                paintCanvas.width = container.clientWidth;
+                paintCanvas.height = container.clientHeight;
+                drawGrid();
+                drawPaint();
+            }
+            
+            window.addEventListener('resize', resize);
+            resize();
+            update();
+        })();
+    </script>
+</body>
+</html>
